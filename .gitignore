@@ -276,6 +276,8 @@ OpenCover/
 ASALocalRun/
 
 # Sensitive / secrets - never commit these
+database_access.txt
+global_vars.json
 *.pfx
 *.p12
 *.pem
