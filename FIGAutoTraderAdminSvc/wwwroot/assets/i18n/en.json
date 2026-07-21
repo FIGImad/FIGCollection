@@ -1,0 +1,1134 @@
+{
+  "MAIN": {
+    "name": "Administration Console",
+    "shortName": "Admin Console",
+    "title": "Admin Console",
+    "moto": "",
+    "copyrightMessage": "©2026 FIG Investments Ltd.",
+    "companyName": "FIG Investments"
+  },
+  "ABOUT": {
+    "title": "About",
+    "name": "FIG Auto-Trade  Administration Portal",
+    "version": "Release 4.2 - July, 2026",
+    "info": "Licensed to \"First Investment Group\"",
+    "copyright": "©2026 FIG Investments Ltd."
+  },
+  "SIDEPANEL": {
+    "title": "Administration Console",
+    "dashboard": "Dashboard",
+    "devices": "Devices",
+    "autotrade": "Auto-Trades",
+    "autotradeTitle": "Auto-Trade",
+    "active-signals": "Active Signals",
+    "active-signals-title": "Active Signals",
+    "archived-signals": "Archived Signals",
+    "archived-signals-title": "Archived Signals",
+    "settingsTitle": "Settings",
+    "chartsTitle": "Charts",
+    "users": "Users",
+    "usersConfig": "Users Settings",
+    "botConfig": "Trade-BOTs",
+    "rolesConfig": "Roles Settings",
+    "helpTitle": "Help",
+    "administrationTitle": "Administration",
+    "systemAdmin": "System Admin",
+    "serviceAdmin": "Service Admin",
+    "about": "About",
+    "alertsTitle": "Alerts",
+    "alertsMenu": "Alerts",
+    "alertsOverview": "Overview",
+    "alerts-events": "Alert Events",
+    "alert-rules": "Alert Rules",
+    "alert-recipients": "Recipients",
+    "alerts": "Alerts Config",
+    "charts": "Charts"
+  },
+  "DROPMENU": {
+    "account": "Account",
+    "changePassword": "Change Password",
+    "logout": "Log Out",
+    "language": "Language",
+    "notifications": "Notifications",
+    "accountInfo": "User Profile"
+  },
+  "LOGIN": {
+    "title": "",
+    "username": "Username",
+    "password": "Password",
+    "newPassword": "New Password",
+    "confirmPassword": "Confirm Password",
+    "signInBuiltIn": "Sign In to Console",
+    "emailConfirmed": "Email address has been confirmed..",
+    "emailConfirmedCreatePassword": "Email address has been confirmed.. create new password",
+    "buttons": {
+      "login": "Sign In",
+      "loggingIn": "Signing in...",
+      "idpNext": "Next",
+      "forgotPassword": "Forgot Password?",
+      "resetPassword": "Reset Password",
+      "createPassword": "Update Password",
+      "back": "Back",
+      "done": "Done"
+    },
+    "error": {
+      "failure": "The email and/or password you entered is invalid.  Please check your information and try again.",
+      "sessionExpired": "Session timed out and you are logged off",
+      "failedEmailConfirmation": "Email confirmation failed.. invalid token or expired link, contact an administrator for more information",
+      "noIdp": "Failed to find user or identity provider.",
+      "user_cancelled": "Error - User cancelled the operation.",
+      "user_non_existent": "User does not exist or does not have permission to access the admin console.",
+      "failureCreatePassword": "Could not create new password. contact technical support"
+    }
+  },
+  "RESET_PASSWORD": {
+    "title": "Reset Password",
+    "description": "Enter the username.",
+    "failure": "Could not reset password.. contact technical support",
+    "instructions1": "An email has been sent to your primary email address ",
+    "instructions2": "Click the link in the email to reset your password."
+  },
+  "CREATE_PASSWORD": {
+    "title": "Change Password",
+    "description": "Enter the new password",
+    "failure": "Could not change password.. contact technical support",
+    "instructions1": "The password was changed successfully ",
+    "instructions2": "Click button to go back to login."
+  },
+  "CHANGE_PASSWORD": {
+    "title": "Change Password",
+    "titleUserChange": "Change User's Password",
+    "currentPassword": "Current Password",
+    "newPassword": "New Password",
+    "confirmPassword": "Confirm Password",
+    "username": "Username",
+    "completeRequired": "Complete required fields",
+    "successfullyChanged": "Password changed successfully",
+    "failToChange": "Could not change password!!",
+    "buttons": {
+      "changePassword": "Change Password",
+      "cancel": "Cancel"
+    }
+  },
+  "USER_PROFILE": {
+    "title": "User Profile",
+    "accountInfo": "Account Information",
+    "username": "User",
+    "firstName": "First Name",
+    "lastName": "Last Name",
+    "email": "Email",
+    "phone": "Phone Num",
+    "roles": "Roles"
+  },
+  "USER_PROPERTY": {
+    "title": "User Property",
+    "newTitle": "Add New User",
+    "accountInfo": "Account Information",
+    "contactInfo": "Contact Information",
+    "username": "Username",
+    "email": "Email Address",
+    "firstName": "First Name",
+    "lastName": "Last Name",
+    "phoneNumber": "Phone Number",
+    "roles": "Roles",
+    "completeRequired": "Complete required fields",
+    "selectRoles": "Select User role(s)",
+    "successfullyCreated": "User created successfully",
+    "successfullyModified": "User modified successfully",
+    "buttons": {
+      "apply": "Change Password",
+      "cancel": "Cancel"
+    }
+  },
+  "GEN": {
+    "activate": "Activate",
+    "all": "All",
+    "allowed": "Allowed",
+    "authenticate": "Authenticate",
+    "add": "Add",
+    "apply": "Apply",
+    "back": "Back",
+    "cancel": "Cancel",
+    "close": "Close",
+    "dark": "Dark",
+    "done": "Done",
+    "download": "Download",
+    "delete": "Delete",
+    "disallowed": "Disallowed",
+    "exit": "Exit",
+    "expired": "Expired",
+    "filter": "Filter",
+    "fit": "Fit",
+    "information": "Information",
+    "items": "Items",
+    "light": "Light",
+    "loading": "Loading...",
+    "logout": "Logout",
+    "maximize": "Maximize",
+    "minimize": "Minimize",
+    "neverExpire": "",
+    "next": "Next",
+    "no": "No",
+    "ok": "OK",
+    "prn": "Printer",
+    "processing": "Processing",
+    "properties": "Properties",
+    "refresh": "Refresh",
+    "reload": "Reload",
+    "remove": "Remove",
+    "save": "Save",
+    "selected": "Selected",
+    "send": "Send",
+    "start": "Start",
+    "stop": "Stop",
+    "submit": "Submit",
+    "yes": "Yes",
+    "enabled": "Enabled",
+    "disabled": "Disabled"
+  },
+  "ERROR": {
+    "completeFields": "Complete required fields!",
+    "minlength": "Minimum length {{value}}",
+    "termsNotAccepted": "Terms and Conditions must be read and accepted.",
+    "networkError": "Technical difficulties - network error, try again later",
+    "noResponse": "Technical difficulties contacting FIG Server, try again later -  {{errorCode}}",
+    "busyResponse": "Oops! We are experiencing higher than normal traffic. Please try again later.",
+    "UnSpecified": "Unspecified error",
+    "NoError": "",
+    "ErrorTooManyRequests": "Too many Requests",
+    "AuthError_General": "Authentication error",
+    "AuthError_Login": "Login failure",
+    "AuthError_InvalidCred": "Invalid username or password",
+    "AuthError_EmailConfirm": "Email needs to be confirmed",
+    "AuthError_Registration": "Registration error",
+    "AuthError_InvalidUser": "User is invalid",
+    "AuthError_Unauthorized": "User is unauthorized",
+    "DBError_General": "General data failure",
+    "DBError_Duplicate": "Error inserting duplicate entry,",
+    "DBError_ProcedureExec": "Technical error processing request",
+    "DBError_Update": "Error updating entry",
+    "DBError_Insert": "Error adding entry",
+    "DataError_Config": "Data configuration error",
+    "DataError_Duplicate": "Duplicate entry error",
+    "DataError_NoData": "No data error",
+    "DataError_InvalidData": "Data is invalid error",
+    "DataError_NotReady": "Data is not yet ready",
+    "DataError_InvalidArgument": "Invalid Argument",
+    "SysError_InternalServerError": "System Error - General",
+    "SysError_NotImplemented": "The server does not support the requested function",
+    "SysError_BadGateway": "The server is temporarily unavailable",
+    "SysError_ServiceUnavailable": "The server is temporarily unavailable",
+    "SysError_GatewayTimeout": "The response from server is timed out",
+    "AppService_General": "Error completing the request to the Roots App Service",
+    "AppService_NotResponding": "Communication error - Failed to contact the Roots App Service"
+  },
+  "VALIDATION": {
+    "required": "Required",
+    "requiredNoSpaces": "Required, spaces are not allowed",
+    "invalidCreditCard": "Invalid credit card number",
+    "invalidEmailAddress": "Invalid email address",
+    "invalidWeakPassword": "Invalid password. <ul><li>Password must be at least 6 characters long and at least one number",
+    "invalidStrongPassword": "Invalid password. <ul><li>Password must be at least 8 characters long, </li><li> at least one upper-case, </li><li>at least one lower-case, </li><li>at least one number, </li><li>and at least one special character (!@#$%^&*_+=[{]};:<>|./?)</li></ul>",
+    "invalidInteger": "Invalid number",
+    "invalidIntegerOrEmpty": "Invalid number, whole number or empty value is expected",
+    "invalidPositiveInteger": "Invalid number, positive whole number is expected",
+    "invalidPositiveIntegerOrEmpty": "Invalid number, positive whole number or empty value is expected",
+    "invalidPositiveNonZero": "Invalid number, non-zero positive whole number is expected",
+    "invalidPositiveIntegerOrZeroOrEmpty": "Invalid number, positive whole number, zero or empty value is expected",
+    "invalidNegativeIntegerOrZeroOrEmpty": "Invalid number, negative whole number, zero or empty value is expected",
+    "invalidDecimal": "Invalid number, whole or decimal number is expected",
+    "invalidPercentageOrEmpty": "Invalid number, percentage or empty value is expected",
+    "invalidEntry": "Invalid entry",
+    "passwordNotMatching": "Password must match.",
+    "invalidPhone": "Invalid phone number",
+    "requiredFirstAndLast": "First and last names are mandatory",
+    "invalidWeakPIN": "Password must be at least 4 characters.",
+    "invalidStrongPIN": "Password must be at least 4 characters, one uppercase character, one lowercase character, and one digit.",
+    "invalidEcmaVar": "Invalid variable name.",
+    "invalidBotConfig": "Invalid configuration format",
+    "invalidIPAddress": "Invalid IP address format",
+    "invalidIPFilter": "Invalid IP Filter format",
+    "invalidPort": "Invalid port number, must be between 1 and 65535",
+    "invalidFolderPath": "Invalid folder path",
+    "invalidLogLevel": "Invalid LogLevel"
+  },
+  "USERS": {
+    "title": "Users Settings",
+    "form": {
+      "name": "Group Name",
+      "namePlaceholder": "Enter group name",
+      "nameParent": "Group Parent",
+      "add": "Add New Container",
+      "save": "Save Changes",
+      "cancel": "Cancel Changes"
+    },
+    "cols": {
+      "id": "Id",
+      "userName": "UserName",
+      "firstName": "First Name",
+      "lastName": "Last Name",
+      "email": "Email Address",
+      "emailConfirmed": "Email Confirmed",
+      "roles": "Roles",
+      "yes": "Yes",
+      "no": "No"
+    },
+    "toolbar": {
+      "userAdd": "Add new user",
+      "userDelete": "Delete Selected User",
+      "userProp": "User Properties",
+      "userResendConfirmation": "Resend Confirmation for selected user",
+      "userForceChangePassword": "Force Password Change",
+      "emailForceConfirmation": "Force Email Confirmation",
+      "userFilter": "Filter user list",
+      "userRefresh": "Refresh List"
+    },
+    "error": {
+      "errorFetching": "Error fetching user list",
+      "configError": "Technical error - initialization error",
+      "failMessage": "Failed to save account information. ErrorCode \"{{errorCode}}\"",
+      "duplicateName": "Failed to save account information - Name already exists."
+    },
+    "CONFIRM_DELETE_USER": {
+      "title": "Confirm",
+      "message": "Delete user \"{{name}}\"?",
+      "canceled": "Delete operation canceled",
+      "deleted": "User \"{{name}}\" deleted successfully"
+    },
+    "CONFIRM_RESEND_CONF": {
+      "title": "Confirm",
+      "message": "Resend registration confirmation e-mail for \"{{name}}\"?",
+      "sent": "Confirmation is sent to \"{{name}}\"'s email successfully"
+    },
+    "CONFIRM_EMAIL_CONF": {
+      "title": "Confirm",
+      "message": "Force the confirmation of e-mail for \"{{name}}\"?",
+      "done": "Confirmation of \"{{name}}\"'s email is executed successfully"
+    },
+    "ERROR_DELETE_SELF": {
+      "title": "Error",
+      "message": "Cannot delete your account?"
+    }
+  },
+  "DASHBOARD": {
+    "title": "Dashboard",
+    "liveAutoTrade": "Live Auto-Trade Strategies",
+    "DETAIL_PANEL": {
+      "autoTradeSignal": "Active Signal"
+    },
+    "SERVER_HEALTH": {
+      "title": "Server Health",
+      "error": {
+        "invalidResponse": "Could not receive device list",
+        "success": "Device list received successfully",
+        "userValidationFailed": "User validation failed"
+      }
+    }
+  },
+  "AUTO_TRADE": {
+    "title": "Auto Trades",
+    "cols": {
+      "id": "Id",
+      "name": "Name",
+      "grp": "Group",
+      "ver": "Version",
+      "ticker": "Ticker",
+      "bot": "Bot",
+      "strategy": "Strategy",
+      "qty": "Qty",
+      "status": "Exec Status",
+      "live": "Live",
+      "notLive": "Not live"
+    },
+    "toolbar": {
+      "atAdd": "Add new Auto-Trade",
+      "atDelete": "Delete Selected Auto-Trade Items",
+      "atDuplicate": "Duplicate Selected Auto-Trade Item",
+      "atProp": "Auto-Trade Properties",
+      "atExecute": "Start Selected Auto-Trade(s)",
+      "atExecuteLabel": "Start",
+      "atStop": "Stop selected Auto-Trade",
+      "atCommConnected": "Auto-trade service is connected",
+      "atCommDisconnected": "Auto-trade service is disconnected, some operations are unavailable",
+      "atCommConnectedLabel": "ATS Connected",
+      "atCommDisconnectedLabel": "ATS Disconnected",
+      "atFilter": "Filter",
+      "atRefresh": "Refresh List",
+      "atReports": "Reports",
+      "atReport1": "Report 1",
+      "atReport2": "Report 2",
+      "atReport3": "Report 3",
+      "atGroup": "Group Table",
+      "atGroupStrategy": "By Strategy",
+      "atGroupGrp": "By Group Name ",
+      "atGroupBot": "By Bot",
+      "atGroupNone": "Ungrouped"
+    },
+    "error": {
+      "errorFetching": "Error fetching auto-trade list",
+      "configError": "Technical error - initialization error"
+    },
+    "PROP": {
+      "title": "Auto-Trade Properties",
+      "newTitle": "Add New Auto-Trade",
+      "tabConfig": "General",
+      "tabStrategy": "Strategies",
+      "liveMessage": "Some entries are disabled for live auto-trade. Stop auto-trade execution to edit.",
+      "backtestMode": "Backtest Mode",
+      "form": {
+        "name": "Name",
+        "namePlaceholder": "Enter Auto-Trade name",
+        "grp": "Group",
+        "grpPlaceholder": "Enter Auto-Trade group name",
+        "bot": "Bot",
+        "botPlaceholder": "Select BOT...",
+        "ticker": "Ticker",
+        "tickerPlaceholder": "Select Ticker...",
+        "strategy": "Strategy",
+        "strategyPlaceholder": "Select Strategy...",
+        "qty": "Qty",
+        "qtyyPlaceholder": "Enter Quantity",
+        "aum": "AUM",
+        "aumPlaceholder": "Assets under management",
+        "commission": "Commission",
+        "commissionPlaceholder": "Enter Commission",
+        "add": "Add New Auto-Trade",
+        "save": "Save Changes",
+        "cancel": "Cancel Changes",
+        "completeRequired": "Complete required fields",
+        "successfullyCreated": "Successfully created Auto-Trade record",
+        "successfullyModified": "Successfully modified Auto-Trade record"
+      },
+      "error": {
+        "notFound": "Could not retrieve Auto-Trade record",
+        "failMessage": "Failed to save account information. ErrorCode \"{{errorCode}}\"",
+        "duplicateName": "Failed to save account information - Name already exists."
+      },
+      "CONFIRM_ABORT": {
+        "title": "Confirm",
+        "message": "Exit Auto-Trade Properties Panel and loose changes?"
+      },
+      "CONFIRM_DELETE_PARAM": {
+        "title": "Confirm",
+        "message": "Delete the parameter \"{{name}}\"?"
+      }
+    },
+    "CONFIRM_DELETE": {
+      "title": "Confirm",
+      "singleItemMessage": "Delete auto-trade \"{{name}}\"?",
+      "multipleItemsMessage": "Are you sure you want to delete all {{num}} selected items?",
+      "canceled": "Delete operation canceled",
+      "deleted": "Selected Auto-trade(s) deleted successfully"
+    },
+    "CONFIRM_START": {
+      "title": "Confirm",
+      "singleItemMessage": "Start auto-trade \"{{name}}\"?",
+      "multipleItemsMessage": "Are you sure you want to START all {{num}} selected items?",
+      "canceled": "Operation canceled",
+      "allSuccess": "Selected Auto-trade(s) started successfully",
+      "success": "Auto-trade id(s) [{{ids}}] started successfully",
+      "successSingle": "Auto-trade id \"{{id}}\" Started successfully",
+      "failed": "Error starting auto-trade id(s) [{{ids}}]",
+      "unavailable": "Auto-trade ids [{{ids}}] not available for execution"
+    },
+    "CONFIRM_STOP": {
+      "title": "Confirm",
+      "singleItemMessage": "Start auto-trade \"{{name}}\"?",
+      "multipleItemsMessage": "Are you sure you want to STOP all {{num}} selected items?",
+      "canceled": "Operation canceled",
+      "success": "Selected Auto-trade(s) stopped successfully",
+      "failed": "Error stopping auto-trade id(s) \"[{{ids}}]\"",
+      "unavailable": "Auto-trade ids \"[{{ids}}]\" not available, Could not communicate with the Auto-trade service"
+    }
+  },
+  "AUTO_TRADE_STRATEGIES": {
+    "title": "Auto Trades Strategies",
+    "cols": {
+      "id": "Id",
+      "name": "Name",
+      "qty": "Qty",
+      "strategyConfigId": "Strategy",
+      "enable": "Enabled"
+    },
+    "toolbar": {
+      "toolAdd": "Add new Strategy",
+      "toolDelete": "Delete Selected Strategy Item",
+      "toolProp": "Edit Strategy's Properties",
+      "toolRefresh": "Refresh List"
+    },
+    "error": {
+      "errorFetching": "Error fetching auto-trade strategy list",
+      "configError": "Technical error - initialization error"
+    },
+    "CONFIRM_DELETE": {
+      "title": "Confirm",
+      "message": "Delete strategy \"{{name}}\"?"
+    }
+  },
+  "AUTO_TRADE_STRATEGY_PROP": {
+    "title": "Edit Auto-Trade Strategy",
+    "newTitle": "Add New Auto-Trade Strategy",
+    "completeRequired": "Complete required fields",
+    "strategyAlreadyExists": "Selected strategy already configured!! Configure a different strategy!!",
+    "form": {
+      "name": "Strategy",
+      "namePlaceholder": "Select Strategy...",
+      "qty": "Quantity",
+      "pos": "Based on # Positions",
+      "posPlaceholder": "Enter Number of Positions",
+      "qtyPct": "Based on % of AUM",
+      "qtyPctPlaceholder": "Enter % of AUM 0-100",
+      "enabled": "Enable",
+      "studyCol": "Study Collection",
+      "studyColPlaceholder": "Select Study Collection..."
+    }
+  },
+  "PARAM_PROP": {
+    "title": "Edit Parameter",
+    "newTitle": "Add New Parameter",
+    "completeRequired": "Complete required fields",
+    "form": {
+      "tag": "Tag",
+      "tagPlaceholder": "Enter parameter tag",
+      "desc": "Desc",
+      "descPlaceholder": "Enter parameter description",
+      "valueType": "Type",
+      "valueTypePlaceholder": "Select parameter type"
+    }
+  },
+  "SIGNALS": {
+    "title": "Trade Signals",
+    "ACTIVE_SIGNALS_PANEL": {
+      "title": "Active/Last Trade Signals"
+    },
+    "ACTIVE_SIGNALS_LIST": {
+      "title": "Signals",
+      "error": {
+        "success": "Active signals list received successfully",
+        "errorFetching": "Error fetching active signals list",
+        "userValidationFailed": "User validation problems, try re-signing to console"
+      }
+    },
+    "SIGNAL_STATUS_DLG": {
+      "title": "Signal Status",
+      "currentStatus": "Current Status",
+      "cancelSignalInstructions": "If you want to cancel this signal, check the box below. Any open orders related to this signal should be terminated MANUALLY from the trading platform.",
+      "cancelSignal": "Cancel Signal",
+      "resumeSignalInstructions": "By resuming the signal, closing active positions will follow the stop signal.",
+      "resumeSignal": "Resume Signal",
+      "error": {
+        "successCancel": "Signal cancellation is submitted successfully",
+        "successResume": "Signal resumption is submitted successfully"
+      }
+    },
+    "ARCHIVED_SIGNALS_PANEL": {
+      "title": "Archived Trade Signals"
+    },
+    "ARCHIVED_SIGNALS_LIST": {
+      "title": "Archived Signals",
+      "cols": {
+        "signalTag": "Signal Id",
+        "strategy": "Strategy",
+        "side": "Side",
+        "openTime": "Start Time",
+        "closeTime": "Stop Time",
+        "autoTradeCount": "Num Execs"
+      },
+      "toolbar": {
+        "atArchivedSignalRefresh": "Refresh List"
+      },
+      "error": {
+        "errorFetching": "Error fetching archived signals list"
+      }
+    }
+  },
+
+  "TRADE_BOT": {
+    "title": "Trade-BOTs Configuration",
+    "cols": {
+      "id": "Id",
+      "group": "Group",
+      "accountId": "Name",
+      "brokerServiceId": "Service Id"
+    },
+    "toolbar": {
+      "toolAdd": "Add new BOT",
+      "toolDelete": "Delete Selected BOT",
+      "toolProp": "Edit Selected BOT",
+      "toolFilter": "Filter",
+      "toolRefresh": "Refresh List"
+    },
+    "error": {
+      "errorFetching": "Error fetching BOT list",
+      "configError": "Technical error - initialization error"
+    },
+    "PROP": {
+      "title": "BOT Properties",
+      "newTitle": "Add New BOT",
+      "form": {
+        "group": "Group",
+        "groupPlaceholder": "Enter BOT Group Name",
+        "accountId": "BOT Name",
+        "accountIdPlaceholder": "Enter BOT Name",
+        "brokerServiceId": "Service Id",
+        "brokerServiceIdPlaceholder": "Enter BOT Service Id",
+        "add": "Add New BOT",
+        "save": "Save Changes",
+        "cancel": "Cancel Changes",
+        "completeRequired": "Complete required fields",
+        "successfullyCreated": "Successfully created BOT record",
+        "successfullyModified": "Successfully modified BOT record"
+      },
+      "error": {
+        "notFound": "Could not retrieve BOT record",
+        "failMessage": "Failed to save BOT record. ErrorCode \"{{errorCode}}\"",
+        "duplicateName": "Failed to save BOT record - Name already exists."
+      },
+      "CONFIRM_ABORT": {
+        "title": "Confirm",
+        "message": "Exit BOT Properties Panel and loose changes?"
+      }
+    },
+    "CONFIRM_DELETE": {
+      "title": "Confirm",
+      "message": "Delete the BOT \"{{name}}\"?",
+      "canceled": "Delete operation canceled",
+      "deleted": "BOT is deleted successfully"
+    }
+  },
+  "TRADE_BOT_TREE": {
+    "title": "Trade-BOTs",
+    "refreshTooltip": "Refresh BOT list",
+    "toolbar": {
+      "acctPermissionSettings": "Update settings for selected Ticker",
+      "acctRefresh": "Refresh List"
+    },
+    "error": {
+      "errorFetching": "Error fetching BOTs",
+      "configError": "Technical error - initialization error"
+    }
+  },
+  "MON_RECIPIENT": {
+    "title": "Alert Recipients",
+    "cols": {
+      "id": "Id",
+      "alias": "Recipient Id",
+      "name": "Name",
+      "methods": "Notification Methods",
+      "alerts": "Alerts Subscription"
+    },
+    "keywords": {
+      "methodNetSet": "Not Set",
+      "alertNetSet": "Not subscribed to alerts"
+    },
+    "toolbar": {
+      "toolAdd": "Add new Recipient",
+      "toolDelete": "Delete Selected Recipient(s)",
+      "toolDuplicate": "Duplicate Selected Recipient",
+      "toolProp": "Recipient Properties",
+      "toolFilter": "Filter",
+      "toolRefresh": "Refresh List"
+    },
+    "error": {
+      "errorFetching": "Error fetching recipients list",
+      "configError": "Technical error - initialization error"
+    },
+    "PROP": {
+      "title": "Recipient Properties",
+      "newTitle": "Add New Recipient",
+      "tabConfig": "General",
+      "tabMethods": "Notification Methods",
+      "tabAlerts": "Alert Subscription",
+      "notSet": " ---  not set --- ",
+      "form": {
+        "recipientId": "Recipient Id",
+        "recipientIdPlaceholder": "Enter recipient username",
+        "name": "Name",
+        "namePlaceholder": "Enter recipient name",
+        "email": "Email",
+        "emailPlaceholder": "Enter recipient's email - required if email notification method is enabled",
+        "pushOverKey": "PushOver Key",
+        "pushOverKeyPlaceholder": "Enter recipient's PushOver Key - required if PushOver notification method is enabled",
+        "add": "Add New Recipient",
+        "save": "Save Changes",
+        "cancel": "Cancel Changes",
+        "completeRequired": "Complete required fields",
+        "successfullyCreated": "Successfully created recipient record",
+        "successfullyModified": "Successfully modified recipient record"
+      },
+      "error": {
+        "notFound": "Could not retrieve the recipient's record",
+        "failMessage": "Failed to save account information. ErrorCode \"{{errorCode}}\"",
+        "duplicateName": "Failed to save account information - Name already exists."
+      },
+      "CONFIRM_ABORT": {
+        "title": "Confirm",
+        "message": "Exit recipient's properties panel and loose changes?"
+      },
+      "CONFIRM_DELETE_PARAM": {
+        "title": "Confirm",
+        "message": "Delete the parameter \"{{name}}\"?"
+      }
+    },
+    "CONFIRM_DELETE": {
+      "title": "Confirm",
+      "singleItemMessage": "Delete recipient \"{{name}}\"?",
+      "multipleItemsMessage": "Are you sure you want to delete all {{num}} selected recipients?",
+      "canceled": "Delete operation canceled",
+      "deleted": "Selected recipient(s) deleted successfully"
+    }
+  },
+  "CHART_LIST": {
+    "title": "Charts",
+    "defaultChartName": "New Chart",
+    "CONFIRM_DELETE": {
+      "title": "Confirm",
+      "message": "Close chart \"{{name}}\"?"
+    },
+    "VIEW": {
+      "editStudyCol": "Select Collection",
+      "studyColPlaceholder": "Select the study collection to chart",
+      "toolbar": {
+        "studies": "Computed Studies",
+        "technicalIndicators": "Technical Indicators",
+        "goto": "Go to a specific Date/Time",
+        "settings": "Settings"
+      },
+      "ERROR_MSG": {
+        "errorLoadingChart": "Error loading chart",
+        "errorRetrievingDataFromServer": "Error retrieving data from server"
+      }
+    }
+  },
+  "CHART_VIEW": {
+    "ERROR_MSG": {
+      "errorLoadingChart": "Error loading chart",
+      "errorRetrievingDataFromServer": "Error retrieving data from server"
+    }
+  },
+  "TI_SELECT_DLG": {
+    "title": "Select Studies",
+    "tabs": {
+      "computed": "Study Variables",
+      "added": "Technical Studies"
+    },
+    "cols": {
+      "name": "Study Param",
+      "alias": "Friendly Name",
+      "color": "Color",
+      "style": "Line Style",
+      "thickness": "Thick",
+      "type": "Type",
+      "isText": "Is Text",
+      "enabled": "Enabled"
+    },
+    "toolbar": {
+      "tiSearchInput": "Search Study",
+      "tiSearch": "Search",
+      "tiClear": "Clear",
+      "tiSearchCancel": "Cancel Search"
+    }
+  },
+  "TI_PROP_DLG": {
+    "title": "Study Properties",
+    "cols": {
+      "name": "Study Param",
+      "alias": "Friendly Name",
+      "aliasPlaceholder": "Enter a friendly name for the study",
+      "color": "Color",
+      "style": "Line Style",
+      "thickness": "Thick",
+      "type": "Type",
+      "isText": "Is Text",
+      "enabled": "Enabled"
+    }
+  },
+  "CHART_GOTO_DLG": {
+    "title": "Goto Chart-Time Position",
+    "key": {
+      "gotoLabel": "Goto",
+      "gotoEnd": "Goto End",
+      "gotoStart": "Goto Start",
+      "gotoRawTime": "Goto Specific RawTime",
+      "gotoRawTimePlaceholder": "Enter RawTime",
+      "gotoTime": "Goto Specific Date/Time (local time)"
+    }
+  },
+  "CHART_TECHNICAL_INDICATORS": {
+    "title": "Technical Indicators",
+    "tabs": {
+      "technicalIndicator": "Indicators",
+      "studies": "Studies",
+      "strategies": "Strategies"
+    },
+    "toolbar": {
+      "add": "Add Study",
+      "delete": "Delete Selected Study"
+    },
+    "CONFIRM_DELETE": {
+      "title": "Confirm",
+      "message": "Delete study \"{{name}}\"?",
+      "canceled": "Delete operation canceled",
+      "deleted": "Selected study deleted successfully"
+    }
+  },
+  "STUDY_SELECTOR": {
+    "title": "Select Study"
+  },
+  "SYSTEM_ADMIN": {
+    "title": "System Admin",
+    "DB_USER_VALIDATION": {
+      "title": "Database Users Validation",
+      "CONFIRM_FIX_ISSUE": {
+        "title": "Confirm",
+        "itemMessage": "Fix the selected (\"{{name}}\") issue?",
+        "canceled": "Fix operation canceled",
+        "Submitted": "Fix for selected issue is submitted successfully"
+      },
+      "CONFIRM_FIX_ALL_ISSUE": {
+        "title": "Confirm",
+        "itemMessage": "Try to fix all issues in all databases?",
+        "canceled": "Fix operation canceled",
+        "Submitted": "Fix for selected issue is submitted successfully"
+      },
+      "error": {
+        "userValidationDataReceivedSuccessfully": "User Validation data received successfully",
+        "userNotFoundInDatabase": "User not found in the database server, create the user first",
+        "databaseNotFoundInServer": "Database not found in the server, create the database first",
+        "userValidationFailed": "User validation failed - Failed to get Database Users Validation data",
+        "failedToFixIssue_dbExists": "Failed to fix Database - Manual action required",
+        "failedToFixIssue_userReg": "Failed to fix user registration to the database",
+        "failedToFixIssue_mappedToLoginSID": "Failed to fix user's login-SID mapping",
+        "failedToFixIssue_isOwner": "Failed to assign the user ownership of database",
+        "errorFixingIssues": "Error fixing issue(s)"
+      }
+    },
+    "BROKER_VALIDATION": {
+      "title": "Database Broker Validation",
+      "CONFIRM_FIX_ISSUE": {
+        "title": "Confirm",
+        "itemMessage": "Fix the broker configuration issues for {{name}}?",
+        "canceled": "Fix operation canceled",
+        "Submitted": "Fix for selected issue is submitted successfully"
+      },
+      "CONFIRM_FIX_ALL_ISSUE": {
+        "title": "Confirm",
+        "itemMessage": "Try to fix all issues in all databases?",
+        "canceled": "Fix operation canceled",
+        "Submitted": "Fix for selected issue is submitted successfully"
+      },
+      "error": {
+        "brokerValidationDataReceivedSuccessfully": "Broker Validation data received successfully",
+        "userNotFoundInDatabase": "User not found in the database server, create the user first",
+        "databaseNotFoundInServer": "Database not found in the server, create the database first",
+        "brokerValidationFailed": "Broker validation failed - Failed to get Database Broker Validation data",
+        "errorFixingIssues": "Error fixing issue(s)"
+      }
+    },
+    "USERS_VALIDATION": {
+      "title": "System Users Validation",
+      "CONFIRM_FIX_ISSUE": {
+        "title": "Confirm",
+        "itemMessage": "Fix the user configuration issues for {{name}}?",
+        "canceled": "Fix operation canceled",
+        "Submitted": "Fix for selected issue is submitted successfully"
+      },
+      "CONFIRM_FIX_ALL_ISSUE": {
+        "title": "Confirm",
+        "itemMessage": "Try to fix all issues for all users?",
+        "canceled": "Fix operation canceled",
+        "Submitted": "Fix for selected issue is submitted successfully"
+      },
+      "error": {
+        "usersValidationDataReceivedSuccessfully": "Users Validation data received successfully",
+        "userNotFoundInDatabase": "User not found in the database server, create the user first",
+        "databaseNotFoundInServer": "Database not found in the server, create the database first",
+        "usersValidationFailed": "Users validation failed - Failed to get system-users validation data",
+        "errorFixingIssues": "Error fixing issue(s)"
+      }
+    }
+  },
+  "AUTO_TRADE_SIGNALS": {
+    "title": "Auto Trades Signals",
+    "cols": {
+      "id": "Id",
+      "autoTradeId": "AutoTrade Name",
+      "signalId": "Signal Id",
+      "tag": "Tag",
+      "tickerId": "Ticker",
+      "origQty": "Orig. Qty",
+      "manualQty": "Active Qty",
+      "openStatus": "Open Status",
+      "closeStatus": "Close Status",
+      "openAvgPrice": "Open Price",
+      "closeAvgPrice": "Close Price",
+      "filledQty": "Orig Filled Qty",
+      "lastUpdated": "Last Update Time"
+    },
+    "toolbar": {
+      "atSignalUpdateQty": "Update Active Quantity for Selected Signal",
+      "atSignalCancel": "Cancel Selected Signal",
+      "atSignalRefresh": "Refresh List"
+    },
+    "error": {
+      "errorFetching": "Error fetching auto-trade signals list",
+      "configError": "Technical error - initialization error"
+    },
+    "CONFIRM_DELETE": {
+      "title": "Confirm",
+      "message": "Delete strategy \"{{name}}\"?"
+    }
+  },
+  "AUTO_TRADE_SIGNAL": {
+    "title": "Edit Auto-Trade Strategy",
+    "newTitle": "Add New Auto-Trade Strategy",
+    "completeRequired": "Complete required fields",
+    "strategyAlreadyExists": "Selected strategy already configured!! Configure a different strategy!!",
+    "form": {
+      "name": "Strategy",
+      "namePlaceholder": "Select Strategy...",
+      "qty": "Quantity",
+      "pos": "Based on # Positions",
+      "posPlaceholder": "Enter Number of Positions",
+      "qtyPct": "Based on % of AUM",
+      "qtyPctPlaceholder": "Enter % of AUM 0-100",
+      "enabled": "Enable",
+      "studyCol": "Study Collection",
+      "studyColPlaceholder": "Select Study Collection..."
+    }
+  },
+  "AUTO_TRADE_ARCHIVED_SIGNALS": {
+    "title": "Auto Trades Signals",
+    "cols": {
+      "signalTag": "Signal Tag",
+      "autoTradeName": "AutoTrade Name",
+      "signalId": "Signal Id",
+      "tag": "Tag",
+      "tickerSymbol": "Ticker",
+      "origQty": "Orig. Qty",
+      "manualQty": "Active Qty",
+      "openStatus": "Open Status",
+      "closeStatus": "Close Status",
+      "openAvgPrice": "Open Price",
+      "closeAvgPrice": "Close Price",
+      "filledQty": "Orig Filled Qty",
+      "lastUpdated": "Last Update Time"
+    }
+  },
+  "AUTO_TRADE_SIGNAL_PROP": {
+    "title": "Edit Auto-Trade Signal Active Qty",
+    "completeRequired": "Complete required fields",
+    "manualQtyUpdated": "Active quantity is updated successfully",
+    "manualQtyNotUpdated": "Failed to update active quantity for the signal!!",
+    "qtyUnchanged": "Active quantity is not changed",
+    "signalCompleted": "Signal is already completed, cannot update active quantity",
+    "qtySign": "Active Quantity Sign should be {{signDirection}} to match the signal \"side\"",
+    "form": {
+      "name": "Auto-Trade Name",
+      "ticker": "Traded Ticker",
+      "id": "Id",
+      "origQty": "Original Quantity",
+      "manualQty": "Active Quantity",
+      "manualQtyPlaceholder": "Enter the new Qty to be closed, has to be the same direction (buy/sell) as the signal side"
+    }
+  },
+  "AUTO_TRADE_SIGNAL_ORDERS": {
+    "errorFetching": "Error fetching orders for the signal"
+  },
+  "TRADE_BOT_VIEW": {
+    "title": "Trade-BOT Details",
+    "brokerServiceId": "Broker Service Id",
+    "error": {
+      "errorFetching": "Could not retrieve BOT record",
+      "errorNoAvailableTicker": "No available ticker for configuration"
+    },
+    "cols": {
+      "tickerId": "Ticker",
+      "allowed": "Allowed",
+      "longLimit": "Long Limit",
+      "shortLimit": "Short Limit",
+      "position": "Current Pos.",
+      "pendingPosition": "Pending Pos.",
+      "avgPrice": "Avg. Price"
+    },
+    "toolbar": {
+      "acctPermissionSettings": "Update Ticker Permissions for selected Ticker",
+      "acctPermissionAdd": "Add new Ticker Permission",
+      "acctPermissionDelete": "Deleted selected Ticker Permission",
+      "acctRefresh": "Refresh List"
+    },
+    "CONFIRM_DELETE": {
+      "title": "Confirm",
+      "message": "Delete Permission for Ticker: \"{{name}}\"?",
+      "deleted": "Permission for ticker \"{{name}}\" deleted successfully"
+    }
+  },
+  "BOT_TICKER_PERMISSIONS": {
+    "title": "Trade-BOT Ticker Permissions",
+    "completeRequired": "Complete required fields",
+    "successUpsert": "Successfully saved BOT ticker permission record",
+    "form": {
+      "ticker": "Ticker",
+      "longLimit": "Long Limit",
+      "longLimitPlaceholder": "Enter zero or positive number",
+      "shortLimit": "Short Limit",
+      "shortLimitPlaceholder": "Enter zero or negative number",
+      "allowed": "Allowed?"
+    },
+    "error": {
+      "errorFetching": "Error fetching BOT ticker permissions list",
+      "configError": "Technical error - initialization error",
+      "failUpsertMessage": "Failed to save BOT ticker permission record. ErrorCode \"{{errorCode}}\""
+    }
+  },
+  "TRADE_BOT_ORDER": {
+    "title": "Trade-BOT Orders",
+    "brokerServiceId": "Broker Service Id",
+    "error": {
+      "errorFetching": "Could not retrieve Orders for the BOT",
+      "errorNoAvailableTicker": "No available ticker for configuration",
+      "rejectedNoResponse": "No response from broker"
+    },
+    "cols": {
+      "id": "Id",
+      "brokerAccountId": "Broker Account Id",
+      "orderTagRef": "Ref",
+      "tickerId": "Ticker",
+      "orderTag": "Stage",
+      "orderType": "Order Type",
+      "qty": "Quantity",
+      "price": "Price",
+      "orderStatus": "Status",
+      "fillQty": "Fill Qty",
+      "fillPrice": "Fill Price",
+      "brokerRef": "Broker Ref",
+      "brokerOrderId": "Order Id",
+      "orderTime": "Submission Time",
+      "completionTime": "Last Update Time",
+      "lastUpdateTime": "Last Update Time"
+    },
+    "toolbar": {
+      "ordCancel": "Cancel Selected Order",
+      "ordFilter": "Filter",
+      "ordRefresh": "Refresh List",
+      "ordMakeOrder": "Make an Order",
+      "ordMakeOrderTooltip": "Make an order for the current BOT"
+    },
+    "CONFIRM_CANCEL": {
+      "title": "Confirm",
+      "message": "Cancel selected order id: \"{{orderId}}\"?",
+      "submitted": "Permission for ticker \"{{name}}\" deleted successfully"
+    }
+  },
+  "BOT_ORDER_DLG": {
+    "title": "Order Entry",
+    "completeRequired": "Complete required fields",
+    "successSubmitted": "Successfully submitted the order",
+    "form": {
+      "ticker": "Ticker",
+      "qty": "Qty",
+      "qtyPlaceholder": "Enter order quantity",
+      "orderType": "Price",
+      "orderTypeOption": {
+        "market": "Market",
+        "limit": "Limit"
+      },
+      "limitPricePlaceholder": "Enter order price, required for limit orders"
+    },
+    "error": {
+      "errorFetching": "Error fetching orders",
+      "configError": "Technical error - initialization error",
+      "failSubmitMessage": "Failed to submit order. ErrorCode \"{{errorCode}}\"",
+      "rejectedNoResponse": "No response from broker"
+    }
+  },
+  "ORDER_STATUS": {
+    "code_30": "Order is duplicate based on Ref and Tag",
+    "code_29": "Invalid Data",
+    "code_28": "Communication error",
+    "code_27": "Not permitted to trade ticker",
+    "code_26": "Ignored: database error",
+    "code_25": "Ignored: order id error",
+    "code_24": "Ignored: broker not configured",
+    "code_23": "Ignored: ticker not configured",
+    "code_22": "Ignored: account not configured",
+    "code_21": "Ignored: not processed",
+    "code_20": "Failed: Unknown reason",
+    "code_15": "Reached Short Position Limit",
+    "code_14": "Reached Long Position Limit",
+    "code_13": "Failed: Unauthorized",
+    "code_12": "Failed: No Open Positions to Close",
+    "code_11": "Failed: Close operation failed due to incompleted open submission",
+    "code_10": "Failed: Close operation failed due to unsubmitted open order",
+    "code_9": "Fail: Closing incompleted open order",
+    "code_8": "Duplicate Order Id",
+    "code_7": "Connection to broker error",
+    "code_6": "Failed: operation timed out",
+    "code_5": "Failed: order rejected",
+    "code_4": "Failed: order canceled",
+    "code_3": "Failed: Canceled before submission",
+    "code_2": "Failed: order expired",
+    "code_1": "Not defined yet",
+    "code0": "New order created (not yet processed)",
+    "code1": "In progress",
+    "code2": "In progress: timeout pending/approaching",
+    "code3": "In progress: submitted to broker",
+    "code4": "indicates that the order was received by the system but is no longer active because it was rejected or canceled.",
+    "code5": "Cancelation is in-progress",
+    "code9": "In progress: general",
+    "code10": "Success (completed without fill-specific outcome)",
+    "code11": "Partially filled",
+    "code12": "Partially filled (final state)",
+    "code13": "Filled"
+  },
+  "LOG_VIEWER": {
+    "title": "Log-File Viewer",
+    "toolbar": {
+      "logOpen": "Open Log File",
+      "logToggleFollow": "Follow Log",
+      "logToggleFollowOn": "Follow Log On",
+      "logToggleFollowOff": "Follow Log Off",
+      "logHighlighting": "Highlight log text",
+      "logRefresh": "Refresh Log Content",
+      "logDownload": "Download Full Log",
+      "logSearch": "Search",
+      "logSearchUp": "Search Upward",
+      "logSearchDown": "Search Downward",
+      "logSearchCancel": "Cancel Search",
+      "logFilter": "Log-Level Filter",
+      "logFilterDBG": "Debug (DBG)",
+      "logFilterINF": "Information (INF)",
+      "logFilterWRN": "Warning (WRN)",
+      "logFilterERR": "Error (ERR)",
+      "logFilterFTL": "Fatal (FTL)"
+    },
+    "error": {
+      "errorFetching": "Error fetching logs",
+      "configError": "Technical error - initialization error"
+    }
+  },
+  "ALERT_EVENTS": {
+    "error": {
+      "errorFetching": "Could not retrieve alert events",
+      "rejectedNoResponse": "No response from server"
+    },
+    "cols": {
+      "id": "Id",
+      "rawTime": "Alert Date",
+      "serviceId": "Service Id",
+      "serviceName": "Service Name",
+      "source": "Source",
+      "level": "Level",
+      "message": "Message",
+      "exceptionText": "Exception Text",
+      "friendlyMessage": "Friendly Message",
+      "sentAt": "Sent At"
+    },
+    "toolbar": {
+      "alertRefresh": "Refresh List",
+      "alertDetails": "Show Details"
+    }
+  }
+}
+
+

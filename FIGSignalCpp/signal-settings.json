@@ -1,0 +1,9 @@
+{
+  "ServiceName": "FIG_SignalCpp",
+  "DisplayName": "FIG Native Signal-Processing Service",
+  "Port": 5020,
+  "ConnectionString": "{{DBConnection_AutoTrader}}",
+  "EventPollMilliseconds": 500,
+  "StudyCollectionRefreshSeconds": 120,
+  "LogPath": "FIGSignalCpp.log"
+}

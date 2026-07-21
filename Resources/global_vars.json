@@ -1,0 +1,18 @@
+{
+  "Controller_Username": "SVC",
+  "Controller_Password": "6NIxELqJKsB1FuM8twTVi82J5xEzg9SDslR9TJQ3W58ic20v3u0Z",
+  "Controller_Port": 5000,
+  "Controller_Connection": "https://localhost:{{Controller_Port}}/hubs/broker-agent",
+  "CertThumbprint": "e6fceb9d86667b8708c24049aa7e69e04913bb0c",
+  "DBConnection_Admin": "8g/9gBUOFq5eX5g5GmC6w1wmQ6Fq7oXFC3KCinFiDfVr5nJK6B87jKy2VXfEVJeuuoRgMf5AzGau80Lo78C5awl844ps4ej698cHPD1Jq9w5KrkRGIisDqLXWTIisIHARS9ZOTmrPFdEnXUHXmDip90o9FsoBU5eBAhinZA/3++aQs4We43SJddAYD9WA04oCLHinre9aqkFuPYzBX9Q+RwST0tkUZTjQU8HpozpihDF5muvE4rajcA=",
+  "DBConnection_AutoTrader": "LWO5IbQgCjm3syVIEcSHtDPWqXOpXCH7AQ//izohCeUuDXILrmvErEZMfh9bl1Ffvm8JtIn2MvKDDgt9f9USs33sPGdP02VBI+Bnm54Tc4GBMXfmhwv4cz2z1HIarExBHqmNeYg2LN0kcdg/3zH8IUgdmzbO7Bqu3MTebVN+BpJSzhn4BzuWT5twbvUj/Pg2CyW+SjeFk0WlYqJX4u1ubyln4dH8jJy29RFvGTRFH24cnxvL9lCn",
+  "DBConnection_Alert": "tHns+oQw/TlQPAk8QR36+rzPxkq46aH/juwd6UGU2zxqC5H/mBKZzRGKWGM39sQl1ebk0wDeV6wj8p4fZCifKY68pU8tk0e79S2UMBWLtQIO13H1K2OR/HR0vEyOIi2mpp+9LHwgbjFRLHRCwAZGEi631tieOINwUbrnf1F9SaaHZdXCPUmq6NEpPxJQul/p4HMV5US5GHP+DjMTQPlFx2YkL38oq/DLPfi/ho4icV7KAQ==",
+  "DBConnection_Users": "pN8xzwz1MY3S/fIzSKtnXCtwb8GSDCcLKN6zDAywi20Q1hF9PAkgNQ3dSi1VuValBnAmF/UodeMH42/MiDFqC4hwCYe/ZbH6ttW8B0B+4maG82SME2lZAqJMkMHbYMKBym8+WWc8+xeRzKBxQNBKnQD3xXc8HDnb8RwziRwoYAqisOKgi5ns1jDW+5xt7NAej/PCcpaJWZ3jI7NwzTn8hNzQ3r1HD4bmRcD63XzIVisA",
+  "Auth_URL": "https://localhost",
+  "Log_Path": "C:\\Roots\\FIGLogs\\",
+  "Jwt_Key": "Wnb3D3RUjUvKSXQUp9qWwA+BRPvAPGlSSBsxOVy7oN86tqYj9pAxQD6i8pvkWadiX6qI34tNG6N9fkhl",
+  "Jwt_Issuer": "6r6qGheGvK8x3WFG7WY1LRUr9spCoyT8/XAfwRZp+Qhe4/L8jIoUrt+doMiGmOAZgIM=",
+  "Jwt_Audience": "+6ea993/Cz9zlGnLDP8BnGz0+AdtZDC3YU70ZiqrqStRw6x4ehDZtUdNSdBuOb0XxcB5",
+  "SMTP_Username": "T78ihEYkFpNbETezhdvWwl01Q3ZYcXwvYJwyx1FkUAribvEsDXfnZfdyMM6Oi1g/CQ==",
+  "SMTP_Password": "1PEFgQTDUcqjNeqFJN7pXTdNG9nyeCh3QNiXOI7bpb8KVkypr1nNnTzaAEI="
+}

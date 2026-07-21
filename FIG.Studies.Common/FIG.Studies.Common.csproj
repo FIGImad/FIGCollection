@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AssemblyName>FIG.Studies.Common</AssemblyName>
+    <RootNamespace>FIG.Studies</RootNamespace>
+    <Version>1.0.0</Version>
+    <AssemblyVersion>1.0.0.0</AssemblyVersion>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\FIG.Studies.Core\FIG.Studies.Core.csproj" />
+    <ProjectReference Include="..\FIGCommon\FIGCommon.csproj" />
+  </ItemGroup>
+</Project>

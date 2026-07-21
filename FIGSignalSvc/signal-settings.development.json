@@ -1,0 +1,59 @@
+{
+  "Global": {
+    "VarPath": "C:\\Roots\\FIGServices\\global_vars.json",
+    "Vars": {
+      "Description": "Global variables for FIGSignalExSvc.",
+      "Service_Name": "FIGSignalExSvc",
+      "Service_FriendlyName": "Plugin-based Signal-Processing Service",
+      "Service_Port": 5011,
+      "Service_Role": "Signal",
+      "Service_Id": "6DAECE88-29DD-4E17-986C-8D472C9178AD"
+    }
+  },
+  "ConnectionStrings": {
+    "DefaultConnection": "{{DBConnection_AutoTrader}}"
+  },
+  "ControllerConfig": {
+    "Id": "{{Service_Id}}",
+    "Name": "{{Service_FriendlyName}}",
+    "ServiceName": "{{Service_Name}}",
+    "ServiceType": "SVC",
+    "Roles": [ "{{Service_Role}}" ],
+    "AuthUsername": "{{Controller_Username}}",
+    "AuthPassword": "{{Controller_Password}}",
+    "CertThumbPrint": "{{CertThumbprint}}",
+    "HostAddress": "{{Controller_Connection}}",
+    "AuthURL": "{{Auth_URL}}"
+  },
+  "Kestrel": {
+    "Endpoints": {
+      "Http": {
+        "Url": "http://*:{{Service_Port}}"
+      }
+    },
+    "Limits": {
+      "MaxRequestBodySize": 2147483647
+    }
+  },
+  "LogFile": {
+    "MinLevel": "Debug",
+    "LogPath": "{{Log_Path}}{{Service_Name}}-.txt",
+    "AppName": "{{Service_Name}}"
+  },
+  "Jwt": {
+    "Key": "{{Jwt_Key}}",
+    "Issuer": "{{Jwt_Issuer}}",
+    "Audience": "{{Jwt_Audience}}"
+  },
+  "EventMonitor": {
+    "ConnectionString": "{{DBConnection_AutoTrader}}",
+    "EventTable": "Event"
+  },
+  "StudyPlugins": {
+    "Path": "Plugins"
+  },
+  "SingalProcessing": {
+    "TimeOffset": 15,
+    "LiveMode": true
+  }
+}

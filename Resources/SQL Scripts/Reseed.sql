@@ -1,0 +1,1 @@
+DBCC CHECKIDENT ('DataSet', RESEED, 1);

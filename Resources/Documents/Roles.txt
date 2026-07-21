@@ -1,0 +1,32 @@
+SuperAdmin
+	* Human Role
+	* Full system access (Can access any restricted feature)
+	* Manages other admin accounts
+	* Typically limited to 2-3 people in an organization
+
+Administrator
+	* Human Role
+	* Day-to-day system management
+	* Configuration changes
+	* Audit log access
+
+Operator
+	* Human Role
+	* Monitors system health
+	* Executes routine maintenance tasks
+	* Restarts services/processes
+	* Limited configuration access
+
+LinkAPI
+	* System Role
+	* Access granted to external links (e.g. ESignal dll link)
+	* Access to limited information such as Prices, some studies
+	
+Bot
+	* System Role
+	* Access granted to Trade Bots
+
+SVC
+	* System Role
+	* Access by FIG services to enable intercommunication
+	

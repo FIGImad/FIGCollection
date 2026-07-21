@@ -1,0 +1,19 @@
+To extract:
+bcp YOUR_DATABASE..sysdiagrams out YOUR_DIAGRAM_NAME.bcp -c -T -S SERVERNAME
+
+To import:
+(cd to the directory the diagram is in)
+bcp YOUR_DATABASE..sysdiagrams in YOUR_DIAGRAM_NAME.bcp -c -T -S SERVERNAME
+
+
+
+
+
+Example
+
+# to save diagrams in "ROOTS_IGS" database to the file "diagrams_ROOTS_IGS.bcp"
+C:\Temp> bcp ROOTS_IGS..sysdiagrams out diagrams_ROOTS_IGS.bcp -c -T -S localhost
+
+
+# to copy diagrams from file "diagrams_ROOTS_IGS.bcp" into "ROOTS_IGS" database
+C:\Temp> bcp ROOTS_IGS..sysdiagrams in diagrams_ROOTS_IGS.bcp -c -T -S localhost

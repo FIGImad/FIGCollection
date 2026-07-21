@@ -1,0 +1,47 @@
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UserSecretsId>aspnet-ATS-17cb3cfd-afe9-457f-bfb4-2d75d0510b60</UserSecretsId>
+    <ApplicationIcon>FIG Logo.ico</ApplicationIcon>
+    <AspNetCoreHostingModel>InProcess</AspNetCoreHostingModel>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Content Include="FIG Logo.ico" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.8" />
+    <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="10.0.8" />
+    <PackageReference Include="Microsoft.AspNetCore.Identity.UI" Version="10.0.8" />
+
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="10.0.8">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="Microsoft.Extensions.Hosting.WindowsServices" Version="10.0.8" />
+    <PackageReference Include="Microsoft.Identity.Client" Version="4.84.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\FIGCommon\FIGCommon.csproj" />
+    <ProjectReference Include="..\RootsIdentity\RootsIdentity.csproj" />
+  </ItemGroup>
+
+  <Target Name="CopyToDistrib" AfterTargets="Publish">
+    <PropertyGroup>
+      <DistribDir>$(MSBuildThisFileDirectory)..\FIGInstaller\Resources\Distrib\$(MSBuildProjectName)\</DistribDir>
+    </PropertyGroup>
+    <ItemGroup>
+      <DistribFile Include="$(PublishDir)**\*.*" />
+    </ItemGroup>
+    <RemoveDir Directories="$(DistribDir)" Condition="Exists('$(DistribDir)')" />
+    <MakeDir Directories="$(DistribDir)" />
+    <Copy SourceFiles="@(DistribFile)"
+          DestinationFiles="@(DistribFile->'$(DistribDir)%(RecursiveDir)%(Filename)%(Extension)')" />
+  </Target>
+
+</Project>

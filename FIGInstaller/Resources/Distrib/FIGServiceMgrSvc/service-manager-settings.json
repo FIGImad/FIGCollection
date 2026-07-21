@@ -1,0 +1,38 @@
+{
+  "Global": {
+    "VarPath": "global_vars.json",
+    "Vars": {
+      "Service_Name": "FIG_ServiceMgrSvc",
+      "Service_FriendlyName": "FIG Service Manager",
+      "Service_Role": "ServiceManager",
+      "Service_Id": "866EA2B5-C00A-4FA2-8F99-A0AE830345B5"
+    }
+  },
+  "LogFile": {
+    "MinLevel": "Debug",
+    "LogPath": "{{Log_Path}}{{Service_Name}}-.txt",
+    "AppName": "{{Service_Name}}"
+  },
+  "ControllerConfig": {
+    "Id": "{{Service_Id}}",
+    "Name": "{{Service_FriendlyName}}",
+    "ServiceName": "{{Service_Name}}",
+    "ServiceType": "SVC",
+    "Roles": [ "{{Service_Role}}" ],
+    "AuthUsername": "{{Controller_Username}}",
+    "AuthPassword": "{{Controller_Password}}",
+    "CertThumbPrint": "{{CertThumbprint}}",
+    "HostAddress": "{{Controller_Connection}}",
+    "AuthURL": "{{Auth_URL}}"
+  },
+  "ServiceManagerConfig": {
+    "ManagedServices": [
+      "FIG_BrokerSvc",
+      "FIG_PriceSyncSvc",
+      "FIG_SignalSvc",
+      "FIG_AlertSvc",
+      "FIG_AutoTraderSvc"
+    ]
+  }
+}
+

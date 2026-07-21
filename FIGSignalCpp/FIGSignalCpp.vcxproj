@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{B59C5936-61E0-4CC0-928B-C0A9F1A8AC31}</ProjectGuid>
+    <Keyword>Win32Proj</Keyword>
+    <RootNamespace>FIGSignalCpp</RootNamespace>
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)'=='Debug'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)'=='Release'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ItemDefinitionGroup>
+    <ClCompile>
+      <WarningLevel>Level4</WarningLevel>
+      <TreatWarningAsError>true</TreatWarningAsError>
+      <LanguageStandard>stdcpp20</LanguageStandard>
+      <AdditionalIncludeDirectories>$(ProjectDir)include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>WIN32_LEAN_AND_MEAN;NOMINMAX;UNICODE;_UNICODE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <AdditionalDependencies>odbc32.lib;advapi32.lib;httpapi.lib;bcrypt.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)'=='Debug'">
+    <ClCompile>
+      <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
+    </ClCompile>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)'=='Release'">
+    <ClCompile>
+      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+    </ClCompile>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClInclude Include="include\fig\configuration.hpp" />
+    <ClInclude Include="include\fig\database.hpp" />
+    <ClInclude Include="include\fig\logger.hpp" />
+    <ClInclude Include="include\fig\models.hpp" />
+    <ClInclude Include="include\fig\price_aggregator.hpp" />
+    <ClInclude Include="include\fig\study.hpp" />
+    <ClInclude Include="include\fig\studies\live_state.hpp" />
+    <ClInclude Include="include\fig\studies\study_adx.hpp" />
+    <ClInclude Include="include\fig\studies\study_bb.hpp" />
+    <ClInclude Include="include\fig\studies\study_extended.hpp" />
+    <ClInclude Include="include\fig\studies\study_ma.hpp" />
+    <ClInclude Include="include\fig\studies\study_roc.hpp" />
+    <ClInclude Include="include\fig\studies\study_sem.hpp" />
+    <ClInclude Include="include\fig\studies\study_wma.hpp" />
+    <ClInclude Include="include\fig\studies\study_slope_trend.hpp" />
+    <ClInclude Include="include\fig\studies\study_lbase_adx.hpp" />
+    <ClInclude Include="include\fig\studies\study_col_adx_trend.hpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="src\configuration.cpp" />
+    <ClCompile Include="src\database.cpp" />
+    <ClCompile Include="src\logger.cpp" />
+    <ClCompile Include="src\main.cpp" />
+    <ClCompile Include="src\price_aggregator.cpp" />
+    <ClCompile Include="src\study.cpp" />
+    <ClCompile Include="src\studies\study_adx.cpp" />
+    <ClCompile Include="src\studies\study_bb.cpp" />
+    <ClCompile Include="src\studies\study_extended.cpp" />
+    <ClCompile Include="src\studies\study_ma.cpp" />
+    <ClCompile Include="src\studies\study_roc.cpp" />
+    <ClCompile Include="src\studies\study_sem.cpp" />
+    <ClCompile Include="src\studies\study_wma.cpp" />
+    <ClCompile Include="src\studies\study_slope_trend.cpp" />
+    <ClCompile Include="src\studies\study_lbase_adx.cpp" />
+    <ClCompile Include="src\studies\study_col_adx_trend.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include=".clang-format" />
+    <None Include="PORTING.md" />
+    <None Include="README.md" />
+    <None Include="signal-settings.json" />
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+</Project>

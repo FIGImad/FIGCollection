@@ -1,0 +1,40 @@
+<Project Sdk="Microsoft.NET.Sdk.Worker">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UserSecretsId>dotnet-FIGAlertSvc-45170c59-7911-4fed-a926-1e5fb443dedc</UserSecretsId>
+    <ApplicationIcon>FIG Logo.ico</ApplicationIcon>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Content Include="FIG Logo.ico" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="MailKit" Version="4.17.0" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.8" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.8" />
+    <PackageReference Include="Microsoft.Extensions.Hosting.WindowsServices" Version="10.0.8" />
+    <PackageReference Include="System.ServiceProcess.ServiceController" Version="10.0.8" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Models\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\FIGCommon\FIGCommon.csproj" />
+  </ItemGroup>
+
+  <Target Name="CopyToDistrib" AfterTargets="Publish">
+    <PropertyGroup>
+      <DistribDir>$(MSBuildThisFileDirectory)..\FIGInstaller\Resources\Distrib\$(MSBuildProjectName)\</DistribDir>
+    </PropertyGroup>
+    <MakeDir Directories="$(DistribDir)" />
+    <Copy SourceFiles="$(PublishDir)$(AssemblyName).exe" DestinationFolder="$(DistribDir)" Condition="Exists('$(PublishDir)$(AssemblyName).exe')" />
+    <Copy SourceFiles="$(MSBuildThisFileDirectory)alerts-settings.json" DestinationFolder="$(DistribDir)" Condition="Exists('$(MSBuildThisFileDirectory)alerts-settings.json')" />
+  </Target>
+
+</Project>

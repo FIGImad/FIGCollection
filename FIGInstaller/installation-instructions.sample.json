@@ -1,0 +1,78 @@
+{
+  "metadata": {
+    "installationName": "FIG Collection Local Install",
+    "environmentName": "Local",
+    "version": "0.2"
+  },
+  "installationTypes": {
+    "autoTradeSystem": true,
+    "autoTradeWebAdmin": false,
+    "priceSyncComponent": false,
+    "signalProcessingComponent": false,
+    "brokerComponent": false
+  },
+  "defaults": {
+    "serviceInstallPath": "C:\\Roots\\FIGServices",
+    "logPath": "C:\\Roots\\FIGLogs\\"
+  },
+  "database": {
+    "provider": "SqlServer",
+    "adminConnectionString": "Data Source=<Database_Address>;Initial Catalog=FIGAutoTrader;Persist Security Info=False;User ID=sa;Password=<Admin_Password>;Encrypt=False;TrustServerCertificate=True",
+    "sqlDataPath": "C:\\Roots\\Data",
+    "rootsUsername": "roots",
+    "rootsPassword": "F!GRoot5",
+    "databases": [
+      {
+        "name": "FIGAutoTrader",
+        "script": "fig_autotrader_db.sql"
+      },
+      {
+        "name": "FIGBroker",
+        "script": "fig_broker_db.sql"
+      },
+      {
+        "name": "FIGUser",
+        "script": "fig_user_db.sql"
+      },
+      {
+        "name": "FIGAlert",
+        "script": "fig_alert_db.sql"
+      }
+    ]
+  },
+  "masterKey": {
+    "environmentVariableName": "FIG_MASTER_KEY",
+    "value": "hZ/61al5ups2SJAFH/Cfx0kz+nNFy0R9xokE7bD5YVQ="
+  },
+  "controller": {
+    "username": "SVC",
+    "password": "F!gRootLnk1",
+    "url": "https://localhost",
+    "port": 5000,
+    "authUrl": "https://localhost"
+  },
+  "security": {
+    "certThumbprint": "E6FCEB9D86667B8708C24049AA7E69E04913BB0C"
+  },
+  "jwt": {
+    "key": "VmYq3t6w9z$B&E)H@McQfTjWnZr4u7x!",
+    "issuer": "https://www.FIG.com.jo",
+    "audience": "https://localhost:44337"
+  },
+  "smtp": {
+    "username": "imad.ansari@gmail.com",
+    "password": "kgwrfqnxrsitpsxn"
+  },
+  "iis": {
+    "autoTraderAdmin": {
+      "siteName": "FIG_AutoTraderAdmin",
+      "applicationPoolName": "FIG_AutoTraderAdmin",
+      "httpsPort": 444,
+      "hostName": "ats.kunoozfund.com"
+    }
+  },
+  "resources": {
+    "globalVarsTemplatePath": "Resources\\global_vars.json",
+    "distributionPath": "Resources\\Distrib"
+  }
+}

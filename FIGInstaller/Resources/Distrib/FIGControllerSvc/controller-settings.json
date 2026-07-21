@@ -1,0 +1,48 @@
+{
+  "Global": {
+    "VarPath": "global_vars.json",
+    "Vars": {
+      "Service_Name": "FIG_ControllerSvc",
+      "Service_FriendlyName": "Main Bus Service",
+      "Service_Role": "Bus",
+      "Service_Id": "F123211C-558D-43A5-92AB-B964059ACC1A"
+    }
+  },
+  "ConnectionStrings": {
+    "ControllerConnection": "{{DBConnection_AutoTrader}}"
+  },
+  "ControllerConfig": {
+    "Id": "{{Service_Id}}",
+    "Name": "{{Service_FriendlyName}}",
+    "ServiceName": "{{Service_Name}}",
+    "ServiceType": "SVC",
+    "Roles": [ "{{Service_Role}}" ],
+    "AuthUsername": "{{Controller_Username}}",
+    "AuthPassword": "{{Controller_Password}}",
+    "CertThumbPrint": "{{CertThumbprint}}",
+    "HostAddress": "{{Controller_Connection}}",
+    "AuthURL": "{{Auth_URL}}"
+  },
+  "Kestrel": {
+    "Endpoints": {
+      "Https": {
+        "Url": "https://*:{{Controller_Port}}"
+      }
+    },
+    "Limits": {
+      "MaxRequestBodySize": 2147483647
+    }
+  },
+  "LogFile": {
+    "MinLevel": "Debug",
+    "LogPath": "{{Log_Path}}{{Service_Name}}-.txt",
+    "AppName": "{{Service_Name}}"
+  },
+  "Jwt": {
+    "Key": "{{Jwt_Key}}",
+    "Issuer": "{{Jwt_Issuer}}",
+    "Audience": "{{Jwt_Audience}}",
+    "Provider": "First Investment Group",
+    "ExpiryMinutes": 1440
+  }
+}

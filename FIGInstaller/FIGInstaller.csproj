@@ -1,0 +1,39 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AssemblyName>FIGInstaller</AssemblyName>
+    <ApplicationIcon>FIG Logo.ico</ApplicationIcon>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Content Include="FIG Logo.ico" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="installation-instructions.sample.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+    </None>
+    <None Update="Resources\**\*">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+    </None>
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\FIGCommon\FIGCommon.csproj" />
+  </ItemGroup>
+
+  <Target Name="CopyInstallerResourcesToPublishDirectory" AfterTargets="Publish">
+    <ItemGroup>
+      <InstallerResourceFiles Include="Resources\**\*" />
+    </ItemGroup>
+    <Copy SourceFiles="@(InstallerResourceFiles)" DestinationFiles="@(InstallerResourceFiles->'$(PublishDir)Resources\%(RecursiveDir)%(Filename)%(Extension)')" SkipUnchangedFiles="true" />
+  </Target>
+
+</Project>

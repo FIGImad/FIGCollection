@@ -1,0 +1,67 @@
+{
+  "Global": {
+    "VarPath": "global_vars.json",
+    "Vars": {
+      "Service_Name": "FIG_AlertSvc",
+      "Service_FriendlyName": "Alert Service",
+      "Service_Role": "Alert",
+      "Service_Id": "DBAB1A2F-614E-4E48-91D8-1AEB69CA17E2",
+      "Service_Port": 5003
+    }
+  },
+  "ConnectionStrings": {
+    "DefaultConnection": "{{DBConnection_Alert}}",
+    "AutoTraderConnection": "{{DBConnection_AutoTrader}}"
+  },
+  "ControllerConfig": {
+    "Id": "{{Service_Id}}",
+    "Name": "{{Service_FriendlyName}}",
+    "ServiceName": "{{Service_Name}}",
+    "ServiceType": "SVC",
+    "Roles": [ "{{Service_Role}}" ],
+    "AuthUsername": "{{Controller_Username}}",
+    "AuthPassword": "{{Controller_Password}}",
+    "CertThumbPrint": "{{CertThumbprint}}",
+    "HostAddress": "{{Controller_Connection}}",
+    "AuthURL": "{{Auth_URL}}"
+  },
+  "Kestrel": {
+    "Endpoints": {
+      "Http": {
+        "Url": "http://*:{{Service_Port}}"
+      }
+    },
+    "Limits": {
+      "MaxRequestBodySize": 2147483647
+    }
+  },
+  "LogFile": {
+    "MinLevel": "Debug",
+    "LogPath": "{{Log_Path}}{{Service_Name}}-.txt",
+    "AppName": "{{Service_Name}}"
+  },
+  "Jwt": {
+    "Key": "{{Jwt_Key}}",
+    "Issuer": "{{Jwt_Issuer}}",
+    "Audience": "{{Jwt_Audience}}"
+  },
+  "EventMonitor": {
+    "ConnectionString": "{{DBConnection_Alert}}",
+    "EventTable": "Event"
+  },
+  "Smtp": {
+    "Host": "smtp.gmail.com",
+    "Port": 587,
+    "UseSsl": true,
+    "Username": "{{SMTP_Username}}",
+    "Password": "{{SMTP_Password}}",
+    "EmailFromAddress": "imad.ansari@gmail.com",
+    "EmailFromName": "Roots Admin",
+    "TimeoutSeconds": 60
+  },
+  "PushOver": {
+    "APIToken": "akypvaefo1yxd37dmu8ceuaugbdhmc"
+  }
+
+}
+

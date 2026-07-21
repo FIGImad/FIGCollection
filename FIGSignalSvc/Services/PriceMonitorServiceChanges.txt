@@ -1,0 +1,397 @@
+using FIGCommon.DataAccess;
+using FIGCommon.Models;
+using FIGCommon.Services;
+using FIGCommon.Utilities;
+using System.Collections.Concurrent;
+
+namespace FIGSignalExSvc.Services
+{
+    public class PriceMonitorService : IHostedService, IDisposable
+    {
+        private const string SRC_NAME = "SignalPriceMonitor";
+
+        private readonly ILogger<PriceMonitorService> _logger;
+        protected readonly IServiceProvider _serviceProvider;
+
+        private readonly EventMonitorService _eventMonitor;
+
+        private List<StudyColRS> studyColList = new();
+        private readonly object accessListLock = new();
+        private DateTime nextStudyColListRefresh = DateTime.MinValue;
+        private static Dictionary<int, DataSetRS> datasetMap = new();
+        private readonly object accessDatasetLock = new();
+
+        private static Dictionary<int, ExecStudySet?> execStudyMap = new();
+        private readonly object accessStudySetLock = new();
+
+        private readonly object fallbackLifecycleLock = new();
+        private CancellationTokenSource? fallbackCancellationSource;
+        private Task? fallbackTask;
+        private readonly Dictionary<int, object> studyProcessLocks = new();
+        private readonly ConcurrentDictionary<int, DateTime> lastProcessedCycleByStudyCol = new();
+
+
+        public PriceMonitorService(
+            ILogger<PriceMonitorService> logger,
+            EventMonitorService eventMonitor,
+            IServiceProvider serviceProvider)
+        {
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _eventMonitor = eventMonitor ?? throw new ArgumentNullException(nameof(eventMonitor));
+            _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
+        }
+
+        public Task StartAsync(CancellationToken cancellationToken)
+        {
+            RefreshStudyColList();
+            ProcessStudyCols();
+            _eventMonitor.Subscribe("PRICEDATA", OnPriceChange);
+            _logger.LogInformation("Subscribed to PRICEDATA changes");
+
+            lock (fallbackLifecycleLock)
+            {
+                fallbackCancellationSource = new CancellationTokenSource();
+                fallbackTask = RunMissingPriceEventFallback(fallbackCancellationSource.Token);
+            }
+            return Task.CompletedTask;
+        }
+        public async Task StopAsync(CancellationToken cancellationToken)
+        {
+            _eventMonitor.Unsubscribe("PRICEDATA", OnPriceChange);
+            _logger.LogInformation("Unsubscribed from PRICEDATA changes");
+
+            CancellationTokenSource? cancellationSource;
+            Task? task;
+            lock (fallbackLifecycleLock)
+            {
+                cancellationSource = fallbackCancellationSource;
+                task = fallbackTask;
+                fallbackCancellationSource = null;
+                fallbackTask = null;
+            }
+
+            if (cancellationSource != null)
+            {
+                await cancellationSource.CancelAsync();
+                if (task != null)
+                {
+                    try
+                    {
+                        await task.WaitAsync(cancellationToken);
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        // Normal service shutdown.
+                    }
+                }
+                cancellationSource.Dispose();
+            }
+        }
+
+        private void OnPriceChange(EventRS? eventData)
+        {
+            try
+            {
+                _logger.LogInformation("Received EVENTA change: {0}", eventData?.EventId ?? "-1");
+
+                // Process the event data
+                ProcessPriceChangeEvent(eventData);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error processing EVENTA change");
+            }
+        }
+
+        private void ProcessPriceChangeEvent(EventRS? eventData)
+        {
+            if (eventData == null || eventData.EventType != "PRICEDATA")
+            {
+                _logger.LogDebug("Invalid Event type: {0}", eventData?.EventType ?? "NULL");
+                return;
+            }
+            int dataSetId = ((int?)TypeConvertUtil.GetIntegerValue(eventData.EventId) ?? -1);
+            if (dataSetId == -1)
+            {
+                _logger.LogDebug("Invalid DataSetId: {0} received", eventData.EventId);
+                return;
+            }
+
+            DataSetRS? dataSet = GetDataSet(dataSetId);
+            if (dataSet == null)
+            {
+                _logger.LogDebug("Invalid DataSetId: {0} received", dataSetId);
+                return;
+            }
+            if (dataSet.IntervalId != "1")
+            {
+                _logger.LogDebug("DataSetId: {0} is not a One-min bar, it is \"{1}\" bar", dataSetId, dataSet.IntervalId);
+                return;
+            }
+
+            DateTime processingCycleUtc = GetProcessingCycleUtc(DateTime.UtcNow);
+
+            // 1- refresh studyColList if needed
+            RefreshStudyColList();
+
+            // 2- for each studyCol, check if the studyCol item is enabled and eventData is relevant
+            lock (accessListLock)
+            {
+                foreach (var studyCol in studyColList)
+                {
+                    if (studyCol.TickerId == dataSet.TickerId && studyCol.Enabled)
+                    {
+                        // convert eventData EventId to int
+                        if (!int.TryParse(eventData.EventId, out int datasetId))
+                        {
+                            _logger.LogWarning("Invalid EventId: {EventId}", eventData.EventId);
+                            continue;
+                        }
+                        var dataset = GetDataSet(datasetId);
+                        if (dataset == null)
+                        {
+                            continue;
+                        }
+                        // ensure to process on change of one minute data only
+                        if (studyCol.TickerId == dataset.TickerId && dataset.IntervalId == "1")
+                        {
+                            // process the studyCol
+                            //_logger.LogDebug("Processing StudyCol Id ({0}), DatasetId ({1}), Ticker: {2}, Interval: ({3})",
+                            //    studyCol.Id, dataset.Id, studyCol.TickerId, studyCol.IntervalId);
+
+                            // get ExecDataSet
+                            var execDataSet = GetExecStudySet(studyCol);
+
+                            if (execDataSet != null)
+                            {
+                                //_logger.LogDebug("Processing StudyCol Id: {0}", studyCol.Id);
+                                ProcessStudyCol(studyCol, execDataSet, processingCycleUtc, "PRICEDATA event");
+                            }
+                        }
+                        else
+                        {
+                            _logger.LogWarning("StudyCol TickerId {TickerId} does not match Dataset TickerId {DatasetTickerId}", studyCol.TickerId, dataset?.TickerId);
+                        }
+                    }
+                }
+            }
+        }
+
+        private void ProcessStudyCols()
+        {
+            lock (accessListLock)
+            {
+                foreach (var studyCol in studyColList)
+                {
+                    // process the studyCol
+                    //_logger.LogDebug("Processing StudyCol Id ({0}), Ticker: {1}, Interval: ({2})", studyCol.Id, studyCol.TickerId, studyCol.IntervalId);
+                    // get ExecDataSet
+                    var execDataSet = GetExecStudySet(studyCol);
+
+                    if (execDataSet != null)
+                    {
+                        //_logger.LogDebug("Processing StudyCol Id: {0}", studyCol.Id);
+                        ProcessStudyCol(studyCol, execDataSet, null, "service startup");
+                    }
+                }
+            }
+        }
+
+        private async Task RunMissingPriceEventFallback(CancellationToken cancellationToken)
+        {
+            while (!cancellationToken.IsCancellationRequested)
+            {
+                DateTime nowUtc = DateTime.UtcNow;
+                DateTime minuteBoundaryUtc = new DateTime(
+                    nowUtc.Year, nowUtc.Month, nowUtc.Day,
+                    nowUtc.Hour, nowUtc.Minute, 0, DateTimeKind.Utc).AddMinutes(1);
+                DateTime fallbackTimeUtc = minuteBoundaryUtc.AddSeconds(5);
+
+                try
+                {
+                    await Task.Delay(fallbackTimeUtc - nowUtc, cancellationToken);
+                }
+                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+                {
+                    return;
+                }
+
+                try
+                {
+                    ProcessMissingPriceEvents(minuteBoundaryUtc);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex,
+                        "Error running missing PRICEDATA fallback for cycle {ProcessingCycleUtc:O}",
+                        minuteBoundaryUtc);
+                }
+            }
+        }
+
+        private void ProcessMissingPriceEvents(DateTime processingCycleUtc)
+        {
+            RefreshStudyColList();
+
+            lock (accessListLock)
+            {
+                foreach (var studyCol in studyColList.Where(s => s.Enabled))
+                {
+                    var execDataSet = GetExecStudySet(studyCol);
+                    if (execDataSet == null)
+                    {
+                        continue;
+                    }
+
+                    ProcessStudyCol(studyCol, execDataSet, processingCycleUtc, "minute fallback");
+                }
+            }
+        }
+
+        private void ProcessStudyCol(
+            StudyColRS studyCol,
+            ExecStudySet execDataSet,
+            DateTime? processingCycleUtc,
+            string source)
+        {
+            object processLock;
+            lock (accessStudySetLock)
+            {
+                if (!studyProcessLocks.TryGetValue(studyCol.Id, out processLock!))
+                {
+                    processLock = new object();
+                    studyProcessLocks[studyCol.Id] = processLock;
+                }
+            }
+
+            lock (processLock)
+            {
+                if (processingCycleUtc.HasValue &&
+                    lastProcessedCycleByStudyCol.TryGetValue(studyCol.Id, out DateTime lastCycleUtc) &&
+                    lastCycleUtc >= processingCycleUtc.Value)
+                {
+                    _logger.LogDebug(
+                        "Skipping StudyCol {StudyColId} {Source}; cycle {ProcessingCycleUtc:O} was already processed",
+                        studyCol.Id, source, processingCycleUtc.Value);
+                    return;
+                }
+
+                _logger.LogDebug(
+                    "Processing StudyCol {StudyColId} from {Source}{Cycle}",
+                    studyCol.Id,
+                    source,
+                    processingCycleUtc.HasValue ? $" for cycle {processingCycleUtc.Value:O}" : string.Empty);
+
+                execDataSet.Process();
+
+                if (processingCycleUtc.HasValue)
+                {
+                    lastProcessedCycleByStudyCol[studyCol.Id] = processingCycleUtc.Value;
+                }
+            }
+        }
+
+        private static DateTime GetProcessingCycleUtc(DateTime eventTimeUtc)
+        {
+            DateTime minuteUtc = new DateTime(
+                eventTimeUtc.Year, eventTimeUtc.Month, eventTimeUtc.Day,
+                eventTimeUtc.Hour, eventTimeUtc.Minute, 0, DateTimeKind.Utc);
+
+            // Normal new-bar notifications arrive shortly before the minute boundary.
+            // Late notifications arrive shortly after it. Both map to the same cycle.
+            return eventTimeUtc.Second >= 45 ? minuteUtc.AddMinutes(1) : minuteUtc;
+        }
+
+        public void Dispose()
+        {
+            lock (fallbackLifecycleLock)
+            {
+                fallbackCancellationSource?.Cancel();
+            }
+            // already cleaned up... check
+            //_eventMonitor.Unsubscribe("PRICEDATA", OnPriceChange);
+            _logger.LogInformation("Unsubscribed from PRICEDATA changes");
+        }
+
+        private void RefreshStudyColList()
+        {
+            DateTime nowTime = DateTime.Now;
+            lock (accessListLock)
+            {
+                try
+                {
+                    if (studyColList.Count == 0 || DateTime.Now > nextStudyColListRefresh)
+                    {
+                        studyColList = MainRepo.GetStudyColList();
+                        // nextStudyColListRefresh = DateTime.Now + 2 minutes
+                        nextStudyColListRefresh = nowTime.AddMinutes(2);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError("Error refreshing StudyCol list - {0}", ex.Message);
+                }
+            }
+        }
+
+        private DataSetRS? GetDataSet(int datasetId)
+        {
+            // find it from Map first
+            lock (accessDatasetLock)
+            {
+                if (datasetMap.TryGetValue(datasetId, out DataSetRS? dataSet) && dataSet != null)
+                {
+                    return dataSet;
+                }
+            }
+
+            try
+            {
+                // try to find it from the database
+                var dataset = MainRepo.GetDataSet(datasetId);
+                if (dataset != null)
+                {
+                    lock (accessDatasetLock)
+                    {
+                        datasetMap[datasetId] = new DataSetRS(dataset);
+                    }
+                }
+                return dataset;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError("Error fetching DataSet id ({0}) - {1}", datasetId, ex.Message);
+                return null;
+            }
+        }
+
+        private ExecStudySet? GetExecStudySet(StudyColRS studyCol)
+        {
+            // find it from Map first
+            lock (accessStudySetLock)
+            {
+                if (execStudyMap.TryGetValue(studyCol.Id, out ExecStudySet? studySet) && studySet != null)
+                {
+                    return studySet;
+                }
+            }
+
+            try
+            {
+                // create a new one
+                ExecStudySet? newStudySet = new ExecStudySet(studyCol, _serviceProvider);
+                lock (accessStudySetLock)
+                {
+                    execStudyMap[studyCol.Id] = newStudySet;
+                    return newStudySet;
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError("Error creating new StudySet for studyCol id ({0}) - {1}", studyCol.Id, ex.Message);
+                return null;
+            }
+        }
+
+    }
+}

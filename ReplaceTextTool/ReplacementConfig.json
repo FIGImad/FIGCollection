@@ -1,0 +1,24 @@
+{
+  "ConvertJavaScriptDecimalsToCSharp": true,
+  "AddMissingSemicolonTerminators": true,
+  "ReplaceRules": [
+    { "text": "===", "replace": "==" },
+    { "text": "this.L*.MA", "replace": "MAL*" },
+    { "text": "this.C*.MA", "replace": "MAC*" },
+    { "text": "this.L*.SEM", "replace": "SEML*" },
+    { "text": "this.C*.SEM", "replace": "SEMC*" },
+    { "text": "this.C*.LB1", "replace": "LBC*" },
+    { "text": "this.C*.UB1", "replace": "UBC*" },
+    { "text": "this.C*.LB2", "replace": "LB2C*" },
+    { "text": "this.C*.UB2", "replace": "UB2C*" },
+    { "text": "this.C*.UBLB%_Dir", "replace": "C*_UBLB%_Dir" },
+    { "text": "this.openprice = cClose", "replace": "this.openprice = cClose;" },
+    { "text": "this.basicTrigger_DL1", "replace": "cParam.basicTrigger_DL1" },
+    { "text": "this.trigger_DL1", "replace": "cParam.trigger_DL1" },
+    { "text": "this.Side", "replace": "cParam.Side" },
+    { "text": "this.TPStage", "replace": "cParam.TPStage" },
+    { "text": "this.openprice", "replace": "cParam.openprice" },
+    { "text": ";;", "replace": ";" },
+    { "text": "cStudy.", "replace": "" }
+  ]
+}

@@ -1,0 +1,49 @@
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AssemblyName>FIGSignalSvc</AssemblyName>
+    <RootNamespace>FIGSignalSvc</RootNamespace>
+    <Version>1.0.0</Version>
+    <FileVersion>1.0.0.0</FileVersion>
+    <AssemblyVersion>1.0.0.0</AssemblyVersion>
+    <ApplicationIcon>..\FIGSignalSvc\FIG Logo.ico</ApplicationIcon>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.6" />
+    <PackageReference Include="Microsoft.Data.SqlClient.SNI.runtime" Version="6.0.2" />
+    <PackageReference Include="Microsoft.Extensions.Hosting.WindowsServices" Version="10.0.6" />
+    <PackageReference Include="Serilog" Version="4.3.1" />
+    <PackageReference Include="Serilog.Enrichers.Environment" Version="3.0.1" />
+    <PackageReference Include="Serilog.Enrichers.Process" Version="3.0.0" />
+    <PackageReference Include="Serilog.Enrichers.Thread" Version="4.0.0" />
+    <PackageReference Include="Serilog.Expressions" Version="5.0.0" />
+    <PackageReference Include="Serilog.Extensions" Version="10.0.0" />
+    <PackageReference Include="Serilog.Extensions.Hosting" Version="10.0.0" />
+    <PackageReference Include="Serilog.Extensions.Logging" Version="10.0.0" />
+    <PackageReference Include="Serilog.Settings.Configuration" Version="10.0.0" />
+    <PackageReference Include="Serilog.Sinks.File" Version="7.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\FIGCommon\FIGCommon.csproj" />
+    <ProjectReference Include="..\FIG.Studies.Core\FIG.Studies.Core.csproj" />
+    <ProjectReference Include="..\FIG.Studies.Common\FIG.Studies.Common.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="..\FIGSignalSvc\FIG Logo.ico" Link="FIG Logo.ico" />
+  </ItemGroup>
+
+  <Target Name="CopyToDistrib" AfterTargets="Publish">
+    <PropertyGroup>
+      <DistribDir>$(MSBuildThisFileDirectory)..\FIGInstaller\Resources\Distrib\$(MSBuildProjectName)\</DistribDir>
+    </PropertyGroup>
+    <MakeDir Directories="$(DistribDir)" />
+    <Copy SourceFiles="$(PublishDir)$(AssemblyName).exe" DestinationFolder="$(DistribDir)" Condition="Exists('$(PublishDir)$(AssemblyName).exe')" />
+    <Copy SourceFiles="$(MSBuildThisFileDirectory)signal-settings.json" DestinationFolder="$(DistribDir)" Condition="Exists('$(MSBuildThisFileDirectory)signal-settings.json')" />
+  </Target>
+
+</Project>

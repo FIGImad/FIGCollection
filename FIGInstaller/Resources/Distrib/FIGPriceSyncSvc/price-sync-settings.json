@@ -1,0 +1,81 @@
+{
+  "Global": {
+    "VarPath": "C:\\Roots\\FIGServices\\global_vars.json",
+    "Vars": {
+      "Service_Name": "FIG_PriceSyncSvc",
+      "Service_FriendlyName": "Price Sync Service",
+      "Service_Id": "408206E0-C8CF-4122-8427-B8660E182DA3",
+      "Service_Port": 5005,
+      "Service_Role": "PriceSync"
+    }
+  },
+  "ConnectionStrings": {
+    "DefaultConnection": "{{DBConnection_AutoTrader}}"
+  },
+  "ControllerConfig": {
+    "Id": "{{Service_Id}}",
+    "Name": "{{Service_FriendlyName}}",
+    "ServiceName": "{{Service_Name}}",
+    "ServiceType": "SVC",
+    "Roles": [
+      "{{Service_Role}}"
+    ],
+    "AuthUsername": "{{Controller_Username}}",
+    "AuthPassword": "{{Controller_Password}}",
+    "CertThumbPrint": "{{CertThumbprint}}",
+    "HostAddress": "{{Controller_Connection}}",
+    "AuthURL": "{{Auth_URL}}"
+  },
+  "Kestrel": {
+    "Endpoints": {
+      "Http": {
+        "Url": "http://*:{{Service_Port}}"
+      }
+    },
+    "Limits": {
+      "MaxRequestBodySize": 2147483647
+    }
+  },
+  "LogFile": {
+    "MinLevel": "Debug",
+    "LogPath": "{{Log_Path}}{{Service_Name}}-.txt",
+    "AppName": "{{Service_Name}}"
+  },
+  "Jwt": {
+    "Key": "{{Jwt_Key}}",
+    "Issuer": "{{Jwt_Issuer}}",
+    "Audience": "{{Jwt_Audience}}"
+  },
+  "EventMonitor": {
+    "ConnectionString": "{{DBConnection_AutoTrader}}",
+    "EventTable": "Event"
+  },
+  "ProviderServices": {
+    "ActiveProvider": "PROV_Local",
+    "NumPriceBarsToUpdate": 3,
+    "NumDaysToCatchUpWhenNoData": 14,
+    "TimeOffsetSec": 5,
+    "MarketSchedule": {
+      "TimeZoneId": "Central Standard Time",
+      "WeeklyBreakCloseDay": "Friday",
+      "WeeklyBreakCloseTime": "16:00",
+      "WeeklyBreakOpenDay": "Sunday",
+      "WeeklyBreakOpenTime": "17:00",
+      "DailyBreakCloseTime": "16:00",
+      "DailyBreakOpenTime": "17:00"
+    },
+    "Providers": [
+      {
+        "Id": "PROV_Local",
+        "Type": "IBKR",
+        "Host": "127.0.0.1",
+        "Port": 7496,
+        "ClientId": 333,
+        "DataSetIds": [
+          1
+        ],
+        "GetCurrentPositions": false
+      }
+    ]
+  }
+}

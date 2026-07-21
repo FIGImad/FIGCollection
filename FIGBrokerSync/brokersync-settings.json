@@ -1,0 +1,60 @@
+{
+  "Global": {
+    "VarPath": "global_vars.json",
+    "Vars": {
+      "Service_Name": "FIGBrokerSvc",
+      "Service_FriendlyName": "FIG Broker Service",
+      "Service_Port": 5019,
+      "Service_Role": "Broker",
+      "Service_Id": "7A0F5387-CAF9-4BA6-9F06-63046B8409EA",
+      "DBConnection_Broker": "Data Source=localhost;Initial Catalog=FIGBroker;Persist Security Info=False; User ID=roots;Password=F!GRoot5; Encrypt=False;TrustServerCertificate=True"
+    }
+  },
+  "ConnectionStrings": {
+    "DefaultConnection": "{{DBConnection_Broker}}"
+  },
+  "ControllerConfig": {
+    "Id": "{{Service_Id}}",
+    "Name": "{{Service_FriendlyName}}",
+    "ServiceName": "{{Service_Name}}",
+    "ServiceType": "SVC",
+    "Roles": [ "{{Service_Role}}" ],
+    "AuthUsername": "{{Controller_Username}}",
+    "AuthPassword": "{{Controller_Password}}",
+    "CertThumbPrint": "{{CertThumbprint}}",
+    "HostAddress": "{{Controller_Connection}}",
+    "AuthURL": "{{Auth_URL}}"
+  },
+  "Kestrel": {
+    "Endpoints": {
+      "Http": {
+        "Url": "http://*:{{Service_Port}}"
+      }
+    },
+    "Limits": {
+      "MaxRequestBodySize": 2147483647
+    }
+  },
+  "LogFile": {
+    "MinLevel": "Debug",
+    "LogPath": "{{Log_Path}}{{Service_Name}}-.txt",
+    "AppName": "{{Service_Name}}"
+  },
+  "Jwt": {
+    "Key": "{{Jwt_Key}}",
+    "Issuer": "{{Jwt_Issuer}}",
+    "Audience": "{{Jwt_Audience}}"
+  },
+  "EventMonitor": {
+    "ConnectionString": "{{DBConnection_Broker}}",
+    "EventTable": "Event"
+  },
+  "Provider": {
+    "Type": "IBKR",
+    "Host": "127.0.0.1",
+    "Port": 7496,
+    "ClientId": 977,
+    "GetCurrentPositions": false
+  }
+
+}

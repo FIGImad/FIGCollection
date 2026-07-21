@@ -1,0 +1,34 @@
+<Project Sdk="Microsoft.NET.Sdk.Worker">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UserSecretsId>dotnet-FIGServiceMgrSvc-45170c59-7911-4fed-a926-1e5fb443dedc</UserSecretsId>
+    <ApplicationIcon>FIG Logo.ico</ApplicationIcon>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Content Include="FIG Logo.ico" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.8" />
+    <PackageReference Include="Microsoft.Extensions.Hosting.WindowsServices" Version="10.0.8" />
+    <PackageReference Include="System.ServiceProcess.ServiceController" Version="10.0.8" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\FIGCommon\FIGCommon.csproj" />
+  </ItemGroup>
+
+  <Target Name="CopyToDistrib" AfterTargets="Publish">
+    <PropertyGroup>
+      <DistribDir>$(MSBuildThisFileDirectory)..\FIGInstaller\Resources\Distrib\$(MSBuildProjectName)\</DistribDir>
+    </PropertyGroup>
+    <MakeDir Directories="$(DistribDir)" />
+    <Copy SourceFiles="$(PublishDir)$(AssemblyName).exe" DestinationFolder="$(DistribDir)" Condition="Exists('$(PublishDir)$(AssemblyName).exe')" />
+    <Copy SourceFiles="$(MSBuildThisFileDirectory)service-manager-settings.json" DestinationFolder="$(DistribDir)" Condition="Exists('$(MSBuildThisFileDirectory)service-manager-settings.json')" />
+  </Target>
+
+</Project>

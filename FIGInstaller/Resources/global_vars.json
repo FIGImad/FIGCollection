@@ -1,0 +1,18 @@
+{
+  "Controller_Username": "@@Controller_Username@@",
+  "Controller_Password": "@@Controller_Password@@",
+  "Controller_Port": "@@Controller_Port@@",
+  "Controller_Connection": "@@Controller_URL@@:{{Controller_Port}}/hubs/broker-agent",
+  "CertThumbprint": "@@Cert_Thumbprint@@",
+  "DBConnection_Admin": "@@DBConnection_Admin@@",
+  "DBConnection_AutoTrader": "@@DBConnection_AutoTrader@@",
+  "DBConnection_Alert": "@@DBConnection_Alert@@",
+  "DBConnection_Users": "@@DBConnection_User@@",
+  "Auth_URL": "@@Auth_URL@@",
+  "Log_Path": "@@Log_Path@@",
+  "Jwt_Key": "@@Jwt_Key@@",
+  "Jwt_Issuer": "@@Jwt_Issuer@@",
+  "Jwt_Audience": "@@Jwt_Audience@@",
+  "SMTP_Username": "@@SMTP_Username@@",
+  "SMTP_Password": "@@SMTP_Password@@"
+}
