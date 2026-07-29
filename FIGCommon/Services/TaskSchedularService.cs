@@ -15,6 +15,7 @@ namespace FIGCommon.Services
         private readonly ConcurrentDictionary<string, TaskGroup> _taskGroups = new();
         private readonly ILogger<TaskSchedulerService> _logger;
         private readonly CancellationToken _shutdownToken;
+        private readonly AsyncLocal<TaskParams?> _executingTask = new();
 
         public TaskSchedulerService(ILogger<TaskSchedulerService> logger, IHostApplicationLifetime appLifetime)
         {
@@ -37,7 +38,6 @@ namespace FIGCommon.Services
                 if (taskGroup.Tasks.TryGetValue(taskId, out var existingTask))
                 {
                     existingTask.CancellationSource.Cancel();
-                    existingTask.CancellationSource.Dispose(); // fixes: CTS leak on replacement
                     taskGroup.Tasks.Remove(taskId);
                 }
 
@@ -65,7 +65,10 @@ namespace FIGCommon.Services
                     return;
 
                 if (taskParams.OnTaskExecuted != null)
+                {
+                    _executingTask.Value = taskParams;
                     await taskParams.OnTaskExecuted(this, new TaskEventArgs(taskParams.TaskId, args));
+                }
             }
             catch (OperationCanceledException)
             {
@@ -81,16 +84,20 @@ namespace FIGCommon.Services
                 // accumulate and empty TaskGroups are removed to prevent unbounded growth
                 if (_taskGroups.TryGetValue(taskParams.OwnerId, out var group))
                 {
-                    bool groupEmpty;
                     lock (group.SyncRoot)
                     {
-                        group.Tasks.Remove(taskParams.TaskId);
-                        groupEmpty = group.Tasks.Count == 0;
+                        if (group.Tasks.TryGetValue(taskParams.TaskId, out var currentTask) &&
+                            ReferenceEquals(currentTask, taskParams))
+                        {
+                            group.Tasks.Remove(taskParams.TaskId);
+                        }
                     }
-
-                    if (groupEmpty)
-                        _taskGroups.TryRemove(taskParams.OwnerId, out _);
                 }
+
+                if (ReferenceEquals(_executingTask.Value, taskParams))
+                    _executingTask.Value = null;
+
+                taskParams.CancellationSource.Dispose();
             }
         }
 
@@ -101,9 +108,11 @@ namespace FIGCommon.Services
                 return;
 
             List<Task> tasksToAwait;
+            var executingTask = _executingTask.Value;
             lock (taskGroup.SyncRoot)
             {
                 tasksToAwait = taskGroup.Tasks.Values
+                    .Where(t => !ReferenceEquals(t, executingTask))
                     .Select(t => t.RunningTask)
                     .Where(t => t != null)
                     .Cast<Task>()
@@ -112,13 +121,9 @@ namespace FIGCommon.Services
                 foreach (var task in taskGroup.Tasks.Values)
                 {
                     task.CancellationSource.Cancel();
-                    task.CancellationSource.Dispose(); // fixes: CTS leak in StopAllTasksAsync
                 }
                 taskGroup.Tasks.Clear();
             }
-
-            // Remove the now-empty group so _taskGroups does not grow unbounded
-            _taskGroups.TryRemove(ownerId, out _);
 
             await Task.WhenAll(tasksToAwait);
         }

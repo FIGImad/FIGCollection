@@ -23,13 +23,16 @@ namespace FIGPriceSyncSvc.Services
         private readonly ITaskSchedulerService _taskScheduler;
 
         private const string SRC_NAME = "PriceSyncService";
+        private const int DATABASE_RETRY_DELAY_MS = 120000;
 
         private readonly object _lockObj = new();
         private readonly object _lockMarketDataObj = new();
+        private readonly SemaphoreSlim _restartGate = new(1, 1);
         private Dictionary<int, IBKRDataSet> mapDataSets = new Dictionary<int, IBKRDataSet>();
         private Dictionary<int, TickerRS> mapMarketDataTicker = new Dictionary<int, TickerRS>();
         private readonly ProvidersConfig _providersConfig = new ProvidersConfig();
         private readonly ProviderConfig? _defaultProviderConfig = new ProviderConfig();
+        private bool _waitingForDatabase;
 
         public PriceSyncService(
             ILogger<PriceSyncService> logger,
@@ -106,20 +109,33 @@ namespace FIGPriceSyncSvc.Services
 
 
         // Buisness Logic here
-        private async Task GetDataSets()
+        private async Task<bool> GetDataSets()
         {
             if (_defaultProviderConfig == null)
             {
-                return;
+                _logger.LogError("Price synchronization cannot start because the active provider configuration is missing");
+                return false;
             }
             try
             {
                 var dataSets = MainRepo.GetDataSets();
                 if (dataSets == null || dataSets.Count == 0)
                 {
-                    _logger?.LogDebug("Dataset is not setup yet, trying again in 2 minutes seconds...");
-                    await _taskScheduler.ScheduleEventAsync(SRC_NAME, "Restart", 120000, HandleRestart);
+                    lock (_lockObj)
+                    {
+                        mapDataSets.Clear();
+                    }
+
+                    await ScheduleDatabaseRetryAsync("No configured datasets were returned");
+                    return false;
                 }
+
+                if (_waitingForDatabase)
+                {
+                    _logger.LogInformation("Database access recovered; rebuilding price synchronization schedules");
+                    _waitingForDatabase = false;
+                }
+
                 lock (_lockObj)
                 {
                     mapDataSets.Clear();
@@ -139,9 +155,8 @@ namespace FIGPriceSyncSvc.Services
             }
             catch (Exception ex)
             {
-                _logger?.LogCritical("GetDataSets: Exception accessing database... trying again in 2 minutes seconds... - {0}", ex.Message);
-                await _taskScheduler.ScheduleEventAsync(SRC_NAME, "Restart", 120000, HandleRestart);
-                return;
+                await ScheduleDatabaseRetryAsync(ex.Message);
+                return false;
             }
 
             // finally sched for synch
@@ -149,6 +164,36 @@ namespace FIGPriceSyncSvc.Services
             {
                 await _taskScheduler.ScheduleEventAsync(SRC_NAME, $"SyncDataSet_{datasetItem.Key}", 0, HandleSyncDataSet, datasetItem.Key);
             }
+
+            _logger.LogInformation(
+                "Price synchronization scheduling active for {DataSetCount} dataset(s)",
+                mapDataSets.Count);
+            return true;
+        }
+
+        private async Task ScheduleDatabaseRetryAsync(string reason)
+        {
+            if (!_waitingForDatabase)
+            {
+                _logger.LogWarning(
+                    "Database initialization unavailable; price schedules are paused and will be rebuilt after recovery. Retrying in {RetrySeconds} seconds. Reason: {Reason}",
+                    DATABASE_RETRY_DELAY_MS / 1000,
+                    reason);
+                _waitingForDatabase = true;
+            }
+            else
+            {
+                _logger.LogDebug(
+                    "Database initialization is still unavailable; retrying in {RetrySeconds} seconds. Reason: {Reason}",
+                    DATABASE_RETRY_DELAY_MS / 1000,
+                    reason);
+            }
+
+            await _taskScheduler.ScheduleEventAsync(
+                SRC_NAME,
+                "Restart",
+                DATABASE_RETRY_DELAY_MS,
+                HandleRestart);
         }
 
 
@@ -367,8 +412,21 @@ namespace FIGPriceSyncSvc.Services
         // Handlers
         private async Task HandleRestart(object? sender, TaskEventArgs e)
         {
-            await _taskScheduler.StopAllTasksAsync(SRC_NAME);
-            await GetDataSets();
+            if (!await _restartGate.WaitAsync(0))
+            {
+                _logger.LogDebug("Price schedule rebuild is already in progress; duplicate request ignored");
+                return;
+            }
+
+            try
+            {
+                await _taskScheduler.StopAllTasksAsync(SRC_NAME);
+                await GetDataSets();
+            }
+            finally
+            {
+                _restartGate.Release();
+            }
         }
 
         public Task HandleSyncDataSet(object? sender, TaskEventArgs e)

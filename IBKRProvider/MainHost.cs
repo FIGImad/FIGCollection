@@ -227,8 +227,9 @@ namespace IBKRProvider
         }
     }
 
-    internal sealed class ProviderHostedServiceShim : IHostedService
+    internal sealed class ProviderHostedServiceShim : BackgroundService
     {
+        private static readonly TimeSpan ConnectionCheckInterval = TimeSpan.FromSeconds(15);
         private readonly IProviderService _provider;
 
         public ProviderHostedServiceShim(IProviderService provider)
@@ -236,24 +237,46 @@ namespace IBKRProvider
             _provider = provider ?? throw new ArgumentNullException(nameof(provider));
         }
 
-        public Task StartAsync(CancellationToken cancellationToken)
+        protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
-            try
+            while (!stoppingToken.IsCancellationRequested)
             {
-                _provider.CreateConnection();
+                if (!_provider.IsConnected)
+                {
+                    try
+                    {
+                        _provider.CreateConnection();
+                    }
+                    catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+                    {
+                        break;
+                    }
+                    catch
+                    {
+                        // Provider logs the failed state transition. Keep this loop alive
+                        // so a temporary Gateway/TWS outage cannot strand the service.
+                    }
+                }
+
+                try
+                {
+                    await Task.Delay(ConnectionCheckInterval, stoppingToken);
+                }
+                catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+                {
+                    break;
+                }
             }
-            catch { }
-            return Task.CompletedTask;
         }
 
-        public Task StopAsync(CancellationToken cancellationToken)
+        public override async Task StopAsync(CancellationToken cancellationToken)
         {
+            await base.StopAsync(cancellationToken);
             try
             {
                 _provider.Disconnect();
             }
             catch { }
-            return Task.CompletedTask;
         }
     }
 

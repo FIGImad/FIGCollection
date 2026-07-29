@@ -31,6 +31,17 @@ namespace IBKRProvider.Service
         private ReaderSignal? _readerSignal = null;
         private ProviderTask? _task = null;
         private readonly object _connectionLock = new();
+        private static readonly TimeSpan MinimumReconnectInterval = TimeSpan.FromSeconds(5);
+        private DateTime _nextConnectionAttemptUtc = DateTime.MinValue;
+        private ConnectionState _connectionState = ConnectionState.Disconnected;
+        private bool _connectionUnavailableLogged;
+
+        private enum ConnectionState
+        {
+            Disconnected,
+            Connecting,
+            Connected
+        }
 
         public Provider(ILogger<Provider> logger,
                         IServiceProvider serviceProvider,
@@ -61,67 +72,133 @@ namespace IBKRProvider.Service
             {
                 bool alreadyConnected = (_clientSocket?.IsConnected() ?? false); //&& (_wrapper?.ConnectionState.IsReady ?? false);
                 if (alreadyConnected && !forceReconnect)
+                {
+                    _connectionState = ConnectionState.Connected;
                     return;
+                }
 
+                DateTime now = DateTime.UtcNow;
+                if (!forceReconnect && now < _nextConnectionAttemptUtc)
+                {
+                    throw new BrokerConnectionException(
+                        $"IBKR reconnect is already scheduled after {_nextConnectionAttemptUtc:O}");
+                }
+
+                bool connectionWasLost = !alreadyConnected && _connectionState == ConnectionState.Connected;
+                if (connectionWasLost)
+                {
+                    _logger.LogWarning(
+                        "IBKR connection lost for provider {ProviderId}; automatic reconnect attempts are starting",
+                        _options.Id);
+                }
+
+                _connectionState = ConnectionState.Connecting;
                 InternalDisconnect_NoLock();
 
-                _logger.LogDebug($"CreateConnection: Establishing connection to IBKR TWS/Gateway at {_options.Host}:{_options.Port} with ClientId {_options.ClientId}...");
-
-                _readerSignal = new ReaderSignal(() => _task?.Enqueue(new TaskEvent("@PROV_EVT@", new JObject())));
-                _wrapper = new EWrapperImpl(_readerSignal, _logger, _callbackQueue, _connectionSignal);
-                _wrapper.RegisterResponseHandle("NEXT_VALID_ID");
-
-                _clientSocket = new EClientSocket(_wrapper, _readerSignal);
-                _wrapper.ClientSocket = _clientSocket;
-
-                _clientSocket.eConnect(_options.Host, _options.Port, _options.ClientId, _options.EnableFrozenData);
-
-                if (!_clientSocket.IsConnected())
-                {
-                    throw new BrokerConnectionException("Failed to connect to IBKR TWS/Gateway");
-                }
-
-                _reader = new EReader(_clientSocket, _readerSignal);
-                _reader.Start();
-
-                if (_task == null)
-                {
-                    _task = _serviceProvider.GetRequiredService<ProviderTask>();
-                    _task.SetReader(_reader);
-                    _task.StartTask();
-                }
-                else
-                {
-                    _task.SetReader(_reader);
-                    if (_task.Status != TaskStatus.Running)
-                    {
-                        _task.StartTask();
-                    }
-                }
-                // Wait for OrderId
-                string eventId = "NEXT_VALID_ID";
-                int timeoutMs = 5000;
                 try
                 {
-                    var respHandle = _wrapper?.FetchResponse("NEXT_VALID_ID");
-                    if (respHandle != null)
+                    _logger.LogDebug(
+                        "CreateConnection: Establishing connection to IBKR TWS/Gateway at {Host}:{Port} with ClientId {ClientId}...",
+                        _options.Host,
+                        _options.Port,
+                        _options.ClientId);
+
+                    _readerSignal = new ReaderSignal(() => _task?.Enqueue(new TaskEvent("@PROV_EVT@", new JObject())));
+                    _wrapper = new EWrapperImpl(_readerSignal, _logger, _callbackQueue, _connectionSignal);
+                    _wrapper.RegisterResponseHandle("NEXT_VALID_ID");
+
+                    _clientSocket = new EClientSocket(_wrapper, _readerSignal);
+                    _wrapper.ClientSocket = _clientSocket;
+
+                    _clientSocket.eConnect(_options.Host, _options.Port, _options.ClientId, _options.EnableFrozenData);
+
+                    if (!_clientSocket.IsConnected())
                     {
-                        int index = WaitHandle.WaitAny(new WaitHandle[] { respHandle.Event, _appStoppingToken.WaitHandle }, timeoutMs);
+                        throw new BrokerConnectionException("Failed to connect to IBKR TWS/Gateway");
+                    }
 
-                        if (index == 1) // app stopping
-                            throw new OperationCanceledException(_appStoppingToken);
+                    _reader = new EReader(_clientSocket, _readerSignal);
+                    _reader.Start();
 
-                        if (index == WaitHandle.WaitTimeout)
+                    if (_task == null)
+                    {
+                        _task = _serviceProvider.GetRequiredService<ProviderTask>();
+                        _task.SetReader(_reader);
+                        _task.StartTask();
+                    }
+                    else
+                    {
+                        _task.SetReader(_reader);
+                        if (_task.Status != TaskStatus.Running)
                         {
-                            _logger?.LogDebug($"WaitForResponse: Timed out waiting for response for event {eventId} after {timeoutMs} ms.");
+                            _task.StartTask();
                         }
                     }
-                }
-                catch (Exception ex)
-                {
-                    _logger?.LogError(ex, $"WaitForResponse: Exception while waiting for response for event {eventId} - {ex.Message}");
-                }
+                    // Wait for OrderId
+                    string eventId = "NEXT_VALID_ID";
+                    int timeoutMs = 5000;
+                    try
+                    {
+                        var respHandle = _wrapper?.FetchResponse("NEXT_VALID_ID");
+                        if (respHandle != null)
+                        {
+                            int index = WaitHandle.WaitAny(new WaitHandle[] { respHandle.Event, _appStoppingToken.WaitHandle }, timeoutMs);
 
+                            if (index == 1) // app stopping
+                                throw new OperationCanceledException(_appStoppingToken);
+
+                            if (index == WaitHandle.WaitTimeout)
+                            {
+                                _logger.LogDebug(
+                                    "WaitForResponse: Timed out waiting for response for event {EventId} after {TimeoutMs} ms.",
+                                    eventId,
+                                    timeoutMs);
+                            }
+                        }
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        throw;
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(
+                            ex,
+                            "WaitForResponse: Exception while waiting for response for event {EventId} - {Message}",
+                            eventId,
+                            ex.Message);
+                    }
+
+                    _connectionState = ConnectionState.Connected;
+                    _nextConnectionAttemptUtc = DateTime.MinValue;
+                    _connectionUnavailableLogged = false;
+                    _logger.LogInformation(
+                        "IBKR connection established for provider {ProviderId} at {Host}:{Port} with ClientId {ClientId}",
+                        _options.Id,
+                        _options.Host,
+                        _options.Port,
+                        _options.ClientId);
+                }
+                catch
+                {
+                    InternalDisconnect_NoLock();
+                    _connectionState = ConnectionState.Disconnected;
+                    _nextConnectionAttemptUtc = DateTime.UtcNow.Add(MinimumReconnectInterval);
+                    if (!_connectionUnavailableLogged)
+                    {
+                        _logger.LogWarning(
+                            "IBKR connection unavailable for provider {ProviderId}; retrying automatically",
+                            _options.Id);
+                        _connectionUnavailableLogged = true;
+                    }
+                    else
+                    {
+                        _logger.LogDebug(
+                            "IBKR reconnect attempt failed for provider {ProviderId}; automatic retries remain active",
+                            _options.Id);
+                    }
+                    throw;
+                }
             }
         }
 
@@ -168,6 +245,7 @@ namespace IBKRProvider.Service
 
         private void InternalDisconnect_NoLock()
         {
+            bool hadSocket = _clientSocket != null;
             try
             {
                 _clientSocket?.eDisconnect();
@@ -184,7 +262,10 @@ namespace IBKRProvider.Service
 
                 _wrapper?.Dispose();
                 _wrapper = null;
-                Thread.Sleep(1000);
+                if (hadSocket)
+                {
+                    Thread.Sleep(1000);
+                }
             }
         }
 
