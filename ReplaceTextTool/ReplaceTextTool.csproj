@@ -6,7 +6,12 @@
     <UseWindowsForms>true</UseWindowsForms>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <ApplicationIcon>FIG Logo.ico</ApplicationIcon>
   </PropertyGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="FIG Logo.ico" />
+  </ItemGroup>
 
   <ItemGroup>
     <None Update="ReplacementConfig.json">

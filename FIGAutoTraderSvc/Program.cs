@@ -264,6 +264,7 @@ namespace FIGAutoTradeExSvc
             builder.Services.AddHostedService(sp => sp.GetRequiredService<IOrderManagementService>());
 
             builder.Services.AddHostedService<SignalMonitorService>();
+            builder.Services.AddHostedService<SystemAlertMonitorService>();
 
             // Auto-Trade Execution Instanaces
             builder.Services.AddTransient<AutoTradeLiveService>();

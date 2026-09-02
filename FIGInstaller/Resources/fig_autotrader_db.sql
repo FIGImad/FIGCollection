@@ -688,6 +688,9 @@ CREATE TABLE [dbo].[AutoTradeSignal](
 )WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
 ) ON [PRIMARY]
 GO
+CREATE UNIQUE NONCLUSTERED INDEX [UX_AutoTradeSignal_AutoTradeId_SignalId]
+ON [dbo].[AutoTradeSignal] ([AutoTradeId], [SignalId]);
+GO
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -772,12 +775,18 @@ CREATE TABLE [dbo].[Bot](
 	[Group] [varchar](50) NOT NULL,
 	[AccountId] [varchar](50) NOT NULL,
 	[BrokerServiceId] [varchar](50) NOT NULL,
+	[Status] [varchar](20) NOT NULL,
+	[LastUpdated] [int] NOT NULL,
  CONSTRAINT [PK_Bot] PRIMARY KEY CLUSTERED 
 (
 	[Id] ASC
 )WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
 ) ON [PRIMARY]
 GO
+ALTER TABLE [dbo].[Bot] ADD CONSTRAINT [DF_Bot_Status] DEFAULT 'ACTIVE' FOR [Status];
+ALTER TABLE [dbo].[Bot] ADD CONSTRAINT [DF_Bot_LastUpdated] DEFAULT 0 FOR [LastUpdated];
+GO
+
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -2555,6 +2564,27 @@ BEGIN
                [ManualQty]       = @ManualQty,
                [LastUpdated]     = @LastUpdated
          WHERE Id = @IdNew;
+
+    END
+
+    -- A failed, canceled, or final-partial close with a non-zero position can
+    -- leave exposure at the broker. Block future openings for this bot until
+    -- the position has been reconciled manually. Preserve stronger/manual bot
+    -- states by transitioning ACTIVE bots only.
+    DECLARE @PositionQty int =
+        CASE
+            WHEN @OpenStatus = 'FILLED_MANUALLY' THEN @ManualQty
+            ELSE @FilledQty
+        END;
+
+    IF @CloseStatus IN ('FAILED', 'CANCELED', 'FILLED_PARTIALLY_FIN')
+       AND ISNULL(@PositionQty, 0) <> 0
+    BEGIN
+        UPDATE [dbo].[Bot] WITH (ROWLOCK)
+           SET [Status] = 'SUSPECT',
+               [LastUpdated] = DATEDIFF(SECOND, '19700101', GETUTCDATE())
+         WHERE [Id] = @BotId
+           AND [Status] = 'ACTIVE';
     END
 
     RETURN @IdNew;
@@ -2692,6 +2722,8 @@ BEGIN
 		  ,[Group]
 		  ,[AccountId]
 		  ,[BrokerServiceId]
+		  ,[Status]
+		  ,[LastUpdated]
 		FROM [dbo].[Bot]
 		WHERE @AccountId = [AccountId]
 END
@@ -2706,7 +2738,6 @@ CREATE PROCEDURE [dbo].[usp_bot_select]
 )
 AS
 BEGIN
-
 	-- SET NOCOUNT ON added to prevent extra result sets from
 	-- interfering with SELECT statements.
 	SET NOCOUNT ON;
@@ -2715,6 +2746,8 @@ BEGIN
 		  ,[Group]
 		  ,[AccountId]
 		  ,[BrokerServiceId]
+		  ,[Status]
+		  ,[LastUpdated]
 		FROM [dbo].[Bot]
 		WHERE @Id = -1 OR @Id = [Id]
 END
@@ -2729,11 +2762,22 @@ CREATE PROCEDURE [dbo].[usp_bot_upsert]
 	@Id int,
 	@Group varchar(50),
 	@AccountId varchar(50),
-	@BrokerServiceId varchar(50)
+	@BrokerServiceId varchar(50),
+	@Status varchar(20),
+	@LastUpdated int
 )
 
 AS
 BEGIN
+    IF @LastUpdated <= 0
+    BEGIN
+        SET @LastUpdated = DATEDIFF(SECOND, '19700101', GETUTCDATE());
+    END
+
+	IF @Status NOT IN ('ACTIVE', 'SUSPECT', 'SUSPENDED')
+	BEGIN
+		SET @Status = 'ACTIVE'
+	END
 
 	-- Check if Symbol exists
 	SELECT @IdNew = [Id] FROM [Bot] WHERE [Id] = @Id;
@@ -2744,11 +2788,15 @@ BEGIN
 			  [Group]
 			, [AccountId]
 			, [BrokerServiceId]
+			, [Status]
+			, [LastUpdated]
 		)
 		VALUES (
 			  @Group
 			, @AccountId
 			, @BrokerServiceId
+			, @Status
+			, @LastUpdated
 		)
 		SET @IdNew = SCOPE_IDENTITY();  
 
@@ -2760,6 +2808,8 @@ BEGIN
 			  [Group] = @Group
 			, [AccountId] = @AccountId
 			, [BrokerServiceId] = @BrokerServiceId
+			, [Status] = @Status
+			, [LastUpdated] = @LastUpdated
 		WHERE Id = @IdNew
 
 	END
@@ -4389,10 +4439,10 @@ BEGIN
 			, [ContractSize] = @ContractSize
 			, [Exchange] = @Exchange
 			, [PeriodMultiplier] = @PeriodMultiplier
-		WHERE Id = @IdNew;
-	END
+         WHERE Id = @IdNew;
+    END
 
-	RETURN @IdNew;
+    RETURN @IdNew;
 END
 
 GO
@@ -4976,6 +5026,8 @@ GO
 INSERT [dbo].[OrderStatus] ([Status], [Description]) VALUES (N'NONE', N'Not initialized yet')
 GO
 INSERT [dbo].[OrderStatus] ([Status], [Description]) VALUES (N'PROCESSING', N'Order is in progress')
+GO
+INSERT [dbo].[OrderStatusCode] ([Code], [Status], [Desc]) VALUES (-31, N'IGNORED_BOT_INACTIVE', N'BOT status is not ACTIVE')
 GO
 INSERT [dbo].[OrderStatusCode] ([Code], [Status], [Desc]) VALUES (-30, N'IGNORED_DUPLICATE_ORDER', N'Order is duplicate based on Ref and Tag')
 GO

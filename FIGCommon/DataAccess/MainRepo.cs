@@ -1352,6 +1352,13 @@ namespace FIGCommon.DataAccess
 
         #endregion Devices
 
+        #region SystemAlert
+        public static List<SystemAlertRS> GetPendingSystemAlerts(int maxRec)
+        {
+            return RBASE.SelectMulti<SystemAlertRS, int>(new SystemAlertRS(), "usp_systemalert_select_pending", "@MaxRec", maxRec);
+        }
+        #endregion SystemAlert
+
 
     }
 }

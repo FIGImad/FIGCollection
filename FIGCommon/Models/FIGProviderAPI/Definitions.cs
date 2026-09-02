@@ -73,6 +73,7 @@ namespace FIGCommon.Models.FIGProviderAPI
         public const int IGNORED_COMM_ERR = -28;
         public const int IGNORED_DATA_INVALID = -29;
         public const int IGNORED_DUPLICATE_ORDER = -30;
+        public const int IGNORED_BOT_INACTIVE = -31;
 
 
         public const int INPROGRESS = 1;

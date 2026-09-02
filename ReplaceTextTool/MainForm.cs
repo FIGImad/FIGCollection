@@ -13,6 +13,7 @@ internal sealed class MainForm : Form
     public MainForm()
     {
         Text = "ReplaceTextTool";
+        Icon = FigIcon.Create();
         StartPosition = FormStartPosition.CenterScreen;
         MinimumSize = new Size(1050, 560);
         ClientSize = new Size(1400, 720);

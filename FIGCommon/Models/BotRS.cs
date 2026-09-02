@@ -10,6 +10,8 @@ namespace FIGCommon.Models
         public string Group { get; set; } = "";
         public string AccountId { get; set; } = "";
         public string BrokerServiceId { get; set; } = "";
+        public string Status { get; set; } = "ACTIVE";
+        public long LastUpdated { get; set; } = 0;
 
         public BotRS() { }
         public BotRS(BotRS data)
@@ -38,12 +40,24 @@ namespace FIGCommon.Models
                 dstF.SetValue(this, f.GetValue(src, null), null);
             }
         }
+
+        public bool IsActive()
+        {
+            return Status == "ACTIVE";
+        }
+        public bool IsSuspect()
+        {
+            return Status == "SUSPECT";
+        }
+
         public void ToSqlCommandParameters(SqlParameterCollection parameters)
         {
             parameters.AddWithValue("@Id", Id);
             parameters.AddWithValue("@Group", Group);
             parameters.AddWithValue("@AccountId", AccountId);
             parameters.AddWithValue("@BrokerServiceId", BrokerServiceId);
+            parameters.AddWithValue("@Status", Status);
+            parameters.AddWithValue("@LastUpdated", LastUpdated);
         }
 
         public BotRS CreateFromSqlDataReader(SqlDataReader reader)
@@ -54,7 +68,9 @@ namespace FIGCommon.Models
                 Id = SqlReaderUtil.GetInt32(reader, nSeq++),
                 Group = SqlReaderUtil.GetString(reader, nSeq++),
                 AccountId = SqlReaderUtil.GetString(reader, nSeq++),
-                BrokerServiceId = SqlReaderUtil.GetString(reader, nSeq++)
+                BrokerServiceId = SqlReaderUtil.GetString(reader, nSeq++),
+                Status = SqlReaderUtil.GetString(reader, nSeq++),
+                LastUpdated = (long) SqlReaderUtil.GetInt32(reader, nSeq++)
             };
             return rec;
         }

@@ -141,6 +141,12 @@ namespace FIGCommon.Services
                 _logger.LogDebug("Invalid order id: {0}", id);
                 return false;
             }
+
+            _logger.LogInformation(
+                "BROKER_DISPATCH_REQUESTED OrderId={OrderId}, Attempt={Attempt}",
+                id.Value,
+                attempt);
+
             AutoTradeSignalOrderRS? order = null;
             AutoTradeSignalRS? autoTradeSignal = null;
             try
@@ -204,10 +210,29 @@ namespace FIGCommon.Services
                         TimeInForce = "GTC" // need to update when different time in force is supported
                     };
                     int millisecondsTimeout = 60000;  // wait for a minute, mainly for communication, however order is sent with no wait at the broker side
+
+                    _logger.LogInformation(
+                        "BROKER_SEND_BEGIN OrderId={OrderId}, AutoTradeSignalId={AutoTradeSignalId}, OrderTag={OrderTag}, RequestRef={RequestRef}, BotId={BotId}, BrokerServiceId={BrokerServiceId}, Symbol={Symbol}, Qty={Qty}",
+                        order.Id,
+                        autoTradeSignal.Id,
+                        order.OrderTag,
+                        order.RequestRef,
+                        autoTradeSignal.BotId,
+                        bot.BrokerServiceId,
+                        ticker.LocalSymbol,
+                        order.Qty);
+
                     OrderStatusDto? status = await _brokerSvc.PlaceOrderAsync(req, bot.BrokerServiceId, millisecondsTimeout, _serviceCts.Token);
                     // Update order status based on response from broker
                     if (status != null)
                     {
+                        _logger.LogInformation(
+                            "BROKER_SEND_ACK OrderId={OrderId}, RequestRef={RequestRef}, StatusCode={StatusCode}, FilledQty={FilledQty}, BrokerRef={BrokerRef}",
+                            order.Id,
+                            order.RequestRef,
+                            status.StatusCode,
+                            status.FilledQty,
+                            status.BrokerRef);
                         UpdateOrderStatus(order, autoTradeSignal, status.StatusCode, status.FilledQty, status.AvgFillPrice, status.BrokerRef);
                         // schedule check for order status update in case we do not receive any update from broker within certain time, this is to
                         // handle the scenario where order is placed successfully at broker but we do not receive the response due to communication issue,
@@ -221,7 +246,20 @@ namespace FIGCommon.Services
                         return true;
                     }
 
+                    _logger.LogError(
+                        "BROKER_SEND_NO_RESPONSE OrderId={OrderId}, RequestRef={RequestRef}, BrokerServiceId={BrokerServiceId}; marking order as connection failure",
+                        order.Id,
+                        order.RequestRef,
+                        bot.BrokerServiceId);
                     UpdateOrderStatus(order, autoTradeSignal, OrderStatusCodes.FAIL_CONNECTION);
+                }
+                else
+                {
+                    _logger.LogWarning(
+                        "BROKER_SEND_SKIPPED OrderId={OrderId}, RequestRef={RequestRef}, CurrentStatus={CurrentStatus}; only NEW orders may be submitted",
+                        order.Id,
+                        order.RequestRef,
+                        order.Status);
                 }
             }
             catch (AppErrorException ex)

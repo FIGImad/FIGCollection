@@ -23,6 +23,12 @@ namespace FIGAutoTradeExSvc.Services
         private int openSignalExpiryMinutes = -1;
         private int closeSignalExpiryMinutes = -1;
         private int defaultSignalExpiryMinutes = 10020;
+        private const int MaxMissingSignalRetries = 5;
+        private readonly object _missingSignalRetryLock = new();
+        private int _missingSignalId = -1;
+        private int _missingSignalRetryCount = 0;
+        private long _processInvocationSequence = 0;
+        private int _activeProcessInvocations = 0;
 
         public AutoTradeLiveService(ILogger<AutoTradeLiveService> logger,
                                     IConfiguration config,
@@ -127,13 +133,58 @@ namespace FIGAutoTradeExSvc.Services
             }
         }
 
-        protected Task Process(object? sender = null, TaskEventArgs? e = null)
+        protected async Task Process(object? sender = null, TaskEventArgs? e = null)
         {
             int autoTradeId = _autoTradeRec?.Id ?? -1;
+            long invocationId = Interlocked.Increment(ref _processInvocationSequence);
+            int activeInvocations = Interlocked.Increment(ref _activeProcessInvocations);
+            using var logScope = _logger.BeginScope(new Dictionary<string, object>
+            {
+                ["AutoTradeId"] = autoTradeId,
+                ["ProcessInvocationId"] = invocationId
+            });
+
+            _logger.LogInformation(
+                "AutoTrade({AutoTradeId}) - PROCESS_INVOCATION_STARTED InvocationId={InvocationId}, ActiveInvocations={ActiveInvocations}, SchedulerTaskId={SchedulerTaskId}",
+                autoTradeId,
+                invocationId,
+                activeInvocations,
+                e?.EventName ?? "DIRECT");
+
+            if (activeInvocations > 1)
+            {
+                _logger.LogWarning(
+                    "AutoTrade({AutoTradeId}) - OVERLAPPING_PROCESS_INVOCATIONS InvocationId={InvocationId}, ActiveInvocations={ActiveInvocations}. " +
+                    "The per-AutoTrade lock will serialize database processing, but an earlier invocation may still be dispatching a broker request",
+                    autoTradeId,
+                    invocationId,
+                    activeInvocations);
+            }
+
+            try
+            {
+                await ProcessCore(invocationId);
+            }
+            finally
+            {
+                int remainingInvocations = Interlocked.Decrement(ref _activeProcessInvocations);
+                _logger.LogInformation(
+                    "AutoTrade({AutoTradeId}) - PROCESS_INVOCATION_FINISHED InvocationId={InvocationId}, RemainingInvocations={RemainingInvocations}",
+                    autoTradeId,
+                    invocationId,
+                    remainingInvocations);
+            }
+        }
+
+        private async Task ProcessCore(long invocationId)
+        {
+            int autoTradeId = _autoTradeRec?.Id ?? -1;
+            string strategyName = _autoTradeRec?.Strategy ?? "Unknown";
             int maxAttempts = 5;
             var lk = AutoTradeProcessLock.GetLock(autoTradeId);
             List<int> placeOrderList = new();
-            bool dispatchOrders = false;
+            bool processingSucceeded = false;
+            bool retryProcessing = false;
 
             // Global slot acquired first (before per-AutoTrade lock) to cap the number
             // of concurrent SQL transactions and prevent cross-AutoTrade deadlocks.
@@ -142,38 +193,155 @@ namespace FIGAutoTradeExSvc.Services
             {
                 for (int attempt = 0; attempt < maxAttempts; attempt++)
                 {
+                    int retryDelayMs = 0;
+                    _logger.LogDebug(
+                        "AutoTrade({AutoTradeId}) - PROCESS_LOCK_WAIT InvocationId={InvocationId}, Attempt={Attempt}",
+                        autoTradeId,
+                        invocationId,
+                        attempt + 1);
                     lk.WaitHighPriority();
+                    _logger.LogDebug(
+                        "AutoTrade({AutoTradeId}) - PROCESS_LOCK_ACQUIRED InvocationId={InvocationId}, Attempt={Attempt}",
+                        autoTradeId,
+                        invocationId,
+                        attempt + 1);
                     try
                     {
                         ProcessInternal(out placeOrderList);
-                        dispatchOrders = true;
+
+                        var postcondition = VerifyLatestStartSignalPersisted(autoTradeId, strategyName);
+                        if (!postcondition.Satisfied)
+                        {
+                            int missingRetryDelayMs = RegisterMissingSignalRetry(postcondition.SignalId);
+                            if (missingRetryDelayMs > 0)
+                            {
+                                _logger.LogCritical(
+                                    "AutoTrade({AutoTradeId}) - POSTCONDITION_FAILED: Signal({SignalId}) has no AutoTradeSignal. " +
+                                    "Scheduling safeguard retry {RetryCount}/{MaxRetries} in {DelayMs} ms. Reason: {Reason}",
+                                    autoTradeId,
+                                    postcondition.SignalId,
+                                    GetMissingSignalRetryCount(),
+                                    MaxMissingSignalRetries,
+                                    missingRetryDelayMs,
+                                    postcondition.Reason);
+                                retryProcessing = true;
+                                retryDelayMs = missingRetryDelayMs;
+                            }
+                            else
+                            {
+                                _logger.Alert(
+                                    "AutoTrade({AutoTradeId}) - POSTCONDITION_FAILED: Signal({SignalId}) is still missing after {MaxRetries} retries. Manual intervention required.",
+                                    autoTradeId,
+                                    postcondition.SignalId,
+                                    MaxMissingSignalRetries);
+                            }
+                            break;
+                        }
+
+                        ClearMissingSignalRetry(postcondition.SignalId);
+                        processingSucceeded = true;
                         break; // if processing is successful, break out of the retry loop
                     }
                     catch (SqlLockException ex)
                     {
                         _logger?.LogWarning($"AutoTrade({autoTradeId}) - Attempt {attempt + 1}/{maxAttempts} - Database lock encountered. Retrying... - {ex.Message}");
                         if (attempt == maxAttempts - 1)
+                        {
+                            _logger!.Alert(
+                                "AutoTrade({AutoTradeId}) - DATABASE_LOCK_RETRIES_EXHAUSTED after {MaxAttempts} attempts while updating AutoTradeSignal. " +
+                                "Last error: {ErrorMessage}. Processing will be rescheduled; Manual intervention required if the alert repeats.",
+                                autoTradeId,
+                                maxAttempts,
+                                ex.Message);
+                            retryProcessing = true;
                             break;
+                        }
 
-                        Thread.Sleep(500);
+                        retryDelayMs = 500;
                     }
-                    catch (Microsoft.Data.SqlClient.SqlException ex) when (ex.Number == 1205)
+                    catch (Microsoft.Data.SqlClient.SqlException ex) when (IsTransientSqlException(ex))
                     {
-                        _logger?.LogWarning($"AutoTrade({autoTradeId}) - Attempt {attempt + 1}/{maxAttempts} - SQL deadlock. Retrying... - {ex.Message}");
+                        _logger.LogWarning(
+                            ex,
+                            "AutoTrade({AutoTradeId}) - Attempt {Attempt}/{MaxAttempts} - transient SQL error {SqlErrorNumber}. Retrying",
+                            autoTradeId,
+                            attempt + 1,
+                            maxAttempts,
+                            ex.Number);
                         if (attempt == maxAttempts - 1)
+                        {
+                            if (ex.Number == 1205)
+                            {
+                                _logger.Alert(
+                                    "AutoTrade({AutoTradeId}) - SQL_DEADLOCK_RETRIES_EXHAUSTED after {MaxAttempts} attempts while updating AutoTradeSignal. " +
+                                    "SQL error {SqlErrorNumber}: {ErrorMessage}. Processing will be rescheduled; Manual intervention required if the alert repeats.",
+                                    autoTradeId,
+                                    maxAttempts,
+                                    ex.Number,
+                                    ex.Message);
+                            }
+                            else
+                            {
+                                _logger.Alert(
+                                    "AutoTrade({AutoTradeId}) - TRANSIENT_SQL_RETRIES_EXHAUSTED after {MaxAttempts} attempts while updating AutoTradeSignal. " +
+                                    "SQL error {SqlErrorNumber}: {ErrorMessage}. Processing will be rescheduled; Manual intervention required if the alert repeats.",
+                                    autoTradeId,
+                                    maxAttempts,
+                                    ex.Number,
+                                    ex.Message);
+                            }
+                            retryProcessing = true;
                             break;
+                        }
 
-                        Thread.Sleep(200 * (attempt + 1)); // increasing backoff: 200, 400, 600, 800 ms
+                        retryDelayMs = 500 * (attempt + 1); // increasing backoff: 500, 1000, 1500, 2000 ms
+                    }
+                    catch (Microsoft.Data.SqlClient.SqlException ex) when (ex.Number == 2601 || ex.Number == 2627)
+                    {
+                        // A second service instance may have inserted the same
+                        // (AutoTradeId, SignalId) while this pass was running.
+                        var postcondition = VerifyLatestStartSignalPersisted(autoTradeId, strategyName);
+                        if (postcondition.Satisfied)
+                        {
+                            _logger.LogWarning(
+                                "AutoTrade({AutoTradeId}) - Duplicate insert race for Signal({SignalId}) resolved by existing AutoTradeSignal",
+                                autoTradeId,
+                                postcondition.SignalId);
+                            ClearMissingSignalRetry(postcondition.SignalId);
+                            processingSucceeded = true;
+                            break;
+                        }
+
+                        _logger.LogError(ex,
+                            "AutoTrade({AutoTradeId}) - Duplicate-key SQL error occurred but the signal postcondition is not satisfied",
+                            autoTradeId);
+                        _logger.Alert(
+                            "AutoTrade({AutoTradeId}) - DUPLICATE_SIGNAL_CONFLICT_UNRESOLVED. A duplicate-key error occurred, but no valid AutoTradeSignal could be verified. " +
+                            "SQL error {SqlErrorNumber}: {ErrorMessage}. Processing will be rescheduled and the database requires investigation. Manual intervention required.",
+                            autoTradeId,
+                            ex.Number,
+                            ex.Message);
+                        retryProcessing = true;
+                        break;
                     }
                     catch (Exception ex)
                     {
                         _logger?.LogError(ex, $"AutoTrade({autoTradeId}) - Attempt {attempt + 1}/{maxAttempts} - exception.");
+                        // Signal notifications are one-shot. A failed invocation must
+                        // leave another opportunity to process it without a service restart.
+                        retryProcessing = true;
                         break;
                     }
                     finally
                     {
                         lk.Release(); // released before any broker I/O
                     }
+
+                    // Do not hold the per-AutoTrade lock or block a thread-pool thread
+                    // during deadlock backoff. Broker callbacks can update order state
+                    // while this processing pass waits to retry.
+                    if (retryDelayMs > 0)
+                        await Task.Delay(retryDelayMs);
                 }
             }
             finally
@@ -183,26 +351,192 @@ namespace FIGAutoTradeExSvc.Services
 
             // Dispatch broker calls entirely outside the priority lock so they
             // never delay the next trade processing cycle.
-            if (dispatchOrders)
+            if (processingSucceeded)
             {
                 foreach (var orderId in placeOrderList)
-                    if (orderId > 0) _ = _orderMgt.PlaceOrderAsync(orderId);
+                {
+                    if (orderId > 0)
+                    {
+                        bool sent = await _orderMgt.PlaceOrderAsync(orderId);
+                        if (!sent)
+                        {
+                            _logger?.LogError(
+                                "AutoTrade({AutoTradeId}) - Order {OrderId} was committed but could not be sent to FIGBrokerSvc",
+                                autoTradeId,
+                                orderId);
+                        }
+                    }
+                }
+
+                _logger?.LogInformation(
+                    "AutoTrade({AutoTradeId}) - PROCESS_COMPLETED for strategy {Strategy}; committed order IDs: [{OrderIds}]",
+                    autoTradeId,
+                    strategyName,
+                    string.Join(",", placeOrderList));
+            }
+            else if (retryProcessing)
+            {
+                // A one-shot signal wake-up must not be the only opportunity to close a
+                // position. If every database attempt fails, enqueue a fresh pass so the
+                // signal is retried before its expiry window elapses.
+                int delayMs = GetMissingSignalRetryDelayMsOrDefault(10000);
+                _logger.LogWarning(
+                    "AutoTrade({AutoTradeId}) - PROCESS_RETRY_SCHEDULED for strategy {Strategy} in {DelayMs} ms",
+                    autoTradeId,
+                    strategyName,
+                    delayMs);
+                await _taskScheduler.ScheduleEventAsync(_ownerId, "Process", delayMs, Process);
+            }
+        }
+
+        private readonly record struct SignalPostconditionResult(bool Satisfied, int SignalId, string Reason);
+
+        private SignalPostconditionResult VerifyLatestStartSignalPersisted(int autoTradeId, string strategyName)
+        {
+            SignalRS? latestSignal = MainRepo.QueryLastSignal(strategyName);
+            if (latestSignal == null)
+            {
+                _logger.LogWarning(
+                    "AutoTrade({AutoTradeId}) - PROCESS_OUTCOME=NO_LATEST_SIGNAL for strategy {Strategy}",
+                    autoTradeId,
+                    strategyName);
+                return new SignalPostconditionResult(true, -1, "No latest signal");
             }
 
-            return Task.CompletedTask;
+            _logger.LogInformation(
+                "AutoTrade({AutoTradeId}) - LATEST_SIGNAL SignalId={SignalId}, Strategy={Strategy}, Status={Status}, Canceled={Canceled}, StartTime={StartTime}, StopTime={StopTime}",
+                autoTradeId,
+                latestSignal.Id,
+                strategyName,
+                latestSignal.Status,
+                latestSignal.Canceled,
+                latestSignal.StartTime,
+                latestSignal.StopTime);
+
+            if (latestSignal.Canceled)
+            {
+                _logger.LogInformation(
+                    "AutoTrade({AutoTradeId}) - PROCESS_OUTCOME=LATEST_SIGNAL_CANCELED Signal({SignalId})",
+                    autoTradeId,
+                    latestSignal.Id);
+                return new SignalPostconditionResult(true, latestSignal.Id, "Latest signal is canceled");
+            }
+
+            if (latestSignal.Status != SignalStatus.Start)
+            {
+                _logger.LogInformation(
+                    "AutoTrade({AutoTradeId}) - PROCESS_OUTCOME=LATEST_SIGNAL_NOT_START Signal({SignalId}), Status={Status}",
+                    autoTradeId,
+                    latestSignal.Id,
+                    latestSignal.Status);
+                return new SignalPostconditionResult(true, latestSignal.Id, $"Latest signal status is {latestSignal.Status}");
+            }
+
+            AutoTradeSignalRS? persistedSignal = MainRepo
+                .GetAutoTradeSignalsFromSingalId(latestSignal.Id)
+                .FirstOrDefault(signal => signal.AutoTradeId == autoTradeId);
+
+            if (persistedSignal == null)
+            {
+                return new SignalPostconditionResult(
+                    false,
+                    latestSignal.Id,
+                    "Eligible START signal was not persisted by the processing pass");
+            }
+
+            _logger.LogInformation(
+                "AutoTrade({AutoTradeId}) - PROCESS_OUTCOME=SIGNAL_PERSISTED Signal({SignalId}), AutoTradeSignalId={AutoTradeSignalId}, OpenStatus={OpenStatus}, OpenStatusCode={OpenStatusCode}, CloseStatus={CloseStatus}, LastOrderId={LastOrderId}",
+                autoTradeId,
+                latestSignal.Id,
+                persistedSignal.Id,
+                persistedSignal.OpenStatus,
+                persistedSignal.OpenStatusCode,
+                persistedSignal.CloseStatus,
+                persistedSignal.LastOrder?.Id ?? -1);
+
+            return new SignalPostconditionResult(true, latestSignal.Id, "AutoTradeSignal exists");
+        }
+
+        private int RegisterMissingSignalRetry(int signalId)
+        {
+            lock (_missingSignalRetryLock)
+            {
+                if (_missingSignalId != signalId)
+                {
+                    _missingSignalId = signalId;
+                    _missingSignalRetryCount = 0;
+                }
+
+                _missingSignalRetryCount++;
+                if (_missingSignalRetryCount > MaxMissingSignalRetries)
+                    return -1;
+
+                return Math.Min(30000, 1000 * (1 << (_missingSignalRetryCount - 1)));
+            }
+        }
+
+        private void ClearMissingSignalRetry(int signalId)
+        {
+            lock (_missingSignalRetryLock)
+            {
+                if (signalId == -1 || _missingSignalId == signalId)
+                {
+                    _missingSignalId = -1;
+                    _missingSignalRetryCount = 0;
+                }
+            }
+        }
+
+        private int GetMissingSignalRetryCount()
+        {
+            lock (_missingSignalRetryLock)
+            {
+                return _missingSignalRetryCount;
+            }
+        }
+
+        private int GetMissingSignalRetryDelayMsOrDefault(int defaultDelayMs)
+        {
+            lock (_missingSignalRetryLock)
+            {
+                if (_missingSignalRetryCount <= 0)
+                    return defaultDelayMs;
+
+                return Math.Min(30000, 1000 * (1 << (_missingSignalRetryCount - 1)));
+            }
+        }
+
+        private static bool IsTransientSqlException(Microsoft.Data.SqlClient.SqlException ex)
+        {
+            return ex.Number is -2      // command timeout
+                or 64                   // connection dropped
+                or 233                  // connection initialization failure
+                or 1205                 // deadlock victim
+                or 4060                 // cannot open database
+                or 10928 or 10929       // resource throttling
+                or 40197 or 40501 or 40613
+                or 49918 or 49919 or 49920
+                or 10053 or 10054 or 10060;
         }
         protected void ProcessInternal(out List<int> placeOrderList)
         {
-            placeOrderList = new();
             lock (_lockAccess)
             {
                 int autoTradeId = _autoTradeRec?.Id ?? -1;
                 string autoTradeName = _autoTradeRec?.Name ?? "Unknown";
                 string strategyName = _autoTradeRec?.Strategy ?? "Unknown";
+                int botId = _autoTradeRec?.BotId ?? -1;
+                BotRS? bot = MainRepo.GetBot(botId);
+
                 // get current time in EPOCH UTC
                 long currentTime = DateTimeUtil.CurrentUTCUnixTime();
 
-                _logger?.LogDebug("AutoTrade({0}) - Processing Signal Event", autoTradeId);
+                _logger.LogInformation(
+                    "AutoTrade({AutoTradeId}) - PROCESS_BEGIN Strategy={Strategy}, BotId={BotId}, BotStatus={BotStatus}",
+                    autoTradeId,
+                    strategyName,
+                    botId,
+                    bot?.Status ?? "NOT_FOUND");
 
 
                 try
@@ -215,6 +549,33 @@ namespace FIGAutoTradeExSvc.Services
                     // ------------------------------------------------------------------------------------
                     var pendingAutoTradeSignal = MainRepo.GetTopAutoTradeSignal(autoTradeId);
                     SignalRS? pendingSignal = pendingAutoTradeSignal != null ? MainRepo.GetSignal(pendingAutoTradeSignal.SignalId) : null;
+                    if (pendingAutoTradeSignal == null)
+                    {
+                        _logger.LogInformation("AutoTrade({AutoTradeId}) - PENDING_SIGNAL=NONE", autoTradeId);
+                    }
+                    else
+                    {
+                        _logger.LogInformation(
+                            "AutoTrade({AutoTradeId}) - PENDING_SIGNAL AutoTradeSignalId={AutoTradeSignalId}, SignalId={SignalId}, OpenStatus={OpenStatus}, OpenStatusCode={OpenStatusCode}, CloseStatus={CloseStatus}, CloseStatusCode={CloseStatusCode}, FilledQty={FilledQty}, ManualQty={ManualQty}",
+                            autoTradeId,
+                            pendingAutoTradeSignal.Id,
+                            pendingAutoTradeSignal.SignalId,
+                            pendingAutoTradeSignal.OpenStatus,
+                            pendingAutoTradeSignal.OpenStatusCode,
+                            pendingAutoTradeSignal.CloseStatus,
+                            pendingAutoTradeSignal.CloseStatusCode,
+                            pendingAutoTradeSignal.FilledQty,
+                            pendingAutoTradeSignal.ManualQty);
+                    }
+
+                    if (pendingAutoTradeSignal != null && pendingSignal == null)
+                    {
+                        _logger.LogError(
+                            "AutoTrade({AutoTradeId}) - PENDING_SIGNAL_DATA_MISSING: Signal({SignalId}) referenced by AutoTradeSignal({AutoTradeSignalId}) was not found",
+                            autoTradeId,
+                            pendingAutoTradeSignal.SignalId,
+                            pendingAutoTradeSignal.Id);
+                    }
                     if (pendingAutoTradeSignal != null && pendingSignal != null)
                     {
 
@@ -233,7 +594,7 @@ namespace FIGAutoTradeExSvc.Services
                                 pendingAutoTradeSignal.CloseStatusCode = OrderStatusCodes.FAIL_CLOSING_INCOMPLETE_ORDER;
                                 pendingAutoTradeSignal.CloseStatus = OrderStatusCodes.GetOrderStatus(pendingAutoTradeSignal.CloseStatusCode);
                                 pendingAutoTradeSignal.LastUpdated = -1;
-                                _logger?.Alert($"AutoTrade({autoTradeId}) - Closing unprocessed signal for strategy {strategyName}, AutoTrade: {autoTradeName}");
+                                _logger?.Alert($"AutoTrade({autoTradeId}) - Closing unprocessed signal id: {pendingSignal.Id}, for strategy {strategyName}, AutoTrade: {autoTradeName}, Manual intervention required.");
                             }
                             // in the case when it is showing as processing... check the status of the order
                             // if order is still processing then we can cancel the order and mark the signal as canceled by system
@@ -244,7 +605,7 @@ namespace FIGAutoTradeExSvc.Services
                                 pendingAutoTradeSignal.CloseStatusCode = OrderStatusCodes.FAIL_CLOSING_INCOMPLETE_ORDER;
                                 pendingAutoTradeSignal.CloseStatus = OrderStatusCodes.GetOrderStatus(pendingAutoTradeSignal.CloseStatusCode);
                                 pendingAutoTradeSignal.LastUpdated = -1;
-                                _logger?.Alert($"AutoTrade({autoTradeId}) - Canceling closing incomplete signal for strategy {strategyName}, AutoTrade: {autoTradeName}, Manual intervention is required, check if the order is filled and close it manually.");
+                                _logger?.Alert($"AutoTrade({autoTradeId}) - Failed closing incomplete signal for signal id: {pendingSignal.Id}, strategy {strategyName}, AutoTrade: {autoTradeName}, Manual intervention required, check if the order is filled and close it manually.");
                             }
                             else if (pendingAutoTradeSignal.OpenStatus == OrderStatus.FAILED || pendingAutoTradeSignal.OpenStatus == OrderStatus.CANCELED)
                             {
@@ -262,6 +623,7 @@ namespace FIGAutoTradeExSvc.Services
                                 {
                                     // cancel the existing open order for the signal if still partially filled and mark it as partially filled - final
                                     //todo - Alert
+                                    _logger?.Alert($"AutoTrade({autoTradeId}) - Partially filled position will be closed... Check transaction for signal id: {pendingSignal.Id},  {strategyName} signal, AutoTrade: {autoTradeName}, Manual intervention required.");
                                 }
                                 pendingAutoTradeSignal.LastUpdated = -1;
 
@@ -282,6 +644,8 @@ namespace FIGAutoTradeExSvc.Services
                                         pendingAutoTradeSignal.CloseStatusCode = OrderStatusCodes.FAIL_EXPIRED;
                                         pendingAutoTradeSignal.CloseStatus = OrderStatusCodes.GetOrderStatus(pendingAutoTradeSignal.CloseStatusCode);
                                         pendingAutoTradeSignal.LastUpdated = -1;
+                                        // why is it expired... that's dangerous.. alert and set bot as suspect
+                                        _logger?.Alert($"AutoTrade({autoTradeId}) - Failed to close autotrade signal id: {pendingSignal.Id}, - signal expired for strategy {strategyName}, AutoTrade: {autoTradeName}");
                                     }
                                     else
                                     {
@@ -317,22 +681,42 @@ namespace FIGAutoTradeExSvc.Services
                                             tx = MainRepo.OpenTransaction();
                                             if (tx == null)
                                             {
-                                                _logger?.LogCritical($"AutoTrade({autoTradeId}) - Error opening database transaction - critical");
+                                                throw new InvalidOperationException(
+                                                    $"AutoTrade({autoTradeId}) - Could not open close-order database transaction");
                                             }
                                             pendingAutoTradeSignal.LastOrder = MainRepo.UpsertAutoTradeSignalOrder(closeOrder, tx);
                                             MainRepo.UpsertAutoTradeSignal(pendingAutoTradeSignal, tx);
                                             MainRepo.CommitTransaction(tx);
                                             placeOrderList.Add(pendingAutoTradeSignal.LastOrder?.Id ?? -1);
                                             isSignalHandled = true;
+                                            _logger?.LogInformation(
+                                                "AutoTrade({AutoTradeId}) - CLOSE_ORDER_COMMITTED Signal({SignalId}), AutoTradeSignalId={AutoTradeSignalId}, OrderId={OrderId}, Qty={Qty}",
+                                                autoTradeId,
+                                                pendingSignal.Id,
+                                                pendingAutoTradeSignal.Id,
+                                                pendingAutoTradeSignal.LastOrder?.Id ?? -1,
+                                                qty);
                                         }
                                         catch (Exception ex)
                                         {
-                                            _logger?.LogCritical($"AutoTrade({autoTradeId}) - Error processing close signal: {ex.Message}");
-                                            MainRepo.RollbackTransaction(tx);
-                                            // Restore in-memory state so the fallthrough UpsertAutoTradeSignal
-                                            // writes the original values, not the failed INPROGRESS state.
+                                            _logger?.LogCritical(ex, $"AutoTrade({autoTradeId}) - Error processing close signal");
+                                            try
+                                            {
+                                                MainRepo.RollbackTransaction(tx);
+                                            }
+                                            catch (Exception rollbackEx)
+                                            {
+                                                _logger?.LogError(rollbackEx,
+                                                    "AutoTrade({AutoTradeId}) - Error rolling back close-order transaction",
+                                                    autoTradeId);
+                                            }
+                                            // Restore in-memory state before the outer retry begins.
                                             pendingAutoTradeSignal.CloseStatus = origCloseStatus;
                                             pendingAutoTradeSignal.CloseStatusCode = origCloseStatusCode;
+                                            // Preserve SqlException 1205 (and SqlLockException) so Process can
+                                            // execute its retry policy. If it is swallowed here, the committed
+                                            // order list stays empty and nothing can be dispatched to the broker.
+                                            throw;
                                         }
                                     }
                                 }
@@ -384,12 +768,28 @@ namespace FIGAutoTradeExSvc.Services
                         }
                     }
 
-
                     // HANDLE NEW SIGNALS
                     // ------------------------------------------------------------------------------------
                     // Get Last Signal for the AutoTrade
                     // get last signal for the strategy
                     SignalRS? lastSignal = MainRepo.QueryLastSignal(strategyName);
+                    if (lastSignal == null)
+                    {
+                        _logger?.LogWarning(
+                            "AutoTrade({AutoTradeId}) - NEW_SIGNAL_CHECK=NO_SIGNAL for strategy {Strategy}",
+                            autoTradeId,
+                            strategyName);
+                    }
+                    else
+                    {
+                        _logger?.LogInformation(
+                            "AutoTrade({AutoTradeId}) - NEW_SIGNAL_CHECK SignalId={SignalId}, Status={Status}, Canceled={Canceled}, PendingSignalId={PendingSignalId}",
+                            autoTradeId,
+                            lastSignal.Id,
+                            lastSignal.Status,
+                            lastSignal.Canceled,
+                            pendingAutoTradeSignal?.SignalId ?? -1);
+                    }
                     if (lastSignal != null && !lastSignal.Canceled)
                     {
                         if (lastSignal.Status == SignalStatus.Start)
@@ -426,8 +826,28 @@ namespace FIGAutoTradeExSvc.Services
                                     _logger?.LogDebug($"AutoTrade({autoTradeId}) - Signal({lastSignal.Id}) for strategy {strategyName} is expired. Will be added as Expired");
                                     // set AutoTradeSignal record with EXPIRED status
                                     openAutoTradeSignal.OpenStatusCode = OrderStatusCodes.FAIL_EXPIRED;
-                                    openAutoTradeSignal.OpenStatus = OrderStatusCodes.GetOrderStatus(openAutoTradeSignal.CloseStatusCode);
+                                    openAutoTradeSignal.OpenStatus = OrderStatusCodes.GetOrderStatus(openAutoTradeSignal.OpenStatusCode);
                                     openAutoTradeSignal = MainRepo.UpsertAutoTradeSignal(openAutoTradeSignal);  // not through transaction, as we are not doing any other db operation for this signal
+                                    _logger?.LogInformation(
+                                        "AutoTrade({AutoTradeId}) - OPEN_SIGNAL_RECORDED_EXPIRED Signal({SignalId}), AutoTradeSignalId={AutoTradeSignalId}",
+                                        autoTradeId,
+                                        lastSignal.Id,
+                                        openAutoTradeSignal.Id);
+                                }
+                                else if (bot == null || !bot.IsActive())
+                                {
+                                    _logger?.Alert($"AutoTrade({autoTradeId}) - Inactive BOT \"{bot?.Status??"NULL"}\" for strategy {strategyName}. Signal will not open. Manual intervention required");
+                                    // set AutoTradeSignal record with NEW status
+                                    openAutoTradeSignal.OpenStatusCode = OrderStatusCodes.IGNORED_BOT_INACTIVE;
+                                    openAutoTradeSignal.OpenStatus = OrderStatusCodes.GetOrderStatus(openAutoTradeSignal.OpenStatusCode);
+                                    openAutoTradeSignal = MainRepo.UpsertAutoTradeSignal(openAutoTradeSignal);  // not through transaction, as we are not doing any other db operation for this signal
+                                    _logger?.LogWarning(
+                                        "AutoTrade({AutoTradeId}) - OPEN_SIGNAL_BLOCKED_BY_BOT Signal({SignalId}), AutoTradeSignalId={AutoTradeSignalId}, BotId={BotId}, BotStatus={BotStatus}",
+                                        autoTradeId,
+                                        lastSignal.Id,
+                                        openAutoTradeSignal.Id,
+                                        botId,
+                                        bot?.Status ?? "NOT_FOUND");
                                 }
                                 else
                                 {
@@ -438,7 +858,8 @@ namespace FIGAutoTradeExSvc.Services
                                         tx = MainRepo.OpenTransaction();
                                         if (tx == null)
                                         {
-                                            _logger?.LogCritical($"AutoTrade({autoTradeId}) - Error opening database transaction - critical");
+                                            throw new InvalidOperationException(
+                                                $"AutoTrade({autoTradeId}) - Could not open open-order database transaction");
                                         }
                                         openAutoTradeSignal = MainRepo.UpsertAutoTradeSignal(openAutoTradeSignal, tx);
                                         var newOrder = new AutoTradeSignalOrderRS()
@@ -462,15 +883,56 @@ namespace FIGAutoTradeExSvc.Services
                                         newOrder = MainRepo.UpsertAutoTradeSignalOrder(newOrder, tx);
                                         MainRepo.CommitTransaction(tx);
                                         placeOrderList.Add(newOrder?.Id ?? -1); // only after commit succeeds
+                                        _logger?.LogInformation(
+                                            "AutoTrade({AutoTradeId}) - OPEN_ORDER_COMMITTED Signal({SignalId}), AutoTradeSignalId={AutoTradeSignalId}, OrderId={OrderId}, Qty={Qty}, RequestRef={RequestRef}",
+                                            autoTradeId,
+                                            lastSignal.Id,
+                                            openAutoTradeSignal.Id,
+                                            newOrder?.Id ?? -1,
+                                            newOrder?.Qty ?? 0,
+                                            newOrder?.RequestRef ?? string.Empty);
                                     }
                                     catch (Exception ex)
                                     {
-                                        _logger?.LogCritical($"AutoTrade({autoTradeId}) - Error processing open signal: {ex.Message}");
-                                        MainRepo.RollbackTransaction(tx);
+                                        _logger?.LogCritical(ex, $"AutoTrade({autoTradeId}) - Error processing open signal");
+                                        try
+                                        {
+                                            MainRepo.RollbackTransaction(tx);
+                                        }
+                                        catch (Exception rollbackEx)
+                                        {
+                                            _logger?.LogError(rollbackEx,
+                                                "AutoTrade({AutoTradeId}) - Error rolling back open-order transaction",
+                                                autoTradeId);
+                                        }
+                                        throw;
                                     }
                                 }
                             }
+                            else
+                            {
+                                _logger?.LogInformation(
+                                    "AutoTrade({AutoTradeId}) - OPEN_SIGNAL_ALREADY_RECORDED Signal({SignalId}), AutoTradeSignalId={AutoTradeSignalId}",
+                                    autoTradeId,
+                                    lastSignal.Id,
+                                    pendingAutoTradeSignal?.Id ?? -1);
+                            }
                         }
+                        else
+                        {
+                            _logger?.LogInformation(
+                                "AutoTrade({AutoTradeId}) - NEW_SIGNAL_SKIPPED_STATUS Signal({SignalId}), Status={Status}",
+                                autoTradeId,
+                                lastSignal.Id,
+                                lastSignal.Status);
+                        }
+                    }
+                    else if (lastSignal != null)
+                    {
+                        _logger?.LogInformation(
+                            "AutoTrade({AutoTradeId}) - NEW_SIGNAL_SKIPPED_CANCELED Signal({SignalId})",
+                            autoTradeId,
+                            lastSignal.Id);
                     }
                 }
                 catch (Exception ex)
