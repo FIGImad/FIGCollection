@@ -59,7 +59,10 @@ namespace FIGAutoTradeExSvc.Services
                     if (strategyName.Length > 0)
                     {
                         // wake up all autotrade task 
-                        _taskScheduler.ScheduleEventAsync(SRC_NAME, $"WakeupCollection_{strategyName}", 50, WakeupAutoTrade, strategyName);
+                        // Every callback ultimately calls WakeupAll, so use one
+                        // scheduler key to debounce a burst containing several
+                        // strategy rows into one database-state refresh.
+                        _taskScheduler.ScheduleEventAsync(SRC_NAME, "WakeupAll", 50, WakeupAutoTrade, strategyName);
                     }
                     else
                     {

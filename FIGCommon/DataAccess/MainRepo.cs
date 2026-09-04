@@ -915,6 +915,10 @@ namespace FIGCommon.DataAccess
         {
             return RBASE.ExecuteScalar<int>("usp_bot_delete", "@Id", id);
         }
+        public static int SetBotStatus(int id, string status)
+        {
+            return RBASE.ExecuteScalar<int, string>("usp_bot_set_status", "@Id", id, "@Status", status);
+        }
 
         #endregion Bot
 

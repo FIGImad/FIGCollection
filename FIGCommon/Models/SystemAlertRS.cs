@@ -59,12 +59,12 @@ namespace FIGCommon.Models
             var rec = new SystemAlertRS()
             {
                 Id = SqlReaderUtil.GetInt32(reader, nSeq++),
-                RawTime = SqlReaderUtil.GetInt64(reader, nSeq++),
+                RawTime = (long) SqlReaderUtil.GetInt32(reader, nSeq++),
                 MSec = SqlReaderUtil.GetInt32(reader, nSeq++),
                 Source = SqlReaderUtil.GetString(reader, nSeq++),
                 Level = SqlReaderUtil.GetString(reader, nSeq++),
                 Message = SqlReaderUtil.GetString(reader, nSeq++),
-                DeliveryTime = SqlReaderUtil.GetInt64(reader, nSeq++)
+                DeliveryTime = (long) SqlReaderUtil.GetInt32(reader, nSeq++)
             };
             return rec;
         }

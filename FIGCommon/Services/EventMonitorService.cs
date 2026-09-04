@@ -13,10 +13,12 @@ namespace FIGCommon.Services
         protected bool _isDisposed;
         protected readonly CancellationTokenSource _cts = new();
         protected readonly SemaphoreSlim _listenerSetupSemaphore = new(1, 1);
+        protected readonly SemaphoreSlim _changeProcessingSemaphore = new(1, 1);
         protected readonly Dictionary<string, List<Action<EventRS?>>> _subscriptions = new();
         // Change the `eventList` field from `readonly` to a regular field to allow assignment outside the constructor.
         protected List<EventRS> eventList = new();
         protected Task? retryTask = null;
+        protected Task? _periodicRefreshTask;
         protected readonly object _retryLock = new();
         protected string _eventTableName = "";
 
@@ -128,10 +130,19 @@ namespace FIGCommon.Services
                 }
 
                 // get initial list of events 
-                eventList = GetEvents();
+                var initialEvents = GetEvents();
+                lock (_operationLock)
+                {
+                    eventList = initialEvents;
 
-                // Start periodic refresh
-                _ = Task.Run(() => StartPeriodicRefresh(), _cts.Token);
+                    // Start exactly one refresh loop. StartMonitoringAsync can be
+                    // entered again by retry logic after a transient database error.
+                    if (_periodicRefreshTask == null)
+                    {
+                        _periodicRefreshTask = Task.Run(StartPeriodicRefresh, _cts.Token);
+                    }
+                }
+
             }
             catch(Exception exDBAccess)
             {
@@ -161,8 +172,19 @@ namespace FIGCommon.Services
 
         protected async Task SetupDatabaseListener()
         {
-            if (!await _listenerSetupSemaphore.WaitAsync(0))
-                return; // another setup is already in progress, skip
+            try
+            {
+                // SqlDependency registrations are one-shot. If a callback arrives
+                // while another registration is being created, wait and create the
+                // next registration instead of dropping the request and potentially
+                // leaving the service with no active listener.
+                await _listenerSetupSemaphore.WaitAsync(_cts.Token);
+            }
+            catch (OperationCanceledException)
+            {
+                return;
+            }
+
             try
             {
                 using var connection = new SqlConnection(ConnectionString);
@@ -263,8 +285,16 @@ namespace FIGCommon.Services
             if (e.Type == SqlNotificationType.Change &&
                 e.Info != SqlNotificationInfo.Invalid)
             {
+                var processingLockTaken = false;
                 try
                 {
+                    // A newly registered dependency can fire while the previous
+                    // callback is still reading Event rows. Serialize the scan and
+                    // eventList update so the same row version cannot be published
+                    // twice by racing callbacks.
+                    await _changeProcessingSemaphore.WaitAsync(_cts.Token);
+                    processingLockTaken = true;
+
                     if (e.Info == SqlNotificationInfo.Insert
                         || e.Info == SqlNotificationInfo.Alter
                         || e.Info == SqlNotificationInfo.Update
@@ -330,6 +360,13 @@ namespace FIGCommon.Services
                 {
                     _logger?.LogError(ex, "Error processing changed events");
                 }
+                finally
+                {
+                    if (processingLockTaken)
+                    {
+                        _changeProcessingSemaphore.Release();
+                    }
+                }
             }
         }
 
@@ -347,7 +384,10 @@ namespace FIGCommon.Services
                     handlers = new List<Action<EventRS?>>();
                     _subscriptions[eventType] = handlers;
                 }
-                handlers.Add(handler);
+                if (!handlers.Contains(handler))
+                {
+                    handlers.Add(handler);
+                }
             }
         }
 
@@ -360,7 +400,7 @@ namespace FIGCommon.Services
             {
                 if (_subscriptions.TryGetValue(eventType, out var handlers))
                 {
-                    handlers.Remove(handler);
+                    handlers.RemoveAll(existingHandler => existingHandler == handler);
                     if (handlers.Count == 0)
                     {
                         _subscriptions.Remove(eventType);

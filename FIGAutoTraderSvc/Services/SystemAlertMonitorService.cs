@@ -2,6 +2,7 @@ using FIGCommon.DataAccess;
 using FIGCommon.Models;
 using FIGCommon.Services;
 using FIGCommon.Extensions;
+using FIGCommon.Utilities;
 
 namespace FIGAutoTradeExSvc.Services
 {
@@ -53,7 +54,10 @@ namespace FIGAutoTradeExSvc.Services
                     List<SystemAlertRS> alerts = MainRepo.GetPendingSystemAlerts(100);
                     alerts.ForEach(alert =>
                     {
-                        _logger.Alert($"Alert Severity: {alert.Level}, Source: {alert.Source}, Time: {alert.RawTime}, Message: {alert.Message}");
+                        // alert time in UTC
+                        DateTime timeUTC = DateTimeUtil.ConvertUnixTimeToDateTime(alert.RawTime);
+                        string timeStr = timeUTC.ToString("yyyy-MM-dd HH:mm:ss.fff", System.Globalization.CultureInfo.InvariantCulture);
+                        _logger.Alert($"Source: {alert.Source}, Time: {timeStr}\n{alert.Message}");
                     } );
                 }
             }

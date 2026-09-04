@@ -29,6 +29,9 @@ namespace FIGAutoTradeExSvc.Services
         private int _missingSignalRetryCount = 0;
         private long _processInvocationSequence = 0;
         private int _activeProcessInvocations = 0;
+        private readonly object _processStateLock = new();
+        private bool _processRunning;
+        private bool _processRerunRequested;
 
         public AutoTradeLiveService(ILogger<AutoTradeLiveService> logger,
                                     IConfiguration config,
@@ -136,43 +139,95 @@ namespace FIGAutoTradeExSvc.Services
         protected async Task Process(object? sender = null, TaskEventArgs? e = null)
         {
             int autoTradeId = _autoTradeRec?.Id ?? -1;
-            long invocationId = Interlocked.Increment(ref _processInvocationSequence);
-            int activeInvocations = Interlocked.Increment(ref _activeProcessInvocations);
-            using var logScope = _logger.BeginScope(new Dictionary<string, object>
-            {
-                ["AutoTradeId"] = autoTradeId,
-                ["ProcessInvocationId"] = invocationId
-            });
 
-            _logger.LogInformation(
-                "AutoTrade({AutoTradeId}) - PROCESS_INVOCATION_STARTED InvocationId={InvocationId}, ActiveInvocations={ActiveInvocations}, SchedulerTaskId={SchedulerTaskId}",
-                autoTradeId,
-                invocationId,
-                activeInvocations,
-                e?.EventName ?? "DIRECT");
-
-            if (activeInvocations > 1)
+            lock (_processStateLock)
             {
-                _logger.LogWarning(
-                    "AutoTrade({AutoTradeId}) - OVERLAPPING_PROCESS_INVOCATIONS InvocationId={InvocationId}, ActiveInvocations={ActiveInvocations}. " +
-                    "The per-AutoTrade lock will serialize database processing, but an earlier invocation may still be dispatching a broker request",
-                    autoTradeId,
-                    invocationId,
-                    activeInvocations);
+                if (_processRunning)
+                {
+                    _processRerunRequested = true;
+                    _logger.LogDebug(
+                        "AutoTrade({AutoTradeId}) - PROCESS_INVOCATION_COALESCED SchedulerTaskId={SchedulerTaskId}; one follow-up pass is pending",
+                        autoTradeId,
+                        e?.EventName ?? "DIRECT");
+                    return;
+                }
+
+                _processRunning = true;
             }
 
+            bool completedNormally = false;
             try
             {
-                await ProcessCore(invocationId);
+                while (true)
+                {
+                    long invocationId = Interlocked.Increment(ref _processInvocationSequence);
+                    int activeInvocations = Interlocked.Increment(ref _activeProcessInvocations);
+                    using var logScope = _logger.BeginScope(new Dictionary<string, object>
+                    {
+                        ["AutoTradeId"] = autoTradeId,
+                        ["ProcessInvocationId"] = invocationId
+                    });
+
+                    _logger.LogInformation(
+                        "AutoTrade({AutoTradeId}) - PROCESS_INVOCATION_STARTED InvocationId={InvocationId}, ActiveInvocations={ActiveInvocations}, SchedulerTaskId={SchedulerTaskId}",
+                        autoTradeId,
+                        invocationId,
+                        activeInvocations,
+                        e?.EventName ?? "DIRECT");
+
+                    try
+                    {
+                        await ProcessCore(invocationId);
+                    }
+                    finally
+                    {
+                        int remainingInvocations = Interlocked.Decrement(ref _activeProcessInvocations);
+                        _logger.LogInformation(
+                            "AutoTrade({AutoTradeId}) - PROCESS_INVOCATION_FINISHED InvocationId={InvocationId}, RemainingInvocations={RemainingInvocations}",
+                            autoTradeId,
+                            invocationId,
+                            remainingInvocations);
+                    }
+
+                    lock (_processStateLock)
+                    {
+                        if (!_processRerunRequested)
+                        {
+                            _processRunning = false;
+                            completedNormally = true;
+                            return;
+                        }
+
+                        _processRerunRequested = false;
+                    }
+
+                    _logger.LogDebug(
+                        "AutoTrade({AutoTradeId}) - PROCESS_COALESCED_RERUN starting one follow-up pass",
+                        autoTradeId);
+                }
             }
             finally
             {
-                int remainingInvocations = Interlocked.Decrement(ref _activeProcessInvocations);
-                _logger.LogInformation(
-                    "AutoTrade({AutoTradeId}) - PROCESS_INVOCATION_FINISHED InvocationId={InvocationId}, RemainingInvocations={RemainingInvocations}",
-                    autoTradeId,
-                    invocationId,
-                    remainingInvocations);
+                if (!completedNormally)
+                {
+                    bool rerunAfterFailure;
+                    lock (_processStateLock)
+                    {
+                        // Clear the owner flag if an unexpected exception escapes
+                        // ProcessCore so a later notification can recover processing.
+                        rerunAfterFailure = _processRerunRequested;
+                        _processRunning = false;
+                        _processRerunRequested = false;
+                    }
+
+                    if (rerunAfterFailure)
+                    {
+                        _logger.LogDebug(
+                            "AutoTrade({AutoTradeId}) - PROCESS_COALESCED_RERUN scheduled after failed pass",
+                            autoTradeId);
+                        await _taskScheduler.ScheduleEventAsync(_ownerId, "Process", 10, Process);
+                    }
+                }
             }
         }
 
@@ -205,9 +260,11 @@ namespace FIGAutoTradeExSvc.Services
                         autoTradeId,
                         invocationId,
                         attempt + 1);
+
+                    int suspectBotId = -1;
                     try
                     {
-                        ProcessInternal(out placeOrderList);
+                        ProcessInternal(out placeOrderList, out suspectBotId);
 
                         var postcondition = VerifyLatestStartSignalPersisted(autoTradeId, strategyName);
                         if (!postcondition.Satisfied)
@@ -229,11 +286,21 @@ namespace FIGAutoTradeExSvc.Services
                             }
                             else
                             {
+                                DateTime timeUTC = DateTime.UtcNow;
+                                string timeStr = timeUTC.ToString("yyyy-MM-dd HH:mm:ss.fff", System.Globalization.CultureInfo.InvariantCulture);
+
                                 _logger.Alert(
-                                    "AutoTrade({AutoTradeId}) - POSTCONDITION_FAILED: Signal({SignalId}) is still missing after {MaxRetries} retries. Manual intervention required.",
+                                    "Source: AUTOTRADE_SIGNAL, Time: {TimeStr}\nAutoTrade({AutoTradeId}) - POSTCONDITION_FAILED: Signal({SignalId}) is still missing after {MaxRetries} retries. Manual intervention required.",
+                                    timeStr,
                                     autoTradeId,
                                     postcondition.SignalId,
                                     MaxMissingSignalRetries);
+
+                                // mark bot as suspect
+                                if (suspectBotId > 0)
+                                {
+                                    MainRepo.SetBotStatus(suspectBotId, "SUSPECT");
+                                }
                             }
                             break;
                         }
@@ -518,8 +585,10 @@ namespace FIGAutoTradeExSvc.Services
                 or 49918 or 49919 or 49920
                 or 10053 or 10054 or 10060;
         }
-        protected void ProcessInternal(out List<int> placeOrderList)
+        protected void ProcessInternal(out List<int> placeOrderList, out int suspectBotId)
         {
+            suspectBotId = -1;
+            int suspectQty = 0;
             lock (_lockAccess)
             {
                 int autoTradeId = _autoTradeRec?.Id ?? -1;
@@ -637,6 +706,7 @@ namespace FIGAutoTradeExSvc.Services
                                 }
                                 else
                                 {
+                                    suspectQty = qty;
                                     // before adding order, check if stop signal expired
                                     if (IsCloseSignalExpired(pendingSignal))
                                     {
@@ -716,6 +786,7 @@ namespace FIGAutoTradeExSvc.Services
                                             // Preserve SqlException 1205 (and SqlLockException) so Process can
                                             // execute its retry policy. If it is swallowed here, the committed
                                             // order list stays empty and nothing can be dispatched to the broker.
+                                            suspectBotId = suspectQty != 0 ? botId : -1;
                                             throw;
                                         }
                                     }
@@ -905,6 +976,7 @@ namespace FIGAutoTradeExSvc.Services
                                                 "AutoTrade({AutoTradeId}) - Error rolling back open-order transaction",
                                                 autoTradeId);
                                         }
+                                        suspectBotId = suspectQty != 0 ? botId : -1;
                                         throw;
                                     }
                                 }
@@ -938,6 +1010,7 @@ namespace FIGAutoTradeExSvc.Services
                 catch (Exception ex)
                 {
                     _logger?.LogError($"AutoTrade({autoTradeId}) - Error processing AutoTrade signals: {ex.Message}");
+                    suspectBotId = suspectQty != 0 ? botId : -1;
                     throw;
                 }
             }

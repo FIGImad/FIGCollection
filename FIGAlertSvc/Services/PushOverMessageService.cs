@@ -24,7 +24,8 @@
                 { "token", token },
                 { "user", pushoverUserKey },
                 { "title", subject },
-                { "message", message }
+                { "message", message },
+                { "html", "1" }
             };
 
             try
