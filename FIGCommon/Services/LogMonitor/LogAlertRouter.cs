@@ -66,7 +66,7 @@ namespace FIGCommon.Services.LogMonitor
                 foreach (var alert in _sink.Queue.GetConsumingEnumerable(ct))
                 {
                     // Fire-and-forget with a synchronous wait so we don't pile up threads.
-                    ReportAlertAsync(alert, ct).GetAwaiter().GetResult();
+                    ForwardAlertAsync(alert, ct).GetAwaiter().GetResult();
                 }
             }
             catch (OperationCanceledException)
@@ -75,7 +75,7 @@ namespace FIGCommon.Services.LogMonitor
             }
         }
 
-        private async Task ReportAlertAsync(LogAlertMessage alert, CancellationToken ct)
+        public async Task<bool> ForwardAlertAsync(LogAlertMessage alert, CancellationToken ct)
         {
             // Any error raised by authentication or SignalR forwarding must not
             // become another alert, otherwise one outage creates a feedback loop.
@@ -84,7 +84,7 @@ namespace FIGCommon.Services.LogMonitor
             try
             {
                 if (_signalR == null)
-                    return;
+                    return false;
 
                 await _signalR.WaitForConnectionAsync(ct);
 
@@ -93,7 +93,7 @@ namespace FIGCommon.Services.LogMonitor
                 {
                     _logger.LogWarning(
                         "Log alert was not forwarded because an authentication token is unavailable.");
-                    return;
+                    return false;
                 }
 
                 var req = new ControllerRouteRequest
@@ -108,10 +108,12 @@ namespace FIGCommon.Services.LogMonitor
 
                 _logger.LogDebug("Log alert reported to host. LogTime={LogTime}, Level={Level}",
                     DateTimeOffset.UnixEpoch.AddSeconds(alert.RawTime).ToLocalTime(), alert.Level);
+                return true;
             }
             catch (OperationCanceledException) when (ct.IsCancellationRequested)
             {
                 // Normal service shutdown.
+                return false;
             }
             catch (Exception ex)
             {
@@ -119,6 +121,7 @@ namespace FIGCommon.Services.LogMonitor
                 _logger.LogWarning(ex,
                     "Failed to report log alert to host. LogTime={LogTime}, Level={Level}",
                     DateTimeOffset.UnixEpoch.AddSeconds(alert.RawTime).ToLocalTime(), alert.Level);
+                return false;
             }
         }
 

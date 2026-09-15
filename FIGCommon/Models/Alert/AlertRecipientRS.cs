@@ -1,4 +1,4 @@
-﻿using FIGCommon.DataAccess;
+using FIGCommon.DataAccess;
 using FIGCommon.Utilities;
 using Microsoft.Data.SqlClient;
 
@@ -11,6 +11,7 @@ namespace FIGCommon.Models.Alert
         public string Name { get; set; }
         public string Email { get; set; }
         public string? PushoverKey { get; set; }
+        public bool Enabled { get; set; } = true;
 
         public List<AlertRecipientSubscriptionRS> Subscriptions{ get; set; }
 
@@ -31,6 +32,7 @@ namespace FIGCommon.Models.Alert
             this.Name = rec.Name;
             this.Email = rec.Email;
             this.PushoverKey = rec.PushoverKey;
+            this.Enabled = rec.Enabled;
             this.Subscriptions = new List<AlertRecipientSubscriptionRS>();
             foreach (var s in rec.Subscriptions)
             {
@@ -45,6 +47,7 @@ namespace FIGCommon.Models.Alert
             parameters.AddWithValue("@Name", Name);
             parameters.AddWithValue("@Email", Email);
             parameters.AddWithValue("@PushoverKey", (object?)PushoverKey ?? DBNull.Value);
+            parameters.Add("@Enabled", System.Data.SqlDbType.Bit).Value = Enabled;
         }
 
         public AlertRecipientRS CreateFromSqlDataReader(SqlDataReader reader)
@@ -56,7 +59,8 @@ namespace FIGCommon.Models.Alert
                 Alias = SqlReaderUtil.GetString(reader, nSeq++),
                 Name = SqlReaderUtil.GetString(reader, nSeq++),
                 Email = SqlReaderUtil.GetString(reader, nSeq++),
-                PushoverKey = SqlReaderUtil.GetNullableString(reader, nSeq++)
+                PushoverKey = SqlReaderUtil.GetNullableString(reader, nSeq++),
+                Enabled = SqlReaderUtil.GetBoolean(reader, reader.GetOrdinal("Enabled"))
             };
             return rec;
         }

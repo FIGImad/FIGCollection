@@ -318,7 +318,9 @@ namespace FIGCommon.Services
                                 }
                                 Publish(change.EventType, change);
                             }
-                            else if (change.Timestamp > existingEvent.Timestamp)
+                            else if (change.Timestamp > existingEvent.Timestamp
+                                || (change.Timestamp == existingEvent.Timestamp
+                                    && !string.Equals(change.Message, existingEvent.Message, StringComparison.Ordinal)))
                             {
                                 lock (_operationLock)
                                 {

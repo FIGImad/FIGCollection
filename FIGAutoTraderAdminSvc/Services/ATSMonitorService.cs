@@ -13,6 +13,7 @@ namespace FIGAutoTraderAdminSvc.Services
         private readonly ControllerApiService _controllerAPI;
         private readonly IConnectionStatusStore _store;
         private readonly IHubContext<ATSMonitorHub> _hubContext;
+        private readonly IHostApplicationLifetime _appLifetime;
         private readonly object _pingLock = new();
         private readonly Dictionary<string, int> _pingFailCounts = new();
         private const int _logPingFailEvery = 10;
@@ -28,16 +29,30 @@ namespace FIGAutoTraderAdminSvc.Services
             ILogger<ATSMonitorService> logger,
             ControllerApiService controllerAPI,
             IConnectionStatusStore store,
-            IHubContext<ATSMonitorHub> hubContext)
+            IHubContext<ATSMonitorHub> hubContext,
+            IHostApplicationLifetime appLifetime)
         {
             _logger = logger;
             _store = store;
             _hubContext = hubContext;
             _controllerAPI = controllerAPI;
+            _appLifetime = appLifetime;
         }
-
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
+            // FIGAutoTraderAdminSvc hosts RootsIdentity itself.
+            // Do not call https://localhost until Kestrel is listening.
+            var started = new TaskCompletionSource<bool>(
+                TaskCreationOptions.RunContinuationsAsynchronously);
+
+            using var registration = _appLifetime.ApplicationStarted.Register(
+                () => started.TrySetResult(true));
+
+            if (!_appLifetime.ApplicationStarted.IsCancellationRequested)
+            {
+                await started.Task.WaitAsync(stoppingToken);
+            }
+
             using var timer = new PeriodicTimer(TimeSpan.FromSeconds(10));
 
             _logger.LogInformation("ATSMonitorService started.");

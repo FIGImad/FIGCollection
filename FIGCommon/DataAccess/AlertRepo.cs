@@ -200,6 +200,12 @@ namespace FIGCommon.DataAccess
             return RBASE.SelectMulti<PendingAlertRS>(new PendingAlertRS(), "usp_alert_get_pending");
         }
 
+        public static List<PendingAlertRS> GetPendingImmediateAlerts(int maxRec = 100)
+        {
+            return RBASE.SelectMulti<PendingAlertRS, int>(new PendingAlertRS(),
+                "usp_alert_get_pending_immediate", "@MaxRec", maxRec);
+        }
+
         public static void MarkAlertSent(int alertId)
         {
             RBASE.ExecuteScalar<int>("usp_alert_mark_sent", "@Id", alertId);

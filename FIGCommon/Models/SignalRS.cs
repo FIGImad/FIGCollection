@@ -23,7 +23,6 @@ namespace FIGCommon.Models
 
         public decimal? StartPrice { get; set; }
         public decimal? StopPrice { get; set; }
-        public bool Canceled { get; set; } = false;
 
         public long LastUpdated { get; set; } = -1;
 
@@ -75,8 +74,6 @@ namespace FIGCommon.Models
             parameters.AddWithValue("@StartPrice", (object?)StartPrice ?? DBNull.Value);
             parameters.AddWithValue("@StopPrice", (object?)StopPrice ?? DBNull.Value);
 
-            parameters.AddWithValue("@Canceled", Canceled);
-
             parameters.AddWithValue("@LastUpdated", LastUpdated);
         }
 
@@ -99,8 +96,6 @@ namespace FIGCommon.Models
 
                 StartPrice = SqlReaderUtil.GetNullableDecimal(reader, nSeq++),
                 StopPrice = SqlReaderUtil.GetNullableDecimal(reader, nSeq++),
-
-                Canceled = SqlReaderUtil.GetBoolean(reader, nSeq++),
 
                 LastUpdated = (long)SqlReaderUtil.GetInt32(reader, nSeq++)
             };

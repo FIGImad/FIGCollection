@@ -21,8 +21,9 @@ namespace FIGServiceMgrSvc.Services
         public ServiceManagerSignalRService(
             ILogger<ServiceManagerSignalRService> logger,
             IConfiguration config,
-            SignalRDispatcher dispatcher)
-            : base(logger, config)
+            SignalRDispatcher dispatcher,
+            IHostApplicationLifetime appLifetime)
+            : base(logger, config, appLifetime)
         {
             _dispatcher = dispatcher ?? throw new ArgumentNullException(nameof(dispatcher));
         }

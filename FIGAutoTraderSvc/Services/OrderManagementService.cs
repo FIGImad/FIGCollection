@@ -48,14 +48,11 @@ namespace FIGCommon.Services
             return Task.CompletedTask;
         }
 
-        public Task StopAsync(CancellationToken cancellationToken)
+        public async Task StopAsync(CancellationToken cancellationToken)
         {
             _logger.LogInformation("Service is Stopping");
-            _taskScheduler.StopAllTasksAsync(SRC_NAME).Wait();
-
             _serviceCts.Cancel();
-
-            return Task.CompletedTask;
+            await _taskScheduler.StopAllTasksAsync(SRC_NAME);
         }
 
         private void InitializeService()
@@ -252,7 +249,7 @@ namespace FIGCommon.Services
                         order.RequestRef,
                         bot.BrokerServiceId);
                     UpdateOrderStatus(order, autoTradeSignal, OrderStatusCodes.FAIL_CONNECTION);
-                }
+            }
                 else
                 {
                     _logger.LogWarning(
@@ -412,7 +409,11 @@ namespace FIGCommon.Services
                 lk.WaitLowPriority();
                 try
                 {
-                    return UpdateOrderStatusInternal(order, autoTradeSignal, statusCode, qtyFilled, avgFillPrice, brokerRef);
+                    if (UpdateOrderStatusInternal(order, autoTradeSignal, statusCode, qtyFilled, avgFillPrice, brokerRef))
+                        return true;
+
+                    if (attempt < maxAttempts - 1)
+                        Thread.Sleep(250 * (attempt + 1));
                 }
                 catch (SqlLockException ex)
                 {
@@ -422,7 +423,7 @@ namespace FIGCommon.Services
 
                     Thread.Sleep(500);
                 }
-                catch (SqlException ex) when (ex.Number == 1205)
+                catch (SqlException ex) when (IsTransientSqlException(ex))
                 {
                     _logger?.LogWarning($"UpdateOrderStatus - AutoTrade({autoTradeId}) - Attempt {attempt + 1}/{maxAttempts} - SQL deadlock. Retrying... - {ex.Message}");
                     if (attempt == maxAttempts - 1)
@@ -562,8 +563,43 @@ namespace FIGCommon.Services
                 {
                     _logger.LogError(ex, $"UpdateOrderStatus: Exception while updating order status for orderId {order.Id}");
                     MainRepo.RollbackTransaction(tx);
-                    return false;
+                    throw;
                 }
+        }
+
+ 
+        private static int GetPositionQty(AutoTradeSignalRS? signal)
+        {
+            if (signal == null)
+                return 0;
+
+            return signal.OpenStatus == OrderStatus.FILLED_MANUALLY
+                ? signal.ManualQty
+                : signal.FilledQty;
+        }
+
+        private void TryMarkBotSuspect(int botId, string reason)
+        {
+            if (botId <= 0)
+                return;
+
+            try
+            {
+                if (MainRepo.SetBotStatus(botId, "SUSPECT") > 0)
+                    // The stored procedure emits the one durable CRITICAL alert.
+                    _logger.LogWarning("Bot {BotId} marked SUSPECT: {Reason}", botId, reason);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogCritical(ex, "Failed to mark bot {BotId} SUSPECT: {Reason}", botId, reason);
+            }
+        }
+
+        private static bool IsTransientSqlException(SqlException ex)
+        {
+            return ex.Number is -2 or 64 or 233 or 1205 or 4060
+                or 10928 or 10929 or 40197 or 40501 or 40613
+                or 49918 or 49919 or 49920 or 10053 or 10054 or 10060;
         }
 
         private async Task CheckOrderStatus(TaskEventArgs e)

@@ -201,6 +201,7 @@ CREATE TABLE [dbo].[Recipient](
 	[Name] [varchar](256) NOT NULL,
 	[Email] [varchar](256) NOT NULL,
 	[PushoverKey] [varchar](256) NULL,
+	[Enabled] [bit] NOT NULL CONSTRAINT [DF_Recipient_Enabled] DEFAULT (1),
  CONSTRAINT [PK_Recipient] PRIMARY KEY CLUSTERED 
 (
 	[Id] ASC
@@ -251,7 +252,7 @@ GO
 SET QUOTED_IDENTIFIER ON
 GO
 
-CREATE PROCEDURE [dbo].[usp_alert_get_pending]
+CREATE OR ALTER PROCEDURE [dbo].[usp_alert_get_pending]
 (
 	@LookbackMinutes int = 60
 )
@@ -282,11 +283,12 @@ BEGIN
 		r.[Name]             AS RecipientName,
 		r.[Email],
 		r.[PushoverKey],
-		a.[MatchedRuleId]    AS RuleId
+		a.[MatchedRuleId]    AS RuleId,
+		r.[Enabled] AS RecipientEnabled
 	FROM  [dbo].[Alert]                  a
 	INNER JOIN [dbo].[RecipientSubscription] rs ON rs.[AlertRuleId] = a.[MatchedRuleId]
 	INNER JOIN [dbo].[Recipient]             r  ON r.[Id]           = rs.[RecipientId]
-	WHERE a.[SentAt]          IS NULL
+	WHERE r.[Enabled] = 1 AND a.[SentAt]          IS NULL
 	  AND a.[IgnoredAt]       IS NULL
 	  AND a.[RawTime]         >= @CutoffRawTime
 	  AND a.[MatchedRuleId]   IS NOT NULL
@@ -853,73 +855,53 @@ SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
 GO
-CREATE PROCEDURE [dbo].[usp_recipient_select]
-(
-	@Id int
-)
+CREATE OR ALTER PROCEDURE [dbo].[usp_recipient_select]
+    @Id int
 AS
 BEGIN
-	-- SET NOCOUNT ON added to prevent extra result sets from
-	-- interfering with SELECT statements.
-	SET NOCOUNT ON;
-
-    SELECT [Id]
-		  ,[Alias]
-          ,[Name]
-		  ,[Email]
-		  ,[PushoverKey]
-        FROM [dbo].[Recipient]
-        WHERE @Id = -1 OR Id = @Id
-END
-
+    SET NOCOUNT ON;
+    -- Keep disabled recipients visible so administrators can re-enable them.
+    SELECT [Id], [Alias], [Name], [Email], [PushoverKey], [Enabled]
+    FROM [dbo].[Recipient]
+    WHERE @Id = -1 OR [Id] = @Id;
+END;
 GO
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
 GO
-CREATE PROCEDURE [dbo].[usp_recipient_upsert]
-(
-	@IdNew int OUTPUT,
-	@Id int,
-	@Alias varchar(256),
-	@Name varchar(256),
+CREATE OR ALTER PROCEDURE [dbo].[usp_recipient_upsert]
+    @IdNew int OUTPUT,
+    @Id int,
+    @Alias varchar(256),
+    @Name varchar(256),
     @Email varchar(256),
-    @PushoverKey varchar(256)
-)
+    @PushoverKey varchar(256),
+    @Enabled bit = NULL
 AS
 BEGIN
-	SET NOCOUNT ON;
-
-	SELECT @IdNew = [Id] FROM [Recipient] WHERE [Id] = @Id;
-	IF (@@ROWCOUNT = 0)
-	BEGIN
-		-- Does not exists, add new 
-		INSERT INTO [Recipient] (
-			 [Alias]
-			,[Name]
-            ,[Email]
-            ,[PushoverKey]
-			)
-		VALUES (
-			 @Alias
-			,@Name
-            ,@Email
-            ,@PushoverKey
-			)
-		SET @IdNew = SCOPE_IDENTITY();  
-
-	END ELSE BEGIN
-		-- Exists, just update values
-		UPDATE [Recipient] 
-            SET [Name] = @Name, 
-                [Alias] = @Alias,
-                [Email] = @Email,
-                [PushoverKey] = @PushoverKey
-            WHERE [Id] = @IdNew;
-	END
-	RETURN @IdNew;
-END
-
+    SET NOCOUNT ON;
+    -- Old callers may omit Enabled: enable inserts, preserve existing updates.
+    SET @IdNew = NULL;
+    SELECT @IdNew = [Id] FROM [dbo].[Recipient] WHERE [Id] = @Id;
+    IF @IdNew IS NULL
+    BEGIN
+        INSERT INTO [dbo].[Recipient] ([Alias], [Name], [Email], [PushoverKey], [Enabled])
+        VALUES (@Alias, @Name, @Email, @PushoverKey, COALESCE(@Enabled, CONVERT(bit, 1)));
+        SET @IdNew = CONVERT(int, SCOPE_IDENTITY());
+    END
+    ELSE
+    BEGIN
+        UPDATE [dbo].[Recipient]
+        SET [Alias] = @Alias,
+            [Name] = @Name,
+            [Email] = @Email,
+            [PushoverKey] = @PushoverKey,
+            [Enabled] = COALESCE(@Enabled, [Enabled])
+        WHERE [Id] = @IdNew;
+    END;
+    RETURN @IdNew;
+END;
 GO
 SET ANSI_NULLS ON
 GO

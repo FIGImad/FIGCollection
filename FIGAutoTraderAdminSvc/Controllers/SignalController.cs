@@ -60,57 +60,6 @@ namespace FIGAutoTraderAdminSvc.Controllers
             }
         }
 
-        // GET api/signal/cancel/{id}
-        [Authorize(Roles = Role.Admin + "," + Role.SuperAdmin)]
-        [Route("cancel/{id}")]
-        [HttpGet]
-        public async Task<IActionResult> CancelSignal(int id)
-        {
-            try
-            {
-                var signal = MainRepo.GetSignal(id);
-                if (signal == null)
-                {
-                    throw new AppErrorException(ErrorCodes.DataError_NoData, "", "Signal is not found");
-                }
-                if (!signal.Canceled && signal.StopTime == null && signal.Status == "START")
-                {
-                    signal.Canceled = true;
-                    MainRepo.UpsertSignal(signal);
-                }
-                return Ok(signal);
-            }
-            catch (Exception e)
-            {
-                return OnException(e);
-            }
-        }
-
-        // GET api/signal/resume/{id}
-        [Authorize(Roles = Role.Admin + "," + Role.SuperAdmin)]
-        [Route("resume/{id}")]
-        [HttpGet]
-        public async Task<IActionResult> ResumeSignal(int id)
-        {
-            try
-            {
-                var signal = MainRepo.GetSignal(id);
-                if (signal == null)
-                {
-                    throw new AppErrorException(ErrorCodes.DataError_NoData, "", "Signal is not found");
-                }
-                if (signal.StopTime == null && signal.Canceled)
-                {
-                    signal.Canceled = false;
-                    MainRepo.UpsertSignal(signal);
-                }
-                return Ok(signal);
-            }
-            catch (Exception e)
-            {
-                return OnException(e);
-            }
-        }
         #endregion SIGNAL
 
         #region SIGNAL_ARCHIVE

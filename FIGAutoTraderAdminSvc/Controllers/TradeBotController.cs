@@ -92,6 +92,32 @@ namespace FIGAutoTraderAdminSvc.Controllers
             }
         }
 
+        public sealed class UpdateBotStatusRequest
+        {
+            public string Status { get; set; } = string.Empty;
+        }
+
+        // POST api/tradebot/{id}/status
+        [Authorize(Roles = Role.Admin + "," + Role.SuperAdmin)]
+        [Route("{id}/status")]
+        [HttpPost]
+        public async Task<IActionResult> UpdateStatus(int id, [FromBody] UpdateBotStatusRequest tradeBotStatus)
+        {
+            try
+            {
+
+                if (string.IsNullOrWhiteSpace(tradeBotStatus.Status))
+                    return BadRequest("Status is required.");
+
+                return Ok(MainRepo.SetBotStatus(id, tradeBotStatus.Status));
+            }
+            catch (Exception e)
+            {
+                return OnException(e);
+            }
+        }
+
+
         #endregion TradeBot
 
         //#region TradeBotInstruction

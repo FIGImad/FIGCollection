@@ -10,7 +10,7 @@
   "ABOUT": {
     "title": "About",
     "name": "FIG Auto-Trade  Administration Portal",
-    "version": "Release 4.2 - July, 2026",
+    "version": "Release 4.5 - Sept, 2026",
     "info": "Licensed to \"First Investment Group\"",
     "copyright": "©2026 FIG Investments Ltd."
   },
@@ -549,7 +549,9 @@
       "id": "Id",
       "group": "Group",
       "accountId": "Name",
-      "brokerServiceId": "Service Id"
+      "brokerServiceId": "Service Id",
+      "status": "Status",
+      "lastUpdated": "Last Updated"
     },
     "toolbar": {
       "toolAdd": "Add new BOT",
@@ -572,6 +574,7 @@
         "accountIdPlaceholder": "Enter BOT Name",
         "brokerServiceId": "Service Id",
         "brokerServiceIdPlaceholder": "Enter BOT Service Id",
+        "status": "Status",
         "add": "Add New BOT",
         "save": "Save Changes",
         "cancel": "Cancel Changes",
@@ -938,9 +941,15 @@
   "TRADE_BOT_VIEW": {
     "title": "Trade-BOT Details",
     "brokerServiceId": "Broker Service Id",
+    "status": "Status",
+    "saveStatus": "Save",
     "error": {
       "errorFetching": "Could not retrieve BOT record",
-      "errorNoAvailableTicker": "No available ticker for configuration"
+      "errorNoAvailableTicker": "No available ticker for configuration",
+      "errorUpdatingStatus": "Could not update BOT status"
+    },
+    "success": {
+      "statusUpdated": "BOT status updated to {{status}}"
     },
     "cols": {
       "tickerId": "Ticker",
@@ -1130,5 +1139,4 @@
     }
   }
 }
-
 

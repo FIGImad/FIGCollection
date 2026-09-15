@@ -776,15 +776,31 @@ CREATE TABLE [dbo].[Bot](
 	[AccountId] [varchar](50) NOT NULL,
 	[BrokerServiceId] [varchar](50) NOT NULL,
 	[Status] [varchar](20) NOT NULL,
-	[LastUpdated] [int] NOT NULL,
+	[LastUpdated] [bigint] NOT NULL,
  CONSTRAINT [PK_Bot] PRIMARY KEY CLUSTERED 
 (
 	[Id] ASC
-)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY],
+ CONSTRAINT [CK_Bot_Status] CHECK ([Status] IN ('ACTIVE', 'SUSPECT', 'SUSPENDED'))
 ) ON [PRIMARY]
 GO
 ALTER TABLE [dbo].[Bot] ADD CONSTRAINT [DF_Bot_Status] DEFAULT 'ACTIVE' FOR [Status];
 ALTER TABLE [dbo].[Bot] ADD CONSTRAINT [DF_Bot_LastUpdated] DEFAULT 0 FOR [LastUpdated];
+GO
+
+CREATE TABLE [dbo].[SystemAlert](
+	[Id] [int] IDENTITY(1,1) NOT NULL,
+	[RawTime] [bigint] NOT NULL,
+	[MSec] [int] NOT NULL,
+	[Source] [varchar](50) NOT NULL,
+	[Level] [varchar](20) NOT NULL,
+	[Message] [nvarchar](max) NOT NULL,
+	[DeliveryTime] [bigint] NOT NULL CONSTRAINT [DF_SystemAlert_DeliveryTime] DEFAULT (0),
+	CONSTRAINT [PK_SystemAlert] PRIMARY KEY CLUSTERED ([Id] ASC)
+) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
+GO
+CREATE NONCLUSTERED INDEX [IX_SystemAlert_Pending]
+ON [dbo].[SystemAlert] ([DeliveryTime] ASC, [Id] ASC)
 GO
 
 SET ANSI_NULLS ON
@@ -935,6 +951,9 @@ CREATE UNIQUE NONCLUSTERED INDEX [IX_AutoTradeSignalOrder_UQ_RequestRef] ON [dbo
 (
 	[RequestRef] ASC
 )WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, SORT_IN_TEMPDB = OFF, IGNORE_DUP_KEY = OFF, DROP_EXISTING = OFF, ONLINE = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+GO
+CREATE UNIQUE NONCLUSTERED INDEX [UX_AutoTradeSignalOrder_Signal_Tag]
+ON [dbo].[AutoTradeSignalOrder] ([AutoTradeSignalId], [OrderTag]);
 GO
 SET ANSI_PADDING ON
 GO
@@ -2200,14 +2219,36 @@ CREATE PROCEDURE [dbo].[usp_autotrade_signal_order_upsert]
 )
 AS
 BEGIN
+    SET NOCOUNT ON;
+
     IF @LastUpdated = -1
     BEGIN
         SET @LastUpdated = DATEDIFF(SECOND, '19700101', GETUTCDATE());
     END
 
-	-- Check if Symbol exists
-    SELECT @IdNew = [Id] FROM [AutoTradeSignalOrder] WHERE @Id = [Id];
-    IF (@@ROWCOUNT = 0)
+    SET @IdNew = NULL;
+
+    -- For new orders, serialize on the natural key and return the existing row
+    -- without overwriting its RequestRef. This makes OPEN/CLOSE creation
+    -- idempotent across service instances.
+    IF @Id <= 0
+    BEGIN
+        SELECT @IdNew = [Id]
+          FROM [dbo].[AutoTradeSignalOrder] WITH (UPDLOCK, HOLDLOCK)
+         WHERE [AutoTradeSignalId] = @AutoTradeSignalId
+           AND [OrderTag] = @OrderTag;
+
+        IF @IdNew IS NOT NULL
+            RETURN @IdNew;
+    END
+    ELSE
+    BEGIN
+        SELECT @IdNew = [Id]
+          FROM [dbo].[AutoTradeSignalOrder] WITH (UPDLOCK, HOLDLOCK)
+         WHERE [Id] = @Id;
+    END
+
+    IF @IdNew IS NULL
     BEGIN
 		-- Does not exists, add new 
 		INSERT INTO [AutoTradeSignalOrder] (
@@ -2268,6 +2309,69 @@ BEGIN
     RETURN @IdNew;
 END
 
+GO
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE PROCEDURE [dbo].[usp_autotrade_signal_order_try_claim]
+    @Id int,
+    @BotId int,
+    @RequireActive bit
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SET XACT_ABORT ON;
+
+    BEGIN TRANSACTION;
+
+    DECLARE @BotStatus varchar(20);
+    SELECT @BotStatus = UPPER(LTRIM(RTRIM([Status])))
+      FROM [dbo].[Bot] WITH (UPDLOCK, HOLDLOCK)
+     WHERE [Id] = @BotId;
+
+    IF @BotStatus IS NULL
+    BEGIN
+        COMMIT TRANSACTION;
+        RETURN -2;
+    END
+
+    IF @RequireActive = 1 AND @BotStatus <> 'ACTIVE'
+    BEGIN
+        COMMIT TRANSACTION;
+        RETURN -1;
+    END
+
+    UPDATE [dbo].[AutoTradeSignalOrder] WITH (ROWLOCK)
+       SET [Status] = 'PROCESSING',
+           [StatusCode] = 1,
+           [LastUpdated] = DATEDIFF(SECOND, '19700101', GETUTCDATE())
+     WHERE [Id] = @Id
+       AND [Status] = 'NEW';
+
+    DECLARE @Changed int = @@ROWCOUNT;
+    COMMIT TRANSACTION;
+    RETURN @Changed;
+END
+GO
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE PROCEDURE [dbo].[usp_autotrade_signal_order_select_pending_dispatch]
+    @MaxRec int
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    SELECT TOP (@MaxRec)
+           [Id], [AutoTradeSignalId], [OrderTag], [OrderTime], [Type],
+           [LimitPrice], [Qty], [QtyFilled], [AvgFillPrice], [Status],
+           [StatusCode], [RequestRef], [BrokerRef], [CancelRequest], [LastUpdated]
+      FROM [dbo].[AutoTradeSignalOrder]
+     WHERE [Status] IN ('NEW', 'PROCESSING')
+     ORDER BY [OrderTime], [Id];
+END
 GO
 SET ANSI_NULLS ON
 GO
@@ -2580,11 +2684,7 @@ BEGIN
     IF @CloseStatus IN ('FAILED', 'CANCELED', 'FILLED_PARTIALLY_FIN')
        AND ISNULL(@PositionQty, 0) <> 0
     BEGIN
-        UPDATE [dbo].[Bot] WITH (ROWLOCK)
-           SET [Status] = 'SUSPECT',
-               [LastUpdated] = DATEDIFF(SECOND, '19700101', GETUTCDATE())
-         WHERE [Id] = @BotId
-           AND [Status] = 'ACTIVE';
+        EXEC [dbo].[usp_bot_set_status] @Id = @BotId, @Status = 'SUSPECT';
     END
 
     RETURN @IdNew;
@@ -2764,16 +2864,17 @@ CREATE PROCEDURE [dbo].[usp_bot_upsert]
 	@AccountId varchar(50),
 	@BrokerServiceId varchar(50),
 	@Status varchar(20),
-	@LastUpdated int
+	@LastUpdated bigint
 )
 
 AS
 BEGIN
     IF @LastUpdated <= 0
     BEGIN
-        SET @LastUpdated = DATEDIFF(SECOND, '19700101', GETUTCDATE());
+        SET @LastUpdated = DATEDIFF_BIG(SECOND, CONVERT(datetime2, '1970-01-01'), SYSUTCDATETIME());
     END
 
+	SET @Status = UPPER(LTRIM(RTRIM(ISNULL(@Status, ''))));
 	IF @Status NOT IN ('ACTIVE', 'SUSPECT', 'SUSPENDED')
 	BEGIN
 		SET @Status = 'ACTIVE'
@@ -2808,13 +2909,175 @@ BEGIN
 			  [Group] = @Group
 			, [AccountId] = @AccountId
 			, [BrokerServiceId] = @BrokerServiceId
-			, [Status] = @Status
-			, [LastUpdated] = @LastUpdated
 		WHERE Id = @IdNew
 
 	END
 
 	RETURN @IdNew;
+END
+GO
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE PROCEDURE [dbo].[usp_bot_lock_for_order]
+    @Id int,
+    @RequireActive bit
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    DECLARE @Status varchar(20);
+    SELECT @Status = [Status]
+      FROM [dbo].[Bot] WITH (UPDLOCK, HOLDLOCK)
+     WHERE [Id] = @Id;
+
+    IF @Status IS NULL RETURN -1;
+    IF @RequireActive = 1 AND @Status <> 'ACTIVE' RETURN 0;
+    RETURN 1;
+END
+GO
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE PROCEDURE [dbo].[usp_bot_set_status]
+    @Id int,
+    @Status varchar(20)
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    SET @Status = UPPER(LTRIM(RTRIM(ISNULL(@Status, ''))));
+    IF @Status NOT IN ('ACTIVE', 'SUSPECT', 'SUSPENDED')
+        THROW 51001, 'Invalid bot status.', 1;
+
+    UPDATE [dbo].[Bot] WITH (ROWLOCK)
+       SET [Status] = @Status,
+           [LastUpdated] = DATEDIFF_BIG(SECOND, CONVERT(datetime2, '1970-01-01'), SYSUTCDATETIME())
+     WHERE [Id] = @Id
+       AND [Status] <> @Status;
+
+    DECLARE @Changed int = @@ROWCOUNT;
+
+    IF @Changed > 0 AND @Status = 'SUSPECT'
+    BEGIN
+        DECLARE @AlertMessage nvarchar(max) =
+            CONCAT('Bot Id(', @Id, ') changed to SUSPECT. Manual intervention required.');
+        EXEC [dbo].[usp_systemalert_add]
+             @Source = 'BOT_STATUS',
+             @Level = 'CRITICAL',
+             @Message = @AlertMessage;
+    END
+
+    RETURN @Changed;
+END
+GO
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE PROCEDURE [dbo].[usp_systemalert_add]
+    @Source varchar(50),
+    @Level varchar(20),
+    @Message nvarchar(max)
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    SET @Source = NULLIF(LTRIM(RTRIM(@Source)), '');
+    SET @Level = UPPER(NULLIF(LTRIM(RTRIM(@Level)), ''));
+
+    IF @Source IS NULL OR @Level IS NULL OR @Message IS NULL
+        THROW 51002, 'System alert source, level, and message are required.', 1;
+
+    DECLARE @Now datetime2(3) = SYSUTCDATETIME();
+
+    INSERT INTO [dbo].[SystemAlert]
+        ([RawTime], [MSec], [Source], [Level], [Message], [DeliveryTime])
+    VALUES
+        (DATEDIFF_BIG(SECOND, CONVERT(datetime2, '1970-01-01'), @Now),
+         DATEPART(MILLISECOND, @Now), @Source, @Level, @Message, 0);
+
+    DECLARE @Id int = CONVERT(int, SCOPE_IDENTITY());
+    RETURN @Id;
+END
+GO
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE PROCEDURE [dbo].[usp_systemalert_select_pending]
+    @MaxRec int = 100
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    IF @MaxRec IS NULL OR @MaxRec < 1 SET @MaxRec = 1;
+    IF @MaxRec > 1000 SET @MaxRec = 1000;
+
+    DECLARE @Now bigint = DATEDIFF_BIG(SECOND, CONVERT(datetime2, '1970-01-01'), SYSUTCDATETIME());
+    DECLARE @LeaseExpired bigint = @Now - 300;
+
+    ;WITH Pending AS
+    (
+        SELECT TOP (@MaxRec) *
+          FROM [dbo].[SystemAlert] WITH (UPDLOCK, READPAST, ROWLOCK)
+         WHERE [DeliveryTime] = 0
+            OR ([DeliveryTime] > 0 AND [DeliveryTime] <= @LeaseExpired)
+         ORDER BY [Id]
+    )
+    UPDATE Pending
+       SET [DeliveryTime] = @Now
+    OUTPUT inserted.[Id], inserted.[RawTime], inserted.[MSec], inserted.[Source],
+           inserted.[Level], inserted.[Message], inserted.[DeliveryTime];
+END
+GO
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE PROCEDURE [dbo].[usp_systemalert_ack]
+    @Id int
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    UPDATE [dbo].[SystemAlert] WITH (ROWLOCK)
+       SET [DeliveryTime] = -1
+     WHERE [Id] = @Id
+       AND [DeliveryTime] > 0;
+
+    RETURN @@ROWCOUNT;
+END
+GO
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TRIGGER [dbo].[trigSystemAlertOnChange]
+ON [dbo].[SystemAlert]
+AFTER INSERT
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    IF NOT EXISTS (SELECT 1 FROM inserted) RETURN;
+
+    DECLARE @Now datetime = GETDATE();
+    DECLARE @Message varchar(256) = CONVERT(varchar(36), NEWID());
+
+    UPDATE [dbo].[Event] WITH (UPDLOCK, HOLDLOCK)
+       SET [TimeStamp] = @Now,
+           [Message] = @Message
+     WHERE [EventType] = 'SYSTEMALERT'
+       AND [EventId] = -1;
+
+    IF @@ROWCOUNT = 0
+    BEGIN
+        INSERT INTO [dbo].[Event] ([EventType], [EventId], [TimeStamp], [Message])
+        VALUES ('SYSTEMALERT', -1, @Now, @Message);
+    END
 END
 GO
 SET ANSI_NULLS ON

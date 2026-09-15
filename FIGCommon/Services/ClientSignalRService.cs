@@ -28,6 +28,7 @@ namespace FIGCommon.Services
     public class ClientSignalRService : BackgroundService, IClientSignalRService
     {
         protected readonly ILogger<ClientSignalRService> _logger;
+        private readonly IHostApplicationLifetime _appLifetime;
         private HubConnection? _connection;
         private readonly HttpClient? _localHttpClient = null;
         private readonly IConfiguration _config;
@@ -42,10 +43,12 @@ namespace FIGCommon.Services
         private readonly TaskCompletionSource _connectedTcs = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
         public ClientSignalRService(ILogger<ClientSignalRService> logger,
-             IConfiguration config)
+             IConfiguration config,
+             IHostApplicationLifetime appLifetime)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _config = config ?? throw new ArgumentNullException(nameof(config));
+            _appLifetime = appLifetime ?? throw new ArgumentNullException(nameof(appLifetime)); 
             _controllerConfig = new ControllerConfig();
             _config.GetSection("ControllerConfig").Bind(_controllerConfig);
             if (_controllerConfig == null) throw new ArgumentNullException(nameof(_controllerConfig));
@@ -91,6 +94,19 @@ namespace FIGCommon.Services
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
+            // In FIGAutoTraderAdminSvc the authentication API is hosted by this
+            // same ASP.NET Core process, so wait until Kestrel is accepting requests.
+            var started = new TaskCompletionSource<bool>(
+                TaskCreationOptions.RunContinuationsAsynchronously);
+
+            using var registration = _appLifetime.ApplicationStarted.Register(
+                () => started.TrySetResult(true));
+
+            if (!_appLifetime.ApplicationStarted.IsCancellationRequested)
+            {
+                await started.Task.WaitAsync(stoppingToken);
+            }
+
             string url =
                 $"{_hubUrl}?serviceId={Uri.EscapeDataString(_controllerConfig.Id)}" +
                 $"&role={_controllerConfig.Role}" +
@@ -502,6 +518,7 @@ namespace FIGCommon.Services
                     password = _controllerConfig.AuthPasswordFlat
                 };
 
+                
                 using var response = await http.PostAsJsonAsync(loginUrl, loginPayload);
 
                 string body = await response.Content.ReadAsStringAsync();

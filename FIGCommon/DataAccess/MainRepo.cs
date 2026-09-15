@@ -895,9 +895,9 @@ namespace FIGCommon.DataAccess
             return RBASE.SelectMulti<BotRS, int>(new BotRS(), "usp_bot_select", "@Id", -1);
         }
 
-        public static BotRS? GetBotByRefId(string refId)
+        public static BotRS? GetBotByAccountId(string accountId)
         {
-            return RBASE.Select<BotRS, string>(new BotRS(), "usp_bot_query", "@RefId", refId);
+            return RBASE.Select<BotRS, string>(new BotRS(), "usp_bot_query", "@AccountId", accountId);
         }
 
         public static BotRS? GetBot(int id)
@@ -1197,6 +1197,19 @@ namespace FIGCommon.DataAccess
                 return RepositoryBase.ExecuteScalar<int>(tx.Connection, "usp_autotrade_signal_order_cancel", "@Id", id, tx);
             }
         }
+        public static List<AutoTradeSignalOrderRS> GetPendingDispatchOrders(int maxRec)
+        {
+            return RBASE.SelectMulti<AutoTradeSignalOrderRS, int>(new AutoTradeSignalOrderRS(),
+                "usp_autotrade_signal_order_select_pending_dispatch", "@MaxRec", maxRec);
+        }
+
+        public static int TryClaimAutoTradeSignalOrder(int id, int botId, bool requireActive)
+        {
+            return RBASE.ExecuteScalar<int, int, bool>("usp_autotrade_signal_order_try_claim",
+                "@Id", id, "@BotId", botId, "@RequireActive", requireActive);
+        }
+
+
         #endregion AutoTradeSignalOrder
 
         #region StatusCode

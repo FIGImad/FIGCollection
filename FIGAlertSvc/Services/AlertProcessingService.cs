@@ -1,4 +1,4 @@
-﻿using FIGCommon.DataAccess;
+using FIGCommon.DataAccess;
 using FIGCommon.Models;
 using FIGCommon.Models.Alert;
 using FIGCommon.Models.LogMonitor;
@@ -125,7 +125,7 @@ namespace FIGAlertSvc.Services
                 ServiceRole  = clientInfo?.Role        ?? 0,
                 ServiceAddress = clientInfo?.IPAddress       ?? "",
                 LogName      = alertRec.LogName,
-                Source       = alertRec.Source,
+                Source       = SystemAlertSourceResolver.Resolve(alertRec.Source, alertRec.Message),
                 Level        = alertRec.Level,
                 Message      = alertRec.Message,
                 ExceptionText = string.IsNullOrEmpty(alertRec.ExceptionText) ? null : alertRec.ExceptionText
@@ -147,7 +147,9 @@ namespace FIGAlertSvc.Services
             }
 
             // Classify the alert against all enabled rules
-            List<AlertRuleRS> matchedRules = AlertRuleEvaluator.Evaluate(rec, _alertRules);
+            // Existing rules match the logging component; dispatch policy uses the original source.
+            var classificationRecord = new AlertRS(rec) { Source = alertRec.Source };
+            List<AlertRuleRS> matchedRules = AlertRuleEvaluator.Evaluate(classificationRecord, _alertRules);
 
             if (matchedRules.Count == 0)
             {

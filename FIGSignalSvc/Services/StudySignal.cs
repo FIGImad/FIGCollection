@@ -172,17 +172,6 @@ namespace FIGSignalExSvc.Services
             //MainRepo.UpsertSignal(lastSignal);
         }
 
-        protected void CancelSignal(StudyHistoryRS study, SignalRS lastSignal)
-        {
-            long cancelTime = study.RawTime /* + studyInterval.IntervalLen */;
-
-            lastSignal.Canceled = true;
-            lastSignal.StopTime = cancelTime;
-            lastSignal.StopPrice = null;
-            lastSignal.LastUpdated = -1;
-            //MainRepo.UpsertSignal(lastSignal);
-        }
-
         public void ProcessSignals(List<StudyHistoryRS> studyHistory, bool updateOnly)
         {
             SqlTransaction? tx = null;
@@ -240,7 +229,7 @@ namespace FIGSignalExSvc.Services
                                         _logger.LogError($"Signal {lastSignal.Id} has different side ({lastSignal.Side}) than the new signal ({side}) that is not closed properly");
 
                                         // cancel last open signal
-                                        CancelSignal(study, lastSignal);
+                                        CloseSignal(study, lastSignal);
 
                                         // insert new signal
                                         AddSignal(study, strategy.Strategy, side);

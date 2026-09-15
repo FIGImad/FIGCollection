@@ -222,7 +222,9 @@ namespace FIGPriceSyncSvc
             #region AlertDispatchService
             builder.Services.AddSingleton<SmtpMessageService>();
             builder.Services.AddSingleton<PushOverMessageService>();
-            builder.Services.AddHostedService<AlertDispatchService>();
+            builder.Services.AddSingleton<AlertDispatchService>();
+            builder.Services.AddHostedService(sp => sp.GetRequiredService<AlertDispatchService>());
+            builder.Services.AddHostedService<AlertMonitorService>();
             #endregion AlertDispatchService
 
             #region Controller
@@ -255,7 +257,18 @@ namespace FIGPriceSyncSvc
             builder.Services.AddSingleton<ITaskSchedulerService, TaskSchedulerService>();
 
             // Create a singleton instance of EventMonitorService
-            builder.Services.AddSingleton<EventMonitorService>();
+            builder.Services.AddSingleton<EventMonitorService>(sp =>
+            {
+                // Listen to the same Alert database used by AlertRepo.
+                var monitorConfig = new ConfigurationBuilder()
+                    .AddInMemoryCollection(new Dictionary<string, string?>
+                    {
+                        ["EventMonitor:ConnectionString"] = AlertRepo.ConnectionString,
+                        ["EventMonitor:EventTable"] = "Event"
+                    }).Build();
+                return new EventMonitorService(monitorConfig,
+                    sp.GetRequiredService<ILogger<EventMonitorService>>());
+            });
             #endregion OtherServices
 
             #region KerstrelSetup

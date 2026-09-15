@@ -1,6 +1,6 @@
 {
   "Global": {
-    "VarPath": "global_vars.json",
+    "VarPath": "C:\\Roots\\FIGServices\\global_vars.json",
     "Vars": {
       "Service_Name": "FIG_AlertSvc",
       "Service_FriendlyName": "Alert Service",

@@ -43,11 +43,11 @@ namespace FIGCommon.Models
 
         public bool IsActive()
         {
-            return Status == "ACTIVE";
+            return string.Equals(Status?.Trim(), "ACTIVE", StringComparison.OrdinalIgnoreCase);
         }
         public bool IsSuspect()
         {
-            return Status == "SUSPECT";
+            return string.Equals(Status?.Trim(), "SUSPECT", StringComparison.OrdinalIgnoreCase);
         }
 
         public void ToSqlCommandParameters(SqlParameterCollection parameters)

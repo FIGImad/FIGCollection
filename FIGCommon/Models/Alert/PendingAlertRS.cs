@@ -5,7 +5,7 @@ using Microsoft.Data.SqlClient;
 namespace FIGCommon.Models.Alert
 {
     /// <summary>
-    /// Represents one row returned by <c>usp_alert_get_pending</c>.
+    /// Represents one row returned by the scheduled or immediate pending-alert procedure.
     /// Each row is a unique (alert, recipient) pair ready for dispatch.
     /// </summary>
     public class PendingAlertRS : IDbEntity<PendingAlertRS>
@@ -15,6 +15,7 @@ namespace FIGCommon.Models.Alert
         /// <summary>Bitmask: bit 1 = EMAIL, bit 2 = PUSHOVER</summary>
         public int AlertMethods { get; set; }
         public int RecipientId { get; set; }
+        public bool RecipientEnabled { get; set; }
         public string RecipientName { get; set; }
         public string Email { get; set; }
         public string? PushoverKey { get; set; }
@@ -40,17 +41,18 @@ namespace FIGCommon.Models.Alert
 
         public PendingAlertRS CreateFromSqlDataReader(SqlDataReader reader)
         {
-            int nSeq = 0;
+            // The immediate result includes Source and Level before FriendlyMessage.
             return new PendingAlertRS()
             {
-                AlertId         = SqlReaderUtil.GetInt32(reader, nSeq++),
-                FriendlyMessage = SqlReaderUtil.GetString(reader, nSeq++),
-                AlertMethods    = SqlReaderUtil.GetInt32(reader, nSeq++),
-                RecipientId     = SqlReaderUtil.GetInt32(reader, nSeq++),
-                RecipientName   = SqlReaderUtil.GetString(reader, nSeq++),
-                Email           = SqlReaderUtil.GetString(reader, nSeq++),
-                PushoverKey     = SqlReaderUtil.GetNullableString(reader, nSeq++),
-                RuleId          = SqlReaderUtil.GetInt32(reader, nSeq++)
+                AlertId         = SqlReaderUtil.GetInt32(reader, reader.GetOrdinal("AlertId")),
+                FriendlyMessage = SqlReaderUtil.GetString(reader, reader.GetOrdinal("FriendlyMessage")),
+                AlertMethods    = SqlReaderUtil.GetInt32(reader, reader.GetOrdinal("AlertMethods")),
+                RecipientId     = SqlReaderUtil.GetInt32(reader, reader.GetOrdinal("RecipientId")),
+                RecipientEnabled = SqlReaderUtil.GetBoolean(reader, reader.GetOrdinal("RecipientEnabled")),
+                RecipientName   = SqlReaderUtil.GetString(reader, reader.GetOrdinal("RecipientName")),
+                Email           = SqlReaderUtil.GetString(reader, reader.GetOrdinal("Email")),
+                PushoverKey     = SqlReaderUtil.GetNullableString(reader, reader.GetOrdinal("PushoverKey")),
+                RuleId          = SqlReaderUtil.GetInt32(reader, reader.GetOrdinal("RuleId"))
             };
         }
     }
