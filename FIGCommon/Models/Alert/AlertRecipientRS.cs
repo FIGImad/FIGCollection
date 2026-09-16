@@ -11,6 +11,7 @@ namespace FIGCommon.Models.Alert
         public string Name { get; set; }
         public string Email { get; set; }
         public string? PushoverKey { get; set; }
+        public string TimeZoneId { get; set; } = "UTC";
         public bool Enabled { get; set; } = true;
 
         public List<AlertRecipientSubscriptionRS> Subscriptions{ get; set; }
@@ -33,6 +34,7 @@ namespace FIGCommon.Models.Alert
             this.Email = rec.Email;
             this.PushoverKey = rec.PushoverKey;
             this.Enabled = rec.Enabled;
+            this.TimeZoneId = rec.TimeZoneId;
             this.Subscriptions = new List<AlertRecipientSubscriptionRS>();
             foreach (var s in rec.Subscriptions)
             {
@@ -42,6 +44,7 @@ namespace FIGCommon.Models.Alert
 
         public void ToSqlCommandParameters(SqlParameterCollection parameters)
         {
+            parameters.AddWithValue("@TimeZoneId", TimeZoneId);
             parameters.AddWithValue("@Id", Id);
             parameters.AddWithValue("@Alias", Alias);
             parameters.AddWithValue("@Name", Name);
@@ -60,6 +63,7 @@ namespace FIGCommon.Models.Alert
                 Name = SqlReaderUtil.GetString(reader, nSeq++),
                 Email = SqlReaderUtil.GetString(reader, nSeq++),
                 PushoverKey = SqlReaderUtil.GetNullableString(reader, nSeq++),
+                TimeZoneId = reader.GetString(reader.GetOrdinal("TimeZoneId")),
                 Enabled = SqlReaderUtil.GetBoolean(reader, reader.GetOrdinal("Enabled"))
             };
             return rec;

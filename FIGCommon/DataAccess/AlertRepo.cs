@@ -195,15 +195,15 @@ namespace FIGCommon.DataAccess
             RBASE.ExecuteScalar<int, int, string>("usp_alert_update_match", "@Id", alertId, "@MatchedRuleId", matchedRuleId, "@FriendlyMessage", friendlyMessage);
         }
 
-        public static List<PendingAlertRS> GetPendingAlerts()
+        public static List<PendingAlertRS> GetPendingAlerts(int lookbackMinutes = 30)
         {
-            return RBASE.SelectMulti<PendingAlertRS>(new PendingAlertRS(), "usp_alert_get_pending");
+            return RBASE.SelectMulti<PendingAlertRS, int>(new PendingAlertRS(), "usp_alert_get_pending", "@LookbackMinutes", lookbackMinutes);
         }
 
-        public static List<PendingAlertRS> GetPendingImmediateAlerts(int maxRec = 100)
+        public static List<PendingAlertRS> GetPendingImmediateAlerts(int maxRec = 100, int lookbackMinutes = 30)
         {
-            return RBASE.SelectMulti<PendingAlertRS, int>(new PendingAlertRS(),
-                "usp_alert_get_pending_immediate", "@MaxRec", maxRec);
+            return RBASE.SelectMulti<PendingAlertRS, int, int>(new PendingAlertRS(),
+                "usp_alert_get_pending_immediate", "@MaxRec", maxRec, "@LookbackMinutes", lookbackMinutes);
         }
 
         public static void MarkAlertSent(int alertId)

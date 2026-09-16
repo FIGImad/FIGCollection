@@ -116,10 +116,11 @@ namespace FIGAlertSvc.Services
                 }
             }
 
+            var originalTime = AlertMessageFormatter.OriginalTime(alertRec.Source, alertRec.Message);
             var rec = new AlertRS()
             {
-                RawTime      = (int)alertRec.RawTime,
-                MSec         = alertRec.Milliseconds,
+                RawTime      = (int)(originalTime?.ToUnixTimeSeconds() ?? alertRec.RawTime),
+                MSec         = originalTime?.Millisecond ?? alertRec.Milliseconds,
                 ServiceId    = clientInfo?.Id          ?? alertRec.ServiceId,
                 ServiceName  = clientInfo?.Name ?? "",
                 ServiceRole  = clientInfo?.Role        ?? 0,

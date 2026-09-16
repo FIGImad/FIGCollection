@@ -16,18 +16,20 @@ namespace FIGAlertSvc.Services
 
         private const int MethodEmail       = 1;
         private const int MethodPushover    = 2;
-        private const int MaxAlertsPerMessage = 20;
 
         // One singleton owns the lock for both fetch/send/mark paths.
         private readonly SemaphoreSlim _dispatchLock = new(1, 1);
 
         private readonly ILogger<AlertDispatchService> _logger;
         private readonly IServiceProvider _serviceProvider;
+        private readonly int _maxAgeMinutes;
 
         public AlertDispatchService(
             ILogger<AlertDispatchService> logger,
-            IServiceProvider serviceProvider)
+            IServiceProvider serviceProvider, IConfiguration configuration)
         {
+            _maxAgeMinutes = configuration.GetValue<int>("AlertDispatch:MaxAlertAgeMinutes", 30);
+            if (_maxAgeMinutes <= 0) throw new ArgumentOutOfRangeException(nameof(configuration), "MaxAlertAgeMinutes must be positive.");
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
         }
@@ -57,7 +59,7 @@ namespace FIGAlertSvc.Services
             _logger.LogDebug("AlertDispatchService stopped.");
         }
 
-        private Task DispatchPendingAlertsAsync(CancellationToken cancellationToken) =>
+        internal Task DispatchPendingAlertsAsync(CancellationToken cancellationToken) =>
             DispatchAsync(false, cancellationToken);
 
         public Task DispatchImmediateAlertsAsync(CancellationToken cancellationToken) =>
@@ -72,12 +74,12 @@ namespace FIGAlertSvc.Services
                 while (true)
                 {
                     cancellationToken.ThrowIfCancellationRequested();
-                    var rows = immediate ? AlertRepo.GetPendingImmediateAlerts() : AlertRepo.GetPendingAlerts();
+                    var rows = immediate ? AlertRepo.GetPendingImmediateAlerts(lookbackMinutes: _maxAgeMinutes) : AlertRepo.GetPendingAlerts(_maxAgeMinutes);
                     // SQL filters disabled recipients; keep the same guard before sending or marking sent.
                     rows = rows.Where(row => row.RecipientEnabled).ToList();
                     if (rows.Count == 0) return;
 
-                    bool allSent = await DispatchRowsAsync(rows, cancellationToken);
+                    bool allSent = await DispatchRowsAsync(rows, immediate, cancellationToken);
                     // Drain immediate batches, but leave failures for the minute fallback
                     // instead of repeatedly sending the same partially delivered alert.
                     if (!immediate || !allSent) return;
@@ -89,7 +91,7 @@ namespace FIGAlertSvc.Services
             }
         }
 
-        private async Task<bool> DispatchRowsAsync(List<PendingAlertRS> pendingRows, CancellationToken cancellationToken)
+        private async Task<bool> DispatchRowsAsync(List<PendingAlertRS> pendingRows, bool immediate, CancellationToken cancellationToken)
         {
             using var scope = _serviceProvider.CreateScope();
             var emailSvc = scope.ServiceProvider.GetRequiredService<SmtpMessageService>();
@@ -99,43 +101,41 @@ namespace FIGAlertSvc.Services
             var remaining = pendingRows.GroupBy(r => r.AlertId).ToDictionary(g => g.Key, g => g.Count());
             var failed = new HashSet<int>();
 
-            // Preserve recipient batching while respecting each subscription's method mask.
-            foreach (var recipientGroup in pendingRows.GroupBy(r => new { r.RecipientId, r.AlertMethods }))
+            var validRows = new List<PendingAlertRS>();
+            foreach (var row in pendingRows)
             {
-                var allRows = recipientGroup.ToList();
-                int totalChunks = (int)Math.Ceiling(allRows.Count / (double)MaxAlertsPerMessage);
-                for (int chunkIndex = 0; chunkIndex < totalChunks; chunkIndex++)
+                try { AlertMessageFormatter.Format(row); validRows.Add(row); }
+                catch (Exception ex)
                 {
-                    cancellationToken.ThrowIfCancellationRequested();
-                    var batch = allRows.Skip(chunkIndex * MaxAlertsPerMessage).Take(MaxAlertsPerMessage).ToList();
-                    var firstRow = batch[0];
-                    bool wantEmail = (firstRow.AlertMethods & MethodEmail) != 0;
-                    bool wantPushover = (firstRow.AlertMethods & MethodPushover) != 0;
-                    string subject = totalChunks == 1 && batch.Count == 1
-                        ? "FIG Alert Notification"
-                        : $"FIG Alert Notification ({chunkIndex * MaxAlertsPerMessage + 1}-{chunkIndex * MaxAlertsPerMessage + batch.Count} of {allRows.Count})";
-                    string messageBody = string.Join("\n\n", batch.Select((r, i) =>
-                        batch.Count > 1 ? $"[{chunkIndex * MaxAlertsPerMessage + i + 1}] {r.FriendlyMessage}" : r.FriendlyMessage));
-
-                    bool sent = await SendToRecipientAsync(firstRow, wantEmail, wantPushover, subject, messageBody, emailSvc, pushoverSvc);
-                    foreach (var row in batch)
+                    failed.Add(row.AlertId);
+                    _logger.LogError(ex, "Formatting failed: Alert Id={AlertId}, Recipient Id={RecipientId}.", row.AlertId, row.RecipientId);
+                }
+            }
+            foreach (var batch in AlertBatchBuilder.Build(validRows, immediate))
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                var first = batch.Rows[0];
+                var ids = string.Join(",", batch.Rows.Select(r => r.AlertId));
+                bool sent = await SendToRecipientAsync(first, ids,
+                    (first.AlertMethods & MethodEmail) != 0,
+                    (first.AlertMethods & MethodPushover) != 0,
+                    batch.Rows.Count == 1 ? "FIG Alert Notification" : $"FIG Alert Notification ({batch.Rows.Count} alerts)",
+                    batch.Message, emailSvc, pushoverSvc);
+                foreach (var row in batch.Rows)
+                {
+                    if (!sent) failed.Add(row.AlertId);
+                    if (--remaining[row.AlertId] == 0 && !failed.Contains(row.AlertId))
                     {
-                        if (!sent) failed.Add(row.AlertId);
-                        if (--remaining[row.AlertId] == 0 && !failed.Contains(row.AlertId))
-                        {
-                            AlertRepo.MarkAlertSent(row.AlertId);
-                            _logger.LogInformation("AlertDispatchService: Alert Id={AlertId} marked as sent.", row.AlertId);
-                        }
+                        AlertRepo.MarkAlertSent(row.AlertId);
+                        _logger.LogInformation("Alert Id={AlertId} marked as sent after all recipients succeeded.", row.AlertId);
                     }
-                    if (chunkIndex < totalChunks - 1)
-                        await Task.Delay(TimeSpan.FromSeconds(2), cancellationToken);
                 }
             }
             return failed.Count == 0;
         }
 
         private async Task<bool> SendToRecipientAsync(
-            PendingAlertRS row,
+            PendingAlertRS row, string alertIds,
             bool wantEmail,
             bool wantPushover,
             string subject,
@@ -143,6 +143,8 @@ namespace FIGAlertSvc.Services
             SmtpMessageService emailSvc,
             PushOverMessageService pushoverSvc)
         {
+            using var logScope = _logger.BeginScope("AlertId={AlertIds} RecipientId={RecipientId}", alertIds, row.RecipientId);
+            _logger.LogInformation("Dispatch attempt: Alert Ids={AlertIds}, Recipient Id={RecipientId}, Methods={Methods}.", alertIds, row.RecipientId, row.AlertMethods);
             bool success = wantEmail || wantPushover;
             if (wantEmail)
             {
@@ -185,10 +187,10 @@ namespace FIGAlertSvc.Services
                 {
                     try
                     {
-                        await pushoverSvc.Send(row.PushoverKey, subject, messageBody);
+                        await pushoverSvc.SendAlert(row.PushoverKey, subject, messageBody, alertIds, row.RecipientId);
                         _logger.LogInformation(
-                            "AlertDispatchService: Pushover sent to Recipient Id={RecipientId}.",
-                            row.RecipientId);
+                            "AlertDispatchService: Pushover accepted for Alert Ids={AlertIds}, Recipient Id={RecipientId}.",
+                            alertIds, row.RecipientId);
                     }
                     catch (Exception ex)
                     {
@@ -199,6 +201,7 @@ namespace FIGAlertSvc.Services
                     }
                 }
             }
+            _logger.LogInformation("Dispatch result: Alert Ids={AlertIds}, Recipient Id={RecipientId}, Success={Success}.", alertIds, row.RecipientId, success);
             return success;
         }
     }

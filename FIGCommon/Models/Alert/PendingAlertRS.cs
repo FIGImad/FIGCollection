@@ -10,6 +10,10 @@ namespace FIGCommon.Models.Alert
     /// </summary>
     public class PendingAlertRS : IDbEntity<PendingAlertRS>
     {
+        public int RawTime { get; set; }
+        public int MSec { get; set; }
+        public string TimeZoneId { get; set; } = "UTC";
+        public bool IsImmediate { get; set; }
         public int AlertId { get; set; }
         public string FriendlyMessage { get; set; }
         /// <summary>Bitmask: bit 1 = EMAIL, bit 2 = PUSHOVER</summary>
@@ -44,6 +48,10 @@ namespace FIGCommon.Models.Alert
             // The immediate result includes Source and Level before FriendlyMessage.
             return new PendingAlertRS()
             {
+                IsImmediate = reader.GetBoolean(reader.GetOrdinal("IsImmediate")),
+                RawTime = reader.GetInt32(reader.GetOrdinal("RawTime")),
+                MSec = Convert.ToInt32(reader["MSec"]),
+                TimeZoneId = reader.GetString(reader.GetOrdinal("TimeZoneId")),
                 AlertId         = SqlReaderUtil.GetInt32(reader, reader.GetOrdinal("AlertId")),
                 FriendlyMessage = SqlReaderUtil.GetString(reader, reader.GetOrdinal("FriendlyMessage")),
                 AlertMethods    = SqlReaderUtil.GetInt32(reader, reader.GetOrdinal("AlertMethods")),

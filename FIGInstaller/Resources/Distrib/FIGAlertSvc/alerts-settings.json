@@ -59,6 +59,9 @@
     "EmailFromName": "Roots Admin",
     "TimeoutSeconds": 60
   },
+  "AlertDispatch": {
+    "MaxAlertAgeMinutes": 30
+  },
   "PushOver": {
     "APIToken": "akypvaefo1yxd37dmu8ceuaugbdhmc"
   }
