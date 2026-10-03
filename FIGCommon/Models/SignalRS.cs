@@ -1,4 +1,4 @@
-﻿using Microsoft.Data.SqlClient;
+using Microsoft.Data.SqlClient;
 using FIGCommon.DataAccess;
 using FIGCommon.Utilities;
 
@@ -96,7 +96,6 @@ namespace FIGCommon.Models
 
                 StartPrice = SqlReaderUtil.GetNullableDecimal(reader, nSeq++),
                 StopPrice = SqlReaderUtil.GetNullableDecimal(reader, nSeq++),
-
                 LastUpdated = (long)SqlReaderUtil.GetInt32(reader, nSeq++)
             };
         }

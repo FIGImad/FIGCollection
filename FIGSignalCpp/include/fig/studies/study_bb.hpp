@@ -12,7 +12,7 @@ class StudyBB final
     StudyBB(std::size_t period,
             Decimal standard_deviations,
             std::string source = "close",
-            std::size_t revision_depth = 10);
+            std::size_t revision_depth = default_revision_depth);
     [[nodiscard]] BollingerBands process(const PriceBar& bar);
 
   private:

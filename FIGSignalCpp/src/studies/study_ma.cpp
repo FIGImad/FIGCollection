@@ -23,4 +23,29 @@ std::optional<Decimal> StudyMA::process(const PriceBar& bar)
     ++evaluations_;
     return states_.commit(std::move(state)).value;
 }
+SharedMovingAverages::SharedMovingAverages(std::vector<Key> requests, std::size_t depth)
+{
+    for (const auto& key : requests)
+    {
+        (void)source_value(PriceBar{}, key.second);
+        studies_.try_emplace(key, key.first, key.second, depth);
+    }
+}
+void SharedMovingAverages::process(const PriceBar& bar)
+{
+    values_.clear(); // Revisions must recalculate, even when the timestamp is unchanged.
+    for (auto& [key, study] : studies_)
+        values_.emplace(key, study.process(bar));
+}
+std::optional<Decimal> SharedMovingAverages::value(std::size_t period, const std::string& source) const
+{
+    return values_.at({period, source});
+}
+std::size_t SharedMovingAverages::calculation_count() const noexcept
+{
+    std::size_t count{};
+    for (const auto& [key, study] : studies_)
+        count += study.evaluation_count();
+    return count;
+}
 } // namespace fig::studies

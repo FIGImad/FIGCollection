@@ -213,7 +213,11 @@ namespace FIGSignalExSvc.Services
             }
             catch (Exception ex)
             {
-                throw new Exception($"Error inserting studies into StudyHistory Table - {ex.Message}");
+                // Calculation advanced plugin state before the failed database write.
+                // Rebuild from committed history on the next price event.
+                oneMinPriceData.Clear();
+                InitStudySet(studyColRec);
+                throw new Exception("Error committing studies and signals; calculation state reset", ex);
             }
         }
 
@@ -312,5 +316,4 @@ namespace FIGSignalExSvc.Services
         }
     }
 }
-
 

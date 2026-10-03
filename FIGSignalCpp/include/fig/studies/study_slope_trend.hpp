@@ -10,7 +10,7 @@ struct SlopeTrendValues
 class StudySlopeTrend final
 {
   public:
-    StudySlopeTrend(std::size_t lookback, Decimal flat_points, std::size_t revision_depth = 10);
+    StudySlopeTrend(std::size_t lookback, Decimal flat_points, std::size_t revision_depth = default_revision_depth);
     [[nodiscard]] SlopeTrendValues process(std::int64_t raw_time, std::optional<Decimal> moving_average);
 
   private:

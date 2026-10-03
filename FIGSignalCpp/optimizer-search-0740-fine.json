@@ -1,0 +1,126 @@
+{
+  "DataSetId": 3,
+  "IntervalMinutes": 5,
+  "BaseParameters": "adx-base-parameters-0740.json",
+  "Settings": "signal-settings.json",
+  "OutputRoot": "optimizer-output-0740-fine",
+  "Samples": 1000,
+  "Seed": 12345,
+  "Jobs": 2,
+  "MaxSourceBars": 0,
+  "InitialCapital": 1200000,
+  "Quantity": 0,
+  "Multiplier": 20,
+  "CommissionPerContractPerSide": 1.6,
+  "SlippagePointsPerSide": 0,
+  "ForceCloseAtEnd": false,
+  "StartDate": "2016-01-01",
+  "EndDateExclusive": "",
+  "TrainEndExclusive": "2023-01-01",
+  "ValidationEndExclusive": "2025-01-01",
+  "Ranges": {
+    "AdxLen": [
+      40,
+      45,
+      50,
+      55,
+      60
+    ],
+    "FastMALen": [
+      2,
+      3,
+      4
+    ],
+    "GuideMALen": [
+      20,
+      22,
+      24,
+      26,
+      28
+    ],
+    "GuideStdDev": [
+      0.5,
+      0.55,
+      0.6,
+      0.65,
+      0.7
+    ],
+    "StartBias": [
+      1.5,
+      1.75,
+      2.0,
+      2.25,
+      2.5
+    ],
+    "StopBias": [
+      -1.5,
+      -1.25,
+      -1.0,
+      -0.75,
+      -0.5
+    ],
+    "ReEntryCooldownBars": [
+      0,
+      1,
+      2
+    ],
+    "ShockATRLen": [
+      4,
+      5,
+      6,
+      7,
+      8
+    ],
+    "ShockDropATR": [
+      3.5,
+      3.75,
+      4.0,
+      4.25,
+      4.5
+    ],
+    "ShockArmedDropATR": [
+      2.0,
+      2.25,
+      2.5,
+      2.75,
+      3.0
+    ],
+    "ShockArmUpATR": [
+      2.0,
+      2.25,
+      2.5,
+      2.75,
+      3.0
+    ],
+    "ShockRangeATR": [
+      2.5,
+      2.75,
+      3.0,
+      3.25,
+      3.5
+    ],
+    "ChopMinGuideWidthATR": [
+      0.4,
+      0.45,
+      0.5,
+      0.55,
+      0.6
+    ],
+    "ChopMaxGuideSlopeATR": [
+      0.08,
+      0.09,
+      0.1,
+      0.11,
+      0.12
+    ],
+    "ContinuationEntryBars": [
+      2,
+      3,
+      4,
+      5,
+      6
+    ]
+  },
+  "Executable": "FIGSignalCpp.exe",
+  "QuantityPct": 1.0
+}

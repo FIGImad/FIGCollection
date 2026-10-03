@@ -11,5 +11,7 @@
         public string? Load { get; set; }
 
         public int Attempt { get; set; } = 1;
+        // Optional per-request routing budget. Existing clients retain the 60-second default.
+        public int? TimeoutMs { get; set; }
     }
 }

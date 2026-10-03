@@ -662,11 +662,13 @@ namespace FIGAutoTradeExSvc.Services
                     {
 
                         bool isSignalHandled = false;
+                        bool isSignalChanged = false;
 
                         // Handle pending signal with no close status
                         // only interested in signals that has not yet been closed
                         if (pendingAutoTradeSignal.CloseStatus == OrderStatus.NONE && pendingSignal.Status == SignalStatus.Stop)
                         {
+                            isSignalChanged = true;
                             // Check if pending signal has open status as processing or new,
                             // if open is still not yet processed -  easy, cancel the signal and mark as canceled for both open and close
                             if (pendingAutoTradeSignal.OpenStatus == OrderStatus.NONE || pendingAutoTradeSignal.OpenStatus == OrderStatus.NEW)
@@ -806,7 +808,7 @@ namespace FIGAutoTradeExSvc.Services
                                 }
                             }
                         }
-                        if (!isSignalHandled)
+                        if (isSignalChanged && !isSignalHandled)
                         {
                             MainRepo.UpsertAutoTradeSignal(pendingAutoTradeSignal);
                         }
@@ -814,6 +816,9 @@ namespace FIGAutoTradeExSvc.Services
 
                     // HANDLE NEW SIGNALS
                     // ------------------------------------------------------------------------------------
+                    // Close processing can mark the bot SUSPECT in the database.
+                    // Do not authorize a new opening using the snapshot from PROCESS_BEGIN.
+                    bot = MainRepo.GetBot(botId);
                     // Get Last Signal for the AutoTrade
                     // get last signal for the strategy
                     SignalRS? lastSignal = MainRepo.QueryLastSignal(strategyName);

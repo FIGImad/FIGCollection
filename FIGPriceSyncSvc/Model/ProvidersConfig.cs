@@ -1,5 +1,7 @@
 ﻿namespace FIGPriceSyncSvc.Models
 {
+    using FIGCommon.Models;
+
     public class ProvidersConfig
     {
         public string ActiveProvider { get; set; } = string.Empty;

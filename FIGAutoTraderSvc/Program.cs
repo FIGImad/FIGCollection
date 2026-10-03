@@ -244,6 +244,13 @@ namespace FIGAutoTradeExSvc
             builder.Services.AddSingleton<FigBrokerAPIService>();
             #endregion HttpClient
 
+            var ingressOptions = new FIGAutoTradeExSvc.SignalIngress.SignalIngressOptions();
+            builder.Configuration.GetSection("SignalIngress").Bind(ingressOptions);
+            ingressOptions.Validate();
+            builder.Services.AddSingleton(ingressOptions);
+            builder.Services.AddSingleton<FIGAutoTradeExSvc.SignalIngress.ISignalIngressStore,
+                FIGAutoTradeExSvc.SignalIngress.SignalIngressStore>();
+
             #region OtherServices
             // provide scheduling tasks cabability
             builder.Services.AddSingleton<ITaskSchedulerService, TaskSchedulerService>();

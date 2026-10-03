@@ -174,6 +174,7 @@ namespace FIGSignalExSvc.Services
 
         public void ProcessSignals(List<StudyHistoryRS> studyHistory, bool updateOnly)
         {
+            var committedRawTime = lastRawTime;
             SqlTransaction? tx = null;
             List<StudyHistoryRS> studyHistoryList = studyHistory;
             activeSignalsMap.Clear();
@@ -270,7 +271,8 @@ namespace FIGSignalExSvc.Services
                 SqlConnection? txConn = null;
                 try
                 {
-                    tx = MainRepo.OpenTransaction();
+                    tx = MainRepo.OpenTransaction()
+                        ?? throw new InvalidOperationException("Cannot persist studies and signals without a database transaction.");
                     txConn = tx?.Connection; // capture BEFORE Commit/Rollback clears it
                     if (updateOnly)
                     {
@@ -286,12 +288,15 @@ namespace FIGSignalExSvc.Services
                         MainRepo.UpsertSignal(signal, tx);
                     }
                     tx?.Commit();
+                    if (allSignals.Count > 0)
+                        _serviceProvider.GetService<FIGSignalExSvc.Publication.SignalPublicationWakeup>()?.Notify();
                 }
                 catch(Exception exTx)
                 {
                     _logger.LogError(exTx, "Error in ProcessSignals transaction, rolling back");
                     _logger.LogCritical(exTx, "Error in ProcessSignals transaction, rolling back");
-                    tx?.Rollback();
+                    try { tx?.Rollback(); } catch (Exception rollbackError) { _logger.LogError(rollbackError, "Rollback failed"); }
+                    throw;
                 }
                 finally
                 {
@@ -302,7 +307,9 @@ namespace FIGSignalExSvc.Services
             catch (Exception ex) 
             { 
                 _logger.LogError(ex, "Error in ProcessSignals"); 
-                return; 
+                lastRawTime = committedRawTime;
+                activeSignalsMap.Clear();
+                throw;
             }
         }
 
@@ -402,5 +409,3 @@ namespace FIGSignalExSvc.Services
 
     }
 }
-
-

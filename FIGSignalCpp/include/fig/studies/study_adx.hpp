@@ -4,12 +4,12 @@ namespace fig::studies
 {
 struct AdxValues
 {
-    std::optional<Decimal> adx, pdi, ndi;
+    std::optional<Decimal> adx, pdi, ndi, bias;
 };
 class StudyADX final
 {
   public:
-    StudyADX(std::size_t length, std::size_t smoothing, std::size_t revision_depth = 10);
+    StudyADX(std::size_t length, std::size_t smoothing, std::size_t revision_depth = default_revision_depth);
     [[nodiscard]] AdxValues process(const PriceBar& bar);
 
   private:

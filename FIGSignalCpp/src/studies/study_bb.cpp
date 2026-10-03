@@ -23,7 +23,7 @@ BollingerBands StudyBB::process(const PriceBar& bar)
         state.sum_squares -= old * old;
     }
     state.value = {};
-    if (state.window.size() == period_ && state.sum != 0 && state.sum_squares != 0)
+    if (state.window.size() == period_)
     {
         const auto mean = state.sum / static_cast<Decimal>(period_);
         const auto variance = std::max<Decimal>(0, state.sum_squares / static_cast<Decimal>(period_) - mean * mean);

@@ -5,7 +5,7 @@ namespace fig::studies
 class StudyROC final
 {
   public:
-    StudyROC(std::size_t length, std::size_t revision_depth = 10);
+    StudyROC(std::size_t length, std::size_t revision_depth = default_revision_depth);
     [[nodiscard]] std::optional<Decimal> process(std::int64_t raw_time, Decimal value);
 
   private:

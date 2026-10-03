@@ -2602,6 +2602,8 @@ CREATE PROCEDURE [dbo].[usp_autotrade_signal_upsert]
 )
 AS
 BEGIN
+    DECLARE @PreviousSignal TABLE (CloseStatus varchar(20));
+
     IF @LastUpdated = -1
     BEGIN
         SET @LastUpdated = DATEDIFF(SECOND, '19700101', GETUTCDATE());
@@ -2667,6 +2669,7 @@ BEGIN
                [FilledQty]       = @FilledQty,
                [ManualQty]       = @ManualQty,
                [LastUpdated]     = @LastUpdated
+        OUTPUT deleted.[CloseStatus] INTO @PreviousSignal (CloseStatus)
          WHERE Id = @IdNew;
 
     END
@@ -2681,7 +2684,11 @@ BEGIN
             ELSE @FilledQty
         END;
 
-    IF @CloseStatus IN ('FAILED', 'CANCELED', 'FILLED_PARTIALLY_FIN')
+    -- Inserts retain their existing protection; updates require a new failure episode.
+    IF (NOT EXISTS (SELECT 1 FROM @PreviousSignal)
+        OR EXISTS (SELECT 1 FROM @PreviousSignal
+                   WHERE ISNULL(CloseStatus, '') NOT IN ('FAILED', 'CANCELED', 'FILLED_PARTIALLY_FIN')))
+       AND @CloseStatus IN ('FAILED', 'CANCELED', 'FILLED_PARTIALLY_FIN')
        AND ISNULL(@PositionQty, 0) <> 0
     BEGIN
         EXEC [dbo].[usp_bot_set_status] @Id = @BotId, @Status = 'SUSPECT';

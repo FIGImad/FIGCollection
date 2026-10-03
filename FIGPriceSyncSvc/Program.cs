@@ -262,6 +262,8 @@ namespace FIGPriceSyncSvc
 
             //Create one singleton instance of PriceSyncService
             builder.Services.AddSingleton<PriceSyncService>(); // Concrete registration
+            builder.Services.AddSingleton<IHistoricalPriceService>(sp =>
+                new HistoricalPriceService(() => sp.GetRequiredService<PriceSyncService>().GetActiveProvider()));
             // Reuse the same instance and Add it to the IHostedService pipeline.
             builder.Services.AddHostedService(sp => sp.GetRequiredService<PriceSyncService>());
 

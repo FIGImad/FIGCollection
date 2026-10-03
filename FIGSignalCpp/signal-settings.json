@@ -2,8 +2,10 @@
   "ServiceName": "FIG_SignalCpp",
   "DisplayName": "FIG Native Signal-Processing Service",
   "Port": 5020,
-  "ConnectionString": "{{DBConnection_AutoTrader}}",
+  "ODBCName": "FIGAutoTrader",
   "EventPollMilliseconds": 500,
   "StudyCollectionRefreshSeconds": 120,
-  "LogPath": "FIGSignalCpp.log"
+  "LogPath": "FIGSignalCpp.log",
+  "ODBCUser": "roots",
+  "ODBCPassword": "rgw+1fhjlxoV3gepxFu7IoN+McImxI931ZdNi/f6w5m1ep9d"
 }

@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="src\studies\study_adx_base_options.cpp"><Filter>Studies</Filter></ClCompile>
+    <ClCompile Include="src\studies\study_adx_roc.cpp"><Filter>Studies</Filter></ClCompile>
+    <ClCompile Include="src\studies\study_atr.cpp"><Filter>Studies</Filter></ClCompile>
+    <ClCompile Include="src\studies\study_base_adx.cpp"><Filter>Studies</Filter></ClCompile>
+    <ClCompile Include="src\studies\study_col_adx_base.cpp"><Filter>Studies</Filter></ClCompile>
+    <ClCompile Include="src\studies\study_cycle_dir.cpp"><Filter>Studies</Filter></ClCompile>
+    <ClCompile Include="src\studies\study_price_shock.cpp"><Filter>Studies</Filter></ClCompile>
+    <ClCompile Include="src\studies\study_sma_slope.cpp"><Filter>Studies</Filter></ClCompile>
+    <ClCompile Include="src\studies\study_volatility_ratio.cpp"><Filter>Studies</Filter></ClCompile>
+    <ClCompile Include="src\studies\study_lbase_adx_variants.cpp"><Filter>Studies</Filter></ClCompile>
+    <ClCompile Include="src\app\efs_study_tests.cpp"><Filter>Application</Filter></ClCompile>
+    <ClInclude Include="include\fig\studies\study_lbase_adx_variants.hpp"><Filter>Studies</Filter></ClInclude>
+    <ClInclude Include="include\fig\studies\study_volatility_ratio.hpp"><Filter>Studies</Filter></ClInclude>
+    <ClInclude Include="include\fig\studies\study_sma_slope.hpp"><Filter>Studies</Filter></ClInclude>
+    <ClInclude Include="include\fig\studies\study_price_shock.hpp"><Filter>Studies</Filter></ClInclude>
+    <ClInclude Include="include\fig\studies\study_cycle_dir.hpp"><Filter>Studies</Filter></ClInclude>
+    <ClInclude Include="include\fig\studies\study_col_adx_base.hpp"><Filter>Studies</Filter></ClInclude>
+    <ClInclude Include="include\fig\studies\study_base_adx.hpp"><Filter>Studies</Filter></ClInclude>
+    <ClInclude Include="include\fig\studies\study_atr.hpp"><Filter>Studies</Filter></ClInclude>
+    <ClInclude Include="include\fig\studies\study_adx_roc.hpp"><Filter>Studies</Filter></ClInclude>
+    <ClInclude Include="include\fig\studies\study_adx_base_options.hpp"><Filter>Studies</Filter></ClInclude>
+    <ClInclude Include="include\fig\infrastructure\protected_data.hpp"><Filter>Infrastructure</Filter></ClInclude>
+    <ClCompile Include="src\infrastructure\protected_data.cpp"><Filter>Infrastructure</Filter></ClCompile>
+    <None Include="Set-DatabaseCredentials.ps1"><Filter>Project Files</Filter></None>
+    <Filter Include="Application"><UniqueIdentifier>{c5eeca9c-d7d8-4303-b6de-0a89408bd262}</UniqueIdentifier></Filter>
+    <Filter Include="Studies"><UniqueIdentifier>{a50db59f-b52e-4a8b-b3d8-d652d26d6106}</UniqueIdentifier></Filter>
+    <Filter Include="Database"><UniqueIdentifier>{cef75682-4581-4fa3-8c0a-5343d519b3b3}</UniqueIdentifier></Filter>
+    <Filter Include="Prices"><UniqueIdentifier>{0ca8ee0a-126a-48e7-8457-b952f6d03070}</UniqueIdentifier></Filter>
+    <Filter Include="Infrastructure"><UniqueIdentifier>{2202da42-b59c-4223-bdff-0103192fc7dc}</UniqueIdentifier></Filter>
+    <Filter Include="Project Files"><UniqueIdentifier>{643b5677-1ef2-4780-87f9-3495f532fae1}</UniqueIdentifier></Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="include\fig\infrastructure\configuration.hpp"><Filter>Infrastructure</Filter></ClInclude>
+    <ClInclude Include="include\fig\database\database.hpp"><Filter>Database</Filter></ClInclude>
+    <ClInclude Include="include\fig\infrastructure\logger.hpp"><Filter>Infrastructure</Filter></ClInclude>
+    <ClInclude Include="include\fig\database\models.hpp"><Filter>Database</Filter></ClInclude>
+    <ClInclude Include="include\fig\prices\price_aggregator.hpp"><Filter>Prices</Filter></ClInclude>
+    <ClInclude Include="include\fig\prices\price_cache.hpp"><Filter>Prices</Filter></ClInclude>
+    <ClInclude Include="include\fig\studies\study.hpp"><Filter>Studies</Filter></ClInclude>
+    <ClInclude Include="include\fig\studies\study_report.hpp"><Filter>Studies</Filter></ClInclude>
+    <ClInclude Include="include\fig\studies\live_state.hpp"><Filter>Studies</Filter></ClInclude>
+    <ClInclude Include="include\fig\studies\study_adx.hpp"><Filter>Studies</Filter></ClInclude>
+    <ClInclude Include="include\fig\studies\study_bb.hpp"><Filter>Studies</Filter></ClInclude>
+    <ClInclude Include="include\fig\studies\study_extended.hpp"><Filter>Studies</Filter></ClInclude>
+    <ClInclude Include="include\fig\studies\study_ma.hpp"><Filter>Studies</Filter></ClInclude>
+    <ClInclude Include="include\fig\studies\study_roc.hpp"><Filter>Studies</Filter></ClInclude>
+    <ClInclude Include="include\fig\studies\study_sem.hpp"><Filter>Studies</Filter></ClInclude>
+    <ClInclude Include="include\fig\studies\study_wma.hpp"><Filter>Studies</Filter></ClInclude>
+    <ClInclude Include="include\fig\studies\study_slope_trend.hpp"><Filter>Studies</Filter></ClInclude>
+    <ClInclude Include="include\fig\studies\study_lbase_adx.hpp"><Filter>Studies</Filter></ClInclude>
+    <ClInclude Include="include\fig\studies\study_col_adx_trend.hpp"><Filter>Studies</Filter></ClInclude>
+    <ClCompile Include="src\infrastructure\configuration.cpp"><Filter>Infrastructure</Filter></ClCompile>
+    <ClCompile Include="src\database\database.cpp"><Filter>Database</Filter></ClCompile>
+    <ClCompile Include="src\infrastructure\logger.cpp"><Filter>Infrastructure</Filter></ClCompile>
+    <ClCompile Include="src\app\main.cpp"><Filter>Application</Filter></ClCompile>
+    <ClCompile Include="src\prices\price_aggregator.cpp"><Filter>Prices</Filter></ClCompile>
+    <ClCompile Include="src\studies\study.cpp"><Filter>Studies</Filter></ClCompile>
+    <ClCompile Include="src\studies\study_report.cpp"><Filter>Studies</Filter></ClCompile>
+    <ClCompile Include="src\studies\study_adx.cpp"><Filter>Studies</Filter></ClCompile>
+    <ClCompile Include="src\studies\study_bb.cpp"><Filter>Studies</Filter></ClCompile>
+    <ClCompile Include="src\studies\study_extended.cpp"><Filter>Studies</Filter></ClCompile>
+    <ClCompile Include="src\studies\study_ma.cpp"><Filter>Studies</Filter></ClCompile>
+    <ClCompile Include="src\studies\study_roc.cpp"><Filter>Studies</Filter></ClCompile>
+    <ClCompile Include="src\studies\study_sem.cpp"><Filter>Studies</Filter></ClCompile>
+    <ClCompile Include="src\studies\study_wma.cpp"><Filter>Studies</Filter></ClCompile>
+    <ClCompile Include="src\studies\study_slope_trend.cpp"><Filter>Studies</Filter></ClCompile>
+    <ClCompile Include="src\studies\study_lbase_adx.cpp"><Filter>Studies</Filter></ClCompile>
+    <ClCompile Include="src\studies\study_col_adx_trend.cpp"><Filter>Studies</Filter></ClCompile>
+    <None Include=".clang-format"><Filter>Project Files</Filter></None>
+    <None Include="PORTING.md"><Filter>Project Files</Filter></None>
+    <None Include="EFS_PARITY.md"><Filter>Project Files</Filter></None>
+    <None Include="tests\verify_efs_adx.mjs"><Filter>Project Files</Filter></None>
+    <None Include="adx-base-parameters.json"><Filter>Project Files</Filter></None>
+    <None Include="README.md"><Filter>Project Files</Filter></None>
+    <None Include="OPTIMIZATION.md"><Filter>Project Files</Filter></None>
+    <None Include="optimizer-search.json"><Filter>Project Files</Filter></None>
+    <None Include="Run-Optimization.ps1"><Filter>Project Files</Filter></None>
+    <None Include="tests\verify_backtest.mjs"><Filter>Project Files</Filter></None>
+    <ClCompile Include="src\studies\backtest.cpp"><Filter>Studies</Filter></ClCompile>
+    <ClInclude Include="include\fig\studies\backtest.hpp"><Filter>Studies</Filter></ClInclude>
+    <None Include="Run-StudyReport.ps1"><Filter>Project Files</Filter></None>
+    <None Include="signal-settings.json"><Filter>Project Files</Filter></None>
+  </ItemGroup>
+</Project>

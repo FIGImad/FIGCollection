@@ -1,0 +1,71 @@
+{
+  "Global": {
+    "VarPath": "C:\\Roots\\FIGServices\\global_vars.json",
+    "Vars": {
+      "Service_Name": "FIG_PriceDataSvc",
+      "Service_FriendlyName": "Price Data Management Service",
+      "Service_Port": 5025,
+      "Service_Role": "PriceData",
+      "Service_Id": "857EFAC8-EF8E-41DA-B607-532D68CE347E"
+    }
+  },
+  "ConnectionStrings": {
+    "DefaultConnection": "{{DBConnection_Signal}}"
+  },
+  "ControllerConfig": {
+    "Id": "{{Service_Id}}",
+    "Name": "{{Service_FriendlyName}}",
+    "ServiceName": "{{Service_Name}}",
+    "ServiceType": "SVC",
+    "Roles": [
+      "{{Service_Role}}"
+    ],
+    "AuthUsername": "{{Controller_Username}}",
+    "AuthPassword": "{{Controller_Password}}",
+    "CertThumbPrint": "{{CertThumbprint}}",
+    "HostAddress": "{{Controller_Connection}}",
+    "AuthURL": "{{Auth_URL}}"
+  },
+  "Kestrel": {
+    "Endpoints": {
+      "Http": {
+        "Url": "http://*:{{Service_Port}}"
+      }
+    },
+    "Limits": {
+      "MaxRequestBodySize": 2147483647
+    }
+  },
+  "LogFile": {
+    "MinLevel": "Debug",
+    "LogPath": "{{Log_Path}}{{Service_Name}}-.txt",
+    "AppName": "{{Service_Name}}"
+  },
+  "Jwt": {
+    "Key": "{{Jwt_Key}}",
+    "Issuer": "{{Jwt_Issuer}}",
+    "Audience": "{{Jwt_Audience}}"
+  },
+  "EventMonitor": {
+    "ConnectionString": "{{DBConnection_Signal}}",
+    "EventTable": "Event"
+  },
+  "RemotePriceSync": {
+    "Enabled": true,
+    "DestinationServiceId": "",
+    "DataSetIds": [],
+    "TimeOffsetSec": 5,
+    "InitialHistoryDays": 14,
+    "OverlapBars": 3,
+    "WindowBars": 1000,
+    "MarketSchedule": {
+      "TimeZoneId": "Central Standard Time",
+      "WeeklyBreakCloseDay": "Friday",
+      "WeeklyBreakCloseTime": "16:00",
+      "WeeklyBreakOpenDay": "Sunday",
+      "WeeklyBreakOpenTime": "17:00",
+      "DailyBreakCloseTime": "16:00",
+      "DailyBreakOpenTime": "17:00"
+    }
+  }
+}

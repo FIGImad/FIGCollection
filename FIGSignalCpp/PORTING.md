@@ -13,6 +13,9 @@
 - [ ] Native Classic collection
 - [x] Separate live classes for ADXTrend, SlopeTrend, and LBaseADXEx
 - [x] Native bar-by-bar ADXTrend collection
+- [x] Supplied EFS active collection registered as ADXBase, including long/short study signals
+- [x] Custom EFS ADX formula comparisons and collection revision/replay tests
+- [ ] Exported eSignal platform comparison, including built-in ATR seed behavior (see EFS_PARITY.md)
 - [ ] Native L2 collection
 - [ ] HTTP.sys ping/secured-ping API and JWT validation
 - [ ] Controller registration/client heartbeat

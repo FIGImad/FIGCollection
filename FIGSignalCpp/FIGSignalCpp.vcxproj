@@ -20,13 +20,13 @@
   <PropertyGroup Condition="'$(Configuration)'=='Debug'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>v143</PlatformToolset>
+    <PlatformToolset>v145</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)'=='Release'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v143</PlatformToolset>
+    <PlatformToolset>v145</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
@@ -41,7 +41,7 @@
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
-      <AdditionalDependencies>odbc32.lib;advapi32.lib;httpapi.lib;bcrypt.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>odbc32.lib;advapi32.lib;httpapi.lib;bcrypt.lib;crypt32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)'=='Debug'">
@@ -55,12 +55,26 @@
     </ClCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="include\fig\configuration.hpp" />
-    <ClInclude Include="include\fig\database.hpp" />
-    <ClInclude Include="include\fig\logger.hpp" />
-    <ClInclude Include="include\fig\models.hpp" />
-    <ClInclude Include="include\fig\price_aggregator.hpp" />
-    <ClInclude Include="include\fig\study.hpp" />
+    <ClInclude Include="include\fig\studies\study_lbase_adx_variants.hpp" />
+    <ClInclude Include="include\fig\studies\backtest.hpp" />
+    <ClInclude Include="include\fig\studies\study_volatility_ratio.hpp" />
+    <ClInclude Include="include\fig\studies\study_sma_slope.hpp" />
+    <ClInclude Include="include\fig\studies\study_price_shock.hpp" />
+    <ClInclude Include="include\fig\studies\study_cycle_dir.hpp" />
+    <ClInclude Include="include\fig\studies\study_col_adx_base.hpp" />
+    <ClInclude Include="include\fig\studies\study_base_adx.hpp" />
+    <ClInclude Include="include\fig\studies\study_atr.hpp" />
+    <ClInclude Include="include\fig\studies\study_adx_roc.hpp" />
+    <ClInclude Include="include\fig\studies\study_adx_base_options.hpp" />
+    <ClInclude Include="include\fig\infrastructure\configuration.hpp" />
+    <ClInclude Include="include\fig\infrastructure\protected_data.hpp" />
+    <ClInclude Include="include\fig\database\database.hpp" />
+    <ClInclude Include="include\fig\infrastructure\logger.hpp" />
+    <ClInclude Include="include\fig\database\models.hpp" />
+    <ClInclude Include="include\fig\prices\price_aggregator.hpp" />
+    <ClInclude Include="include\fig\prices\price_cache.hpp" />
+    <ClInclude Include="include\fig\studies\study.hpp" />
+    <ClInclude Include="include\fig\studies\study_report.hpp" />
     <ClInclude Include="include\fig\studies\live_state.hpp" />
     <ClInclude Include="include\fig\studies\study_adx.hpp" />
     <ClInclude Include="include\fig\studies\study_bb.hpp" />
@@ -74,12 +88,26 @@
     <ClInclude Include="include\fig\studies\study_col_adx_trend.hpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="src\configuration.cpp" />
-    <ClCompile Include="src\database.cpp" />
-    <ClCompile Include="src\logger.cpp" />
-    <ClCompile Include="src\main.cpp" />
-    <ClCompile Include="src\price_aggregator.cpp" />
-    <ClCompile Include="src\study.cpp" />
+    <ClCompile Include="src\app\efs_study_tests.cpp" />
+    <ClCompile Include="src\studies\backtest.cpp" />
+    <ClCompile Include="src\studies\study_lbase_adx_variants.cpp" />
+    <ClCompile Include="src\studies\study_volatility_ratio.cpp" />
+    <ClCompile Include="src\studies\study_sma_slope.cpp" />
+    <ClCompile Include="src\studies\study_price_shock.cpp" />
+    <ClCompile Include="src\studies\study_cycle_dir.cpp" />
+    <ClCompile Include="src\studies\study_col_adx_base.cpp" />
+    <ClCompile Include="src\studies\study_base_adx.cpp" />
+    <ClCompile Include="src\studies\study_atr.cpp" />
+    <ClCompile Include="src\studies\study_adx_roc.cpp" />
+    <ClCompile Include="src\studies\study_adx_base_options.cpp" />
+    <ClCompile Include="src\infrastructure\configuration.cpp" />
+    <ClCompile Include="src\infrastructure\protected_data.cpp" />
+    <ClCompile Include="src\database\database.cpp" />
+    <ClCompile Include="src\infrastructure\logger.cpp" />
+    <ClCompile Include="src\app\main.cpp" />
+    <ClCompile Include="src\prices\price_aggregator.cpp" />
+    <ClCompile Include="src\studies\study.cpp" />
+    <ClCompile Include="src\studies\study_report.cpp" />
     <ClCompile Include="src\studies\study_adx.cpp" />
     <ClCompile Include="src\studies\study_bb.cpp" />
     <ClCompile Include="src\studies\study_extended.cpp" />
@@ -94,7 +122,16 @@
   <ItemGroup>
     <None Include=".clang-format" />
     <None Include="PORTING.md" />
+    <None Include="EFS_PARITY.md" />
+    <None Include="tests\verify_efs_adx.mjs" />
+    <None Include="adx-base-parameters.json" />
     <None Include="README.md" />
+    <None Include="OPTIMIZATION.md" />
+    <None Include="optimizer-search.json" />
+    <None Include="Run-Optimization.ps1" />
+    <None Include="tests\verify_backtest.mjs" />
+    <None Include="Run-StudyReport.ps1" />
+    <None Include="Set-DatabaseCredentials.ps1" />
     <None Include="signal-settings.json" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

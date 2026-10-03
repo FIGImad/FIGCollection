@@ -14,7 +14,7 @@ struct LBaseAdxValues
 class StudyLBaseADXEx final
 {
   public:
-    StudyLBaseADXEx(Decimal trigger, Decimal bias_exit = -0.75L, std::size_t revision_depth = 10);
+    StudyLBaseADXEx(Decimal trigger, Decimal bias_exit = -0.75L, std::size_t revision_depth = default_revision_depth);
     [[nodiscard]] LBaseAdxValues process(std::int64_t raw_time, const LBaseAdxInput&);
 
   private:

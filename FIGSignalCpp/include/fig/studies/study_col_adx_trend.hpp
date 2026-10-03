@@ -1,9 +1,9 @@
 #pragma once
+#include "fig/studies/study.hpp"
 #include "fig/studies/study_adx.hpp"
 #include "fig/studies/study_bb.hpp"
 #include "fig/studies/study_lbase_adx.hpp"
 #include "fig/studies/study_ma.hpp"
-#include "fig/study.hpp"
 namespace fig::studies
 {
 struct AdxTrendOptions
@@ -16,7 +16,7 @@ struct AdxTrendOptions
 class StudyColADXTrend final : public StudyCollection
 {
   public:
-    explicit StudyColADXTrend(AdxTrendOptions options, std::size_t revision_depth = 10);
+    explicit StudyColADXTrend(AdxTrendOptions options, std::size_t revision_depth = default_revision_depth);
     [[nodiscard]] std::string_view type() const noexcept override
     {
         return "ADXTrend";

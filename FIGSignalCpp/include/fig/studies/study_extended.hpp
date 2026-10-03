@@ -13,7 +13,7 @@ class StudyExtended final
                   std::string source = "ohlc4",
                   Decimal deviation1 = 1,
                   Decimal deviation2 = 2,
-                  std::size_t revision_depth = 10);
+                  std::size_t revision_depth = default_revision_depth);
     [[nodiscard]] ExtendedValues process(const PriceBar& bar);
 
   private:

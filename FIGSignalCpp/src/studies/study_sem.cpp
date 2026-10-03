@@ -39,7 +39,7 @@ std::optional<Decimal> StudySEM::process(const PriceBar& bar)
         state.sum_xy += old_sum + value - oldest * static_cast<Decimal>(period_ + 1);
         state.sum_y += value - oldest;
     }
-    if (state.window.size() == period_ && state.sum_y != 0 && state.sum_xy != 0)
+    if (state.window.size() == period_)
     {
         const auto n = static_cast<Decimal>(period_);
         const auto slope = (n * state.sum_xy - sum_x_ * state.sum_y) / denominator_;

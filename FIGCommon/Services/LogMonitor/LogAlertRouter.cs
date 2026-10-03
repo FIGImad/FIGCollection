@@ -1,3 +1,4 @@
+using FIGCommon.Exceptions;
 using FIGCommon.Models;
 using FIGCommon.Models.FIGController;
 using FIGCommon.Models.LogMonitor;
@@ -11,8 +12,8 @@ namespace FIGCommon.Services.LogMonitor
     /// Drains <see cref="LogAnalyzerSink.Queue"/> in the background and forwards
     /// each alert to the host controller via <see cref="IClientSignalRService"/>.
     ///
-    /// The SignalR call uses a fire-and-log pattern: failures are logged locally
-    /// and the alert is discarded rather than retried, keeping the router non-blocking.
+    /// Authentication failures renew the token and retry once; other failures are
+    /// logged locally and the alert is discarded, keeping retries bounded.
     /// </summary>
     public sealed class LogAlertRouter : BackgroundService
     {
@@ -88,27 +89,51 @@ namespace FIGCommon.Services.LogMonitor
 
                 await _signalR.WaitForConnectionAsync(ct);
 
-                string token = await GetTokenAsync(ct);
-                if (string.IsNullOrWhiteSpace(token))
+                for (int attempt = 0; attempt < 2; attempt++)
                 {
-                    _logger.LogWarning(
-                        "Log alert was not forwarded because an authentication token is unavailable.");
-                    return false;
+                    ct.ThrowIfCancellationRequested();
+                    string token = await GetTokenAsync(ct);
+                    if (string.IsNullOrWhiteSpace(token))
+                    {
+                        _logger.LogWarning(
+                            "Log alert was not forwarded because an authentication token is unavailable.");
+                        return false;
+                    }
+
+                    var req = new ControllerRouteRequest
+                    {
+                        Method = HttpMethod.Post.Method,
+                        Route = reqReportLogRec,
+                        DestinationRole = (int)ControllerClientRole.Alert,
+                        Load = JsonConvert.SerializeObject(alert),
+                        Token = token
+                    };
+                    try
+                    {
+                        await _signalR.SendToHostAsync(req, ct);
+                    }
+                    catch (AppErrorException ex) when (ex.errorCode == ErrorCodes.AuthError_Authentication)
+                    {
+                        // A late failure must not invalidate a token another caller renewed.
+                        lock (_tokenLock)
+                        {
+                            if (_token == token)
+                                _token = null;
+                        }
+
+                        // Clear even the second rejected token so the next alert can log in.
+                        if (attempt != 0)
+                            throw;
+
+                        _logger.LogWarning("Log alert authentication was rejected; renewing the token and retrying once.");
+                        continue;
+                    }
+
+                    _logger.LogDebug("Log alert reported to host. LogTime={LogTime}, Level={Level}",
+                        DateTimeOffset.UnixEpoch.AddSeconds(alert.RawTime).ToLocalTime(), alert.Level);
+                    return true;
                 }
-
-                var req = new ControllerRouteRequest
-                {
-                    Method = HttpMethod.Post.Method,
-                    Route = reqReportLogRec,
-                    DestinationRole = (int)ControllerClientRole.Alert,
-                    Load = JsonConvert.SerializeObject(alert),
-                    Token = token
-                };
-                await _signalR.SendToHostAsync(req, ct);
-
-                _logger.LogDebug("Log alert reported to host. LogTime={LogTime}, Level={Level}",
-                    DateTimeOffset.UnixEpoch.AddSeconds(alert.RawTime).ToLocalTime(), alert.Level);
-                return true;
+                return false;
             }
             catch (OperationCanceledException) when (ct.IsCancellationRequested)
             {

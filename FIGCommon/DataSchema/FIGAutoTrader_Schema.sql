@@ -2674,6 +2674,9 @@ BEGIN
         -- Existing AutoTradeSignal
         --------------------------------------------------------------------
 
+        -- Capture the actual previous row atomically with the update.
+        DECLARE @PreviousSignal TABLE (CloseStatus varchar(20));
+
         UPDATE [dbo].[AutoTradeSignal] WITH (ROWLOCK)
            SET [AutoTradeId]     = @AutoTradeId,
                [SignalId]        = @SignalId,
@@ -2690,6 +2693,7 @@ BEGIN
                [FilledQty]       = @FilledQty,
                [ManualQty]       = @ManualQty,
                [LastUpdated]     = @LastUpdated
+        OUTPUT deleted.[CloseStatus] INTO @PreviousSignal (CloseStatus)
          WHERE [Id] = @IdNew;
 
 
@@ -2706,10 +2710,12 @@ BEGIN
 
 
         --------------------------------------------------------------------
-        -- Failed close with an outstanding position
+        -- Only a new failure episode should invalidate a manually reactivated bot
         --------------------------------------------------------------------
 
-        IF @CloseStatus IN ('FAILED', 'FILLED_PARTIALLY_FIN')
+        IF EXISTS (SELECT 1 FROM @PreviousSignal
+                   WHERE ISNULL(CloseStatus, '') NOT IN ('FAILED', 'FILLED_PARTIALLY_FIN'))
+           AND @CloseStatus IN ('FAILED', 'FILLED_PARTIALLY_FIN')
            AND ISNULL(@PositionQty, 0) <> 0
         BEGIN
             UPDATE [dbo].[Bot] WITH (ROWLOCK)

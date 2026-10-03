@@ -7,5 +7,7 @@
         public string Duration { get; set; } = "1M";
         public int NumBars { get; set; } = 0;
         public long StartRawTime { get; set; } = 0;
+        // Optional remote API budget; omitted values retain the server's default.
+        public int? ProviderTimeoutMs { get; set; }
     }
 }

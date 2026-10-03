@@ -347,7 +347,7 @@ namespace FIGControllerSvc.Hubs
                 }
 
                 using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
-                timeoutCts.CancelAfter(TimeSpan.FromSeconds(60));
+                timeoutCts.CancelAfter(TimeSpan.FromMilliseconds(Math.Clamp(req.TimeoutMs ?? 60_000, 1_000, 300_000)));
 
                 try
                 {

@@ -1,0 +1,7 @@
+# Generated database study exports can be large; keep them local.
+/dataset-*-studies-*.csv
+/optimizer-output/
+/optimizer-candidates/
+/price-cache/
+/FIGOptimizationRunner/bin/
+/FIGOptimizationRunner/obj/

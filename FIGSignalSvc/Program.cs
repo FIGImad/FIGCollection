@@ -6,6 +6,7 @@ using FIGCommon.Services.LogMonitor;
 using FIGCommon.Utilities;
 using FIGSignalExSvc.Plugins;
 using FIGSignalExSvc.Services;
+using FIGSignalExSvc.Publication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
@@ -77,6 +78,12 @@ namespace FIGSignalExSvc
             ((IConfigurationBuilder)builder.Configuration).Add(new ConfigurationSourceWithVars(builder.Configuration));
             #endregion Configuration
 
+            var publication = new SignalPublicationOptions();
+            builder.Configuration.GetSection("SignalPublication").Bind(publication);
+            publication.Validate();
+            builder.Services.AddSingleton(publication);
+            builder.Services.AddSingleton<SignalPublicationWakeup>();
+
             #region Serilog_LogAnalyzer
             // â”€â”€ Serilog â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             Log.Logger = LogFileUtil.GetSerilogConfig(null, builder.Configuration).CreateLogger();
@@ -97,8 +104,11 @@ namespace FIGSignalExSvc
                     LogFileUtil.GetSerilogConfig(config, builder.Configuration).WriteTo.Sink(sink);
                 }
             });
-            //builder.Services.AddSingleton<LogAlertRouter>();
-            //builder.Services.AddHostedService(sp => sp.GetRequiredService<LogAlertRouter>());
+            if (!CompatabilityMode)
+            {
+                builder.Services.AddSingleton<LogAlertRouter>();
+                builder.Services.AddHostedService(sp => sp.GetRequiredService<LogAlertRouter>());
+            }
             Log.Debug("Logging has been configured.");
             #endregion Serilog_LogAnalyzer
 
@@ -255,7 +265,10 @@ namespace FIGSignalExSvc
 
             #region ClientSignalRService
             builder.Services.AddSignalR();
-            builder.Services.AddSingleton<IClientSignalRService, ClientSignalRService>();
+            if (publication.IsRemote)
+                builder.Services.AddSingleton<IClientSignalRService, PrivateSignalControllerClient>();
+            else
+                builder.Services.AddSingleton<IClientSignalRService, ClientSignalRService>();
             builder.Services.AddHostedService(sp => (ClientSignalRService)sp.GetRequiredService<IClientSignalRService>());
             #endregion ClientSignalRService
 
@@ -269,6 +282,12 @@ namespace FIGSignalExSvc
             // Discover collection plugins once. Collection instances are created per StudyCol.
             builder.Services.AddSingleton<IStudyPluginCatalog, StudyPluginCatalog>();
 
+            if (publication.IsRemote)
+            {
+                builder.Services.AddSingleton<ISignalPublicationStore, SignalPublicationStore>();
+                builder.Services.AddSingleton<ISignalPublicationClient, SignalPublicationClient>();
+                builder.Services.AddHostedService<SignalPublicationService>();
+            }
             builder.Services.AddHostedService<PriceMonitorService>();
             #endregion OtherServices
 
@@ -340,6 +359,19 @@ namespace FIGSignalExSvc
                 //app.UseSerilogRequestLogging();   // log using Serilog
 
                 // Initialize Controllers
+                if (publication.IsRemote)
+                {
+                    app.Use(async (context, next) =>
+                    {
+                        if (!PrivateSignalControllerClient.IsHealthRequest(context.Request.Method,
+                            context.Request.Path.Value ?? ""))
+                        {
+                            context.Response.StatusCode = StatusCodes.Status403Forbidden;
+                            return;
+                        }
+                        await next(context);
+                    });
+                }
                 app.UseRouting();
                 app.UseAuthentication();   // This must come before UseAuthorization
                 app.UseAuthorization();

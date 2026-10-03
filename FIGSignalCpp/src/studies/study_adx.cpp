@@ -40,10 +40,11 @@ AdxValues StudyADX::process(const PriceBar& bar)
     }
     if (s.tr_sum <= 0)
         return states_.commit(std::move(s)).value;
-    const auto pdi = 100 * s.pdm_sum / s.tr_sum, ndi = 100 * s.ndm_sum / s.tr_sum, total = pdi + ndi,
+    const auto pdi = 100 * (s.pdm_sum / s.tr_sum), ndi = 100 * (s.ndm_sum / s.tr_sum), total = pdi + ndi,
                dx = total > 0 ? 100 * std::abs(pdi - ndi) / total : 0;
     s.value.pdi = pdi;
     s.value.ndi = ndi;
+    s.value.bias = pdi - ndi;
     if (!s.last_adx)
     {
         s.dx_sum += dx;
