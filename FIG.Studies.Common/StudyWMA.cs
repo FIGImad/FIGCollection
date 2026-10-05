@@ -40,6 +40,15 @@ namespace FIG.Studies
 
     public class StudyWMA : BaseStudy
     {
+        protected override string? CheckpointConfiguration => GetType() == typeof(StudyWMA)
+            ? System.Text.Json.JsonSerializer.Serialize(new { period, source, label }) : null;
+        protected override System.Text.Json.JsonElement CaptureRuntimeState()
+            => System.Text.Json.JsonSerializer.SerializeToElement(new { WMA });
+        protected override void RestoreRuntimeState(System.Text.Json.JsonElement state)
+        {
+            WMA = state.GetProperty("WMA").ValueKind == System.Text.Json.JsonValueKind.Null ? null : state.GetProperty("WMA").GetDecimal();
+        }
+
         protected int period;
         protected string source;
         protected string label;

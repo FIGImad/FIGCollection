@@ -39,6 +39,17 @@ namespace FIG.Studies
     }
     public class StudyBB : BaseStudy
     {
+        protected override string? CheckpointConfiguration => GetType() == typeof(StudyBB)
+            ? System.Text.Json.JsonSerializer.Serialize(new { period, stdDev, source, label, prefix }) : null;
+        protected override System.Text.Json.JsonElement CaptureRuntimeState()
+            => System.Text.Json.JsonSerializer.SerializeToElement(new { MID, UB, LB });
+        protected override void RestoreRuntimeState(System.Text.Json.JsonElement state)
+        {
+            MID = state.GetProperty("MID").ValueKind == System.Text.Json.JsonValueKind.Null ? null : state.GetProperty("MID").GetDecimal();
+            UB = state.GetProperty("UB").ValueKind == System.Text.Json.JsonValueKind.Null ? null : state.GetProperty("UB").GetDecimal();
+            LB = state.GetProperty("LB").ValueKind == System.Text.Json.JsonValueKind.Null ? null : state.GetProperty("LB").GetDecimal();
+        }
+
         protected int period;
         protected double stdDev;
         protected string source;

@@ -39,6 +39,15 @@ namespace FIG.Studies
 
     public class StudyROC : BaseStudy
     {
+        protected override string? CheckpointConfiguration => GetType() == typeof(StudyROC)
+            ? System.Text.Json.JsonSerializer.Serialize(new { length, varName }) : null;
+        protected override System.Text.Json.JsonElement CaptureRuntimeState()
+            => System.Text.Json.JsonSerializer.SerializeToElement(new { ROC });
+        protected override void RestoreRuntimeState(System.Text.Json.JsonElement state)
+        {
+            ROC = state.GetProperty("ROC").ValueKind == System.Text.Json.JsonValueKind.Null ? null : state.GetProperty("ROC").GetDecimal();
+        }
+
         protected int length;
         protected string varName;
 
@@ -102,7 +111,7 @@ namespace FIG.Studies
                 return;
             }
 
-            var val = (decimal) (cStudy[varName] ?? 0.0);
+            var val = (decimal) (cStudy[varName] ?? 0.0m);
 
             cParam.vals.Add(val);
             if (cParam.vals.Count > length)

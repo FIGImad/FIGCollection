@@ -701,13 +701,34 @@ namespace FIGCommon.DataAccess
         #region StudyHistory
 
         public static List<StudyHistoryRS> GetTopStudyHistory(int id, int maxRec)
+            => GetTopStudyHistory(id, maxRec, null);
+
+        public static List<StudyHistoryRS> GetTopStudyHistory(int id, int maxRec, SqlTransaction? tx)
         {
-            return RBASE.SelectMulti<StudyHistoryRS, int, int>(new StudyHistoryRS(), "usp_study_history_select_top", "@StudyColId", id, "@MaxRec", maxRec);
+            // Identity order is not bar order after bulk inserts or gap repairs.
+            // Select the newest timestamps before returning the correction window in ascending order.
+            using var connection = tx == null ? new SqlConnection(ConnectionString) : null;
+            connection?.Open();
+            using var command = new SqlCommand($"""
+                SELECT Id,StudyColId,RawTime,[Open],High,Low,[Close],Volume,Studies
+                FROM (
+                    SELECT TOP (@MaxRec) Id,StudyColId,RawTime,[Open],High,Low,[Close],Volume,Studies
+                    FROM dbo.StudyHistory {(id == -1 ? "" : "WHERE StudyColId=@StudyColId")}
+                    ORDER BY RawTime DESC,Id DESC
+                ) h ORDER BY RawTime,Id;
+                """, tx?.Connection ?? connection, tx);
+            command.Parameters.AddWithValue("@StudyColId", id);
+            command.Parameters.AddWithValue("@MaxRec", Math.Max(1, maxRec));
+            using var reader = command.ExecuteReader();
+            var rows = new List<StudyHistoryRS>();
+            var prototype = new StudyHistoryRS();
+            while (reader.Read()) rows.Add(prototype.CreateFromSqlDataReader(reader));
+            return rows;
         }
 
         public static StudyHistoryRS? GetLasttudyHistory(int id)
         {
-            return RBASE.Select<StudyHistoryRS, int, int>(new StudyHistoryRS(), "usp_study_history_select_top", "@StudyColId", id, "@MaxRec", 1);
+            return GetTopStudyHistory(id, 1).FirstOrDefault();
         }
 
         public static List<StudyHistoryRS> GetStudyHistory(int id, long startTime, int maxRec)
@@ -806,6 +827,9 @@ namespace FIGCommon.DataAccess
                 {
                     bulkCopy.BulkCopyTimeout = 600; // in seconds
                     bulkCopy.DestinationTableName = tableStudyHistory.TableName;
+                    // Map only the study columns; checkpoint columns are populated separately in the same transaction.
+                    foreach (DataColumn column in tableStudyHistory.Columns)
+                        bulkCopy.ColumnMappings.Add(column.ColumnName, column.ColumnName);
                     bulkCopy.WriteToServer(tableStudyHistory);
                 }
                 return true;

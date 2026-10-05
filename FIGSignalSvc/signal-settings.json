@@ -50,11 +50,26 @@
     "ConnectionString": "{{DBConnection_AutoTrader}}",
     "EventTable": "Event"
   },
-  "StudyPlugins": {
-    "Path": "Plugins"
-  },
   "SingalProcessing": {
+    "PluginPath": "Plugins",
+    "Checkpoints": {
+      "Enabled": true,
+      "EveryNBars": 10,
+      "CatchUpEveryNBars": 120,
+      "LiveMaxBars": 5
+    },
     "TimeOffset": 15,
     "LiveMode": true
+  },
+  "SignalPublication": {
+    "Mode": "SharedDatabase"
+  },
+  "SignalPublication_RemoteExample": {
+    "Mode": "RemotePublisher",
+    "ProducerId": "remote-signal-site-1",
+    "DestinationServiceId": "<registered FIGAutoTraderSvc service ID>",
+    "ReconciliationSeconds": 60,
+    "RetrySeconds": 5,
+    "BatchSize": 100
   }
 }

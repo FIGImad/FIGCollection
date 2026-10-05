@@ -26,7 +26,9 @@ public sealed class StudyPluginCatalog : IStudyPluginCatalog
         _ = typeof(IStudyCollectionFactory).Assembly;
         _ = typeof(StudyMA).Assembly;
 
-        var configuredPath = configuration["StudyPlugins:Path"] ?? "Plugins";
+        var configuredPath = configuration["SingalProcessing:PluginPath"]
+            ?? configuration["StudyPlugins:Path"]
+            ?? "Plugins";
         var pluginRoot = Path.IsPathRooted(configuredPath)
             ? configuredPath
             : Path.Combine(AppContext.BaseDirectory, configuredPath);

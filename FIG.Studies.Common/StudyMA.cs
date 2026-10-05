@@ -38,6 +38,15 @@ namespace FIG.Studies
 
     public class StudyMA : BaseStudy
     {
+        protected override string? CheckpointConfiguration => GetType() == typeof(StudyMA)
+            ? System.Text.Json.JsonSerializer.Serialize(new { period, source, label }) : null;
+        protected override System.Text.Json.JsonElement CaptureRuntimeState()
+            => System.Text.Json.JsonSerializer.SerializeToElement(new { MA });
+        protected override void RestoreRuntimeState(System.Text.Json.JsonElement state)
+        {
+            MA = state.GetProperty("MA").ValueKind == System.Text.Json.JsonValueKind.Null ? null : state.GetProperty("MA").GetDecimal();
+        }
+
         public int period = 0;
         public string source = "";
         public string label = "";

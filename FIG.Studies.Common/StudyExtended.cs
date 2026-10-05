@@ -6,6 +6,7 @@ namespace FIG.Studies
 {
     public class StudyExtendedParams : BaseParams
     {
+        public override void OnCheckpointRestored() => RecalcRegressionConstants();
         public int period = 0;
         public string source = "ohlc4";
         public double sumY = 0D;
@@ -238,6 +239,9 @@ namespace FIG.Studies
 
     public class StudyExtended : BaseStudy
     {
+        protected override string? CheckpointConfiguration => GetType() == typeof(StudyExtended)
+            ? System.Text.Json.JsonSerializer.Serialize(new { period, source, stdDev1, stdDev2, label }) : null;
+
 
         public PriceDataRS? price = null;
         public int period = 0;

@@ -32,18 +32,42 @@ namespace FIGSignalExSvc.Services
         protected List<PriceDataRS> oneMinPriceData = new();
 
         private readonly StudySignal _studySignal;
+        private readonly bool checkpointsEnabled;
+        private readonly int checkpointBatchSize;
+        private readonly long checkpointMaxBatchBytes;
+        private readonly int checkpointPricePageSize;
+        private readonly int checkpointEveryNBars;
+        private readonly StudyCheckpointPolicy checkpointPolicy;
+        private readonly StudyCheckpointStore checkpointStore = new();
+        private StudyCheckpointCadence checkpointCadence = null!;
+        private bool checkpointReady;
+        // The in-memory calculation tail can be newer than the latest persisted snapshot.
+        private long? processedRawTime;
 
         public ExecStudySet(StudyColRS studyCol, IServiceProvider serviceProvider) {
             _serviceProvider = serviceProvider;
             _logger = _serviceProvider?.GetRequiredService<ILogger<ExecStudySet>>() ?? throw new ArgumentNullException(nameof(_logger)); ;
             _loggerFactory = _serviceProvider.GetRequiredService<ILoggerFactory>();
             _pluginCatalog = _serviceProvider.GetRequiredService<IStudyPluginCatalog>();
+            var checkpointConfig = _serviceProvider.GetRequiredService<IConfiguration>().GetSection("SingalProcessing:Checkpoints");
+            checkpointsEnabled = checkpointConfig.GetValue<bool>("Enabled");
+            checkpointBatchSize = checkpointConfig.GetValue("BatchSize", 250);
+            checkpointMaxBatchBytes = checkpointConfig.GetValue<long>("MaxBatchBytes", 16 * 1024 * 1024);
+            checkpointPricePageSize = checkpointConfig.GetValue("PricePageSize", 2048);
+            checkpointEveryNBars = checkpointConfig.GetValue("EveryNBars", 30);
+            checkpointPolicy = new StudyCheckpointPolicy(checkpointEveryNBars,
+                checkpointConfig.GetValue("CatchUpEveryNBars", 100), checkpointConfig.GetValue("LiveMaxBars", 10));
+            if (checkpointBatchSize < 1 || checkpointMaxBatchBytes < 1 || checkpointPricePageSize < 1 || checkpointEveryNBars < 1)
+                throw new InvalidDataException("Checkpoint interval, batch and page limits must be positive.");
             InitStudySet(studyCol);
             _studySignal = new StudySignal(studyCol, serviceProvider);
         }
 
         private void InitStudySet(StudyColRS studyCol)
         {
+            checkpointReady = false;
+            processedRawTime = null;
+            checkpointCadence = new StudyCheckpointCadence(checkpointEveryNBars);
             try
             {
                 studyColRec = new StudyColRS(studyCol);
@@ -64,6 +88,8 @@ namespace FIGSignalExSvc.Services
                     studyInterval,
                     _loggerFactory);
                 studyParams = _pluginCatalog.Create(studyColRec.ColType, collectionContext);
+                if (checkpointsEnabled && !studyParams.SupportsCheckpoint)
+                    throw new NotSupportedException($"StudyCol {studyCol.Id} ({studyCol.ColType}) has not implemented complete checkpoint support. Disable SingalProcessing:Checkpoints:Enabled or update this plugin.");
 
                 if (oneMinPriceDataSet == null)
                 {
@@ -112,10 +138,10 @@ namespace FIGSignalExSvc.Services
 
             // get top 5 records from StudyHistory table (Sorted ASC)
             var lastStudyHistory = MainRepo.GetTopStudyHistory(studyColRec.Id, 5);
+            if (checkpointsEnabled) return ProcessCheckpointBatches(lastStudyHistory, options);
             bool isHistEmpty = lastStudyHistory.Count == 0;
             int minOneMinPriceCount = studyParams?.GetMaxLen() * studyInterval.IntervalLen / 60 + 500 ?? 0;
             List<BarStudy> studyList = new List<BarStudy>();
-
             if (oneMinPriceData.Count == 0)  // loading first-time
             {
                 if (isHistEmpty)
@@ -216,8 +242,114 @@ namespace FIGSignalExSvc.Services
                 // Calculation advanced plugin state before the failed database write.
                 // Rebuild from committed history on the next price event.
                 oneMinPriceData.Clear();
+                checkpointReady = false;
                 InitStudySet(studyColRec);
                 throw new Exception("Error committing studies and signals; calculation state reset", ex);
+            }
+        }
+
+        private bool ProcessCheckpointBatches(List<StudyHistoryRS> history, JsonSerializerOptions jsonOptions)
+        {
+            try
+            {
+                // A deleted history tail invalidates state cached by a running worker too.
+                if (checkpointReady && processedRawTime != (history.Count > 0 ? history[^1].RawTime : (long?)null))
+                    InitStudySet(studyColRec);
+                StudyCheckpointReplayPlan? recovery = null;
+                if (!checkpointReady)
+                {
+                    // SQL errors (including a missing migration) must fail; they are not a reason to ignore persistence.
+                    CollectionCheckpoint? checkpoint;
+                    try { checkpoint = checkpointStore.Load(studyColRec.Id); }
+                    catch (Exception ex) when (ex is JsonException or InvalidDataException)
+                    {
+                        _logger.LogWarning(ex, "Unreadable checkpoint for StudyCol {Id}; rebuilding from price history", studyColRec.Id);
+                        checkpoint = null;
+                    }
+                    if (checkpoint != null)
+                    {
+                        try
+                        {
+                            if (history.Count == 0)
+                                throw new InvalidDataException("Checkpoint has no committed study history.");
+                            var window = studyParams!.GetRequiredCheckpointPrices(checkpoint);
+                            studyParams.RestoreCheckpoint(checkpoint,
+                                window == null ? null : checkpointStore.LoadPrices(studyColRec.Id, window));
+                            recovery = StudyCheckpointReplayPlan.FromCheckpoint(checkpoint, history[^1].RawTime, numStudyHistoryRecToUdate);
+                            checkpointCadence.Restore(checkpoint);
+                            checkpointReady = true;
+                            processedRawTime = checkpoint.RawTime;
+                            _logger.LogInformation("Restored StudyCol {Id} checkpoint at {RawTime}; regenerating history from {Start} through the latest price",
+                                studyColRec.Id, checkpoint.RawTime, recovery.Start);
+                        }
+                        catch (Exception ex) when (ex is InvalidDataException or JsonException or ArgumentException or InvalidOperationException)
+                        {
+                            _logger.LogWarning(ex, "Incompatible checkpoint for StudyCol {Id}; rebuilding from price history", studyColRec.Id);
+                            InitStudySet(studyColRec); // never reuse a partially restored collection
+                            recovery = null;
+                        }
+                    }
+                }
+                var rebuilding = !checkpointReady;
+                var rewind = recovery?.Rewind ?? (rebuilding ? 0 : Math.Min(numStudyHistoryRecToUdate, history.Count));
+                var start = recovery?.Start ?? (rebuilding || history.Count == 0 ? 0 : history[history.Count - rewind].RawTime);
+                var retainFrom = rebuilding && history.Count > 0 ? history[0].RawTime : start;
+                long? lastWritten = history.Count > 0 ? history[^1].RawTime : null;
+                if (rebuilding) _logger.LogInformation("Rebuilding StudyCol {Id} from all available price history in bounded batches", studyColRec.Id);
+                var progressWatch = System.Diagnostics.Stopwatch.StartNew();
+                long processed = 0;
+                var prices = StudyHistoryReplay.ReadBars(
+                    cursor => MainRepo.GetPriceData(oneMinPriceDataSet!.Id, cursor, checkpointPricePageSize),
+                    studyInterval.IntervalLen, start);
+                if (recovery != null) prices = recovery.RequireStart(prices);
+                prices = checkpointPolicy.SelectInterval(prices, checkpointCadence, rewind, interval =>
+                    _logger.LogInformation("StudyCol {Id}: checkpoint interval {EveryNBars} for this processing cycle (live threshold {LiveMaxBars} new/recovery bars)",
+                        studyColRec.Id, interval, checkpointPolicy.LiveMaxBars));
+                StudyCheckpointProcessor.CalculateAndCommit(studyParams!, prices, retainFrom, rewind,
+                    checkpointBatchSize, checkpointMaxBatchBytes, (bars, batch) =>
+                    {
+                        var inserts = new List<StudyHistoryRS>();
+                        var updates = new List<StudyHistoryRS>();
+                        foreach (var bar in bars)
+                        {
+                            var row = new StudyHistoryRS
+                            {
+                                StudyColId = studyColRec.Id, RawTime = bar.Price.RawTime,
+                                Open = bar.Price.Open, High = bar.Price.High, Low = bar.Price.Low,
+                                Close = bar.Price.Close, Volume = bar.Price.Volume,
+                                Studies = JsonSerializer.Serialize(bar.Studies, jsonOptions), rawStudies = bar.Studies
+                            };
+                            // Signal processing uses the chronological tail. The writer independently
+                            // checks row existence so holes inside the replay window can be repaired.
+                            (lastWritten == null || row.RawTime > lastWritten.Value ? inserts : updates).Add(row);
+                        }
+                        var writeWatch = System.Diagnostics.Stopwatch.StartNew();
+                        // Durable signal progress excludes already processed bars, even after
+                        // a history deletion. A previously forming bar remains eligible once closed.
+                        _studySignal.ProcessSignals(inserts, false, updates, saveHistory:
+                            tx => checkpointStore.SaveHistoryBatch(studyColRec.Id, inserts.Concat(updates).ToList(), batch.Items, lastWritten, tx));
+                        processedRawTime = bars[^1].Price.RawTime;
+                        lastWritten = lastWritten == null ? processedRawTime : Math.Max(lastWritten.Value, processedRawTime.Value);
+                        checkpointReady = true;
+                        _logger.LogInformation("Committed StudyCol {Id}: {Bars} bars through {RawTime}, {Checkpoints} checkpoints, {Bytes} checkpoint bytes, {Milliseconds} ms writing",
+                            studyColRec.Id, bars.Count, processedRawTime, batch.Count, batch.PayloadBytes, writeWatch.ElapsedMilliseconds);
+                    }, time =>
+                    {
+                        processed++;
+                        if (progressWatch.Elapsed.TotalSeconds < 10) return;
+                        _logger.LogInformation("Calculating StudyCol {Id}: {Bars} bars through {RawTime}{Phase}",
+                            studyColRec.Id, processed, time, time < retainFrom ? " (historical warmup)" : "");
+                        progressWatch.Restart();
+                    }, checkpointCadence);
+                if (lastWritten.HasValue && processedRawTime != lastWritten)
+                    throw new InvalidDataException("Source price history does not reach the committed study-history tail; checkpoint recovery is incomplete.");
+                return true;
+            }
+            catch
+            {
+                checkpointReady = false;
+                InitStudySet(studyColRec);
+                throw;
             }
         }
 

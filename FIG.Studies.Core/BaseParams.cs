@@ -20,7 +20,10 @@ namespace FIG.Studies
         public virtual void Assign(BaseParams param)
         {
             Price = new PriceDataRS(param.Price);
+            IsValid = param.IsValid;
         }
+
+        public virtual void OnCheckpointRestored() { }
 
         public virtual BaseParams Clone()
         {

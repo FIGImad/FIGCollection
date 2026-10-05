@@ -1,4 +1,4 @@
-﻿using FIGCommon.Models;
+using FIGCommon.Models;
 using FIGCommon.Utilities;
 
 
@@ -41,6 +41,15 @@ namespace FIG.Studies
 
     public class StudySEM : BaseStudy
     {
+        protected override string? CheckpointConfiguration => GetType() == typeof(StudySEM)
+            ? System.Text.Json.JsonSerializer.Serialize(new { period, source, label }) : null;
+        protected override System.Text.Json.JsonElement CaptureRuntimeState()
+            => System.Text.Json.JsonSerializer.SerializeToElement(new { SEM });
+        protected override void RestoreRuntimeState(System.Text.Json.JsonElement state)
+        {
+            SEM = state.GetProperty("SEM").ValueKind == System.Text.Json.JsonValueKind.Null ? null : state.GetProperty("SEM").GetDecimal();
+        }
+
         protected int period;
         protected string source;
         protected string label;

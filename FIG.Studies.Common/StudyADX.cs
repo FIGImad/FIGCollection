@@ -84,6 +84,17 @@ namespace FIG.Studies
 
     public class StudyADX : BaseStudy
     {
+        protected override string? CheckpointConfiguration => GetType() == typeof(StudyADX)
+            ? System.Text.Json.JsonSerializer.Serialize(new { length, smoothing, label }) : null;
+        protected override System.Text.Json.JsonElement CaptureRuntimeState()
+            => System.Text.Json.JsonSerializer.SerializeToElement(new { ADX, PDI, NDI });
+        protected override void RestoreRuntimeState(System.Text.Json.JsonElement state)
+        {
+            ADX = state.GetProperty("ADX").ValueKind == System.Text.Json.JsonValueKind.Null ? null : state.GetProperty("ADX").GetDecimal();
+            PDI = state.GetProperty("PDI").ValueKind == System.Text.Json.JsonValueKind.Null ? null : state.GetProperty("PDI").GetDecimal();
+            NDI = state.GetProperty("NDI").ValueKind == System.Text.Json.JsonValueKind.Null ? null : state.GetProperty("NDI").GetDecimal();
+        }
+
         protected int length;
         protected int smoothing;
         protected string label;
