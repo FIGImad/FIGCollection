@@ -1,0 +1,17 @@
+<Solution>
+  <Configurations>
+    <Platform Name="Any CPU" /><Platform Name="x64" /></Configurations>
+  <Folder Name="/Tests/">
+    <Project Path="tests/FIGCollectionPluginFixture.vcxproj" Id="9de3fb9a-304a-4897-bf3c-e46e89d7c3a2" />
+    <Project Path="tests/FIGCollectionProbe.vcxproj" Id="c21bd265-36aa-476c-983f-59fb30d64235" />
+  </Folder>
+  <Project Path="../FIGOptimizationRunner/FIGOptimizationRunner.csproj" />
+  <Project Path="FIGSignalCpp.vcxproj" Id="b59c5936-61e0-4cc0-928b-c0a9f1a8ac31" />
+  <Project Path="FIGStudyCollection.ADX.vcxproj" Id="f0874c81-e698-47fd-bd7b-a0e18c081625" />
+  <Project Path="FIGStudyCollection.Example.vcxproj" Id="a02b6d7f-e3fa-4334-ba65-03bd7437b244" />
+  <Project Path="FIGStudyCollection.LADX.vcxproj" Id="a6c326f4-e479-4bb2-a075-6468f56f023d" />
+  <Project Path="FIGStudyCollection.LADX2.vcxproj" Id="fb741cd5-80e7-48e4-b81d-a31e5d7680fc" />
+  <Project Path="FIGStudyCollection.SADX2.vcxproj" Id="a7f8d125-382a-4978-b3a2-12eaf63994a2" />
+  <Project Path="FIGStudyCollection.SADX3.vcxproj" Id="d3e8a306-8774-43b8-9912-8a98da003003" />
+  <Project Path="FIGStudyCore.vcxproj" Id="d204c4ad-c8e5-48a7-81ab-a6ec4b546ed4" />
+</Solution>

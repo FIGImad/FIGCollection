@@ -19,6 +19,9 @@ public sealed class NativeBatchExecutor : IBatchExecutor
             "--force-close", c.ForceCloseAtEnd ? "1" : "0", "--start", c.StartDate,
             "--train-end", c.TrainEndExclusive, "--validation-end", c.ValidationEndExclusive
         };
+        args.AddRange(["--collection", c.Collection, "--signal", c.Signal]);
+        if (!string.IsNullOrEmpty(c.CollectionDll))
+            args.AddRange(["--collection-dll", Path.GetFullPath(c.CollectionDll)]);
         if (c.Quantity == 0)
             args.AddRange(["--quantity-pct", N(c.QuantityPct)]);
         if (c.PriceCacheMode != "off")
@@ -31,6 +34,8 @@ public sealed class NativeBatchExecutor : IBatchExecutor
     {
         if (!File.Exists(c.Executable)) throw new FileNotFoundException("Build FIGSignalCpp Release or specify --executable.", c.Executable);
         if (!File.Exists(c.Settings)) throw new FileNotFoundException("Database settings not found.", c.Settings);
+        if (!string.IsNullOrEmpty(c.CollectionDll) && !File.Exists(c.CollectionDll))
+            throw new FileNotFoundException("Collection DLL not found. Build the matching native configuration.", c.CollectionDll);
         var info = new ProcessStartInfo(c.Executable)
         {
             UseShellExecute = false, CreateNoWindow = true,

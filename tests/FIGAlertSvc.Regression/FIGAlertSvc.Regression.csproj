@@ -12,6 +12,8 @@
     <Compile Include="../../FIGAlertSvc/Services/AlertBatchBuilder.cs" Link="AlertBatchBuilder.cs" />
     <Compile Include="../../FIGAlertSvc/Services/AlertMessageFormatter.cs" Link="AlertMessageFormatter.cs" />
     <Compile Include="../../FIGAlertSvc/Services/PushOverMessageService.cs" Link="PushOverMessageService.cs" />
+    <Compile Include="../../FIGAlertSvc/Services/AlertProcessingMode.cs" Link="AlertProcessingMode.cs" />
+    <Compile Include="../../FIGCommon/Models/Alert/AlertCategory.cs" Link="AlertCategory.cs" />
     <Compile Include="../../FIGAlertSvc/Services/AlertDispatchService.cs" Link="AlertDispatchService.cs" />
     <Compile Include="../../FIGAlertSvc/Services/IMessageService.cs" Link="IMessageService.cs" />
   </ItemGroup>

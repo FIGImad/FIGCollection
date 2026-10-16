@@ -1,4 +1,4 @@
-﻿using FIGCommon.Services;
+using FIGCommon.Services;
 using FIGCommon.Utilities;
 using System.Reflection;
 using System.Text.Json.Serialization;
@@ -16,7 +16,8 @@ namespace FIGCommon.Models.FIGController
         Broker = 32,
         //Monitor = 64,
         ServiceManager = 128,
-        Alert= 256
+        Alert= 256,
+        SystemAlert = 512
     }
 
     public class ControllerConfig

@@ -42,6 +42,9 @@
     "AppName": "{{Service_Name}}",
     "LogAPICalls": false
   },
+  "LogAlerts": {
+    "SeparateSystemAlerts": true
+  },
   "Jwt": {
     "Key": "{{Jwt_Key}}",
     "Issuer": "{{Jwt_Issuer}}",

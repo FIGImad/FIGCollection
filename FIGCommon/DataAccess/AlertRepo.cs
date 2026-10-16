@@ -195,15 +195,15 @@ namespace FIGCommon.DataAccess
             RBASE.ExecuteScalar<int, int, string>("usp_alert_update_match", "@Id", alertId, "@MatchedRuleId", matchedRuleId, "@FriendlyMessage", friendlyMessage);
         }
 
-        public static List<PendingAlertRS> GetPendingAlerts(int lookbackMinutes = 30)
+        public static List<PendingAlertRS> GetPendingAlerts(int lookbackMinutes = 30, int categoryFilter = -1)
         {
-            return RBASE.SelectMulti<PendingAlertRS, int>(new PendingAlertRS(), "usp_alert_get_pending", "@LookbackMinutes", lookbackMinutes);
+            return RBASE.SelectMulti<PendingAlertRS, int, int>(new PendingAlertRS(), "usp_alert_get_pending", "@LookbackMinutes", lookbackMinutes, "@CategoryFilter", categoryFilter);
         }
 
-        public static List<PendingAlertRS> GetPendingImmediateAlerts(int maxRec = 100, int lookbackMinutes = 30)
+        public static List<PendingAlertRS> GetPendingImmediateAlerts(int maxRec = 100, int lookbackMinutes = 30, int categoryFilter = -1)
         {
-            return RBASE.SelectMulti<PendingAlertRS, int, int>(new PendingAlertRS(),
-                "usp_alert_get_pending_immediate", "@MaxRec", maxRec, "@LookbackMinutes", lookbackMinutes);
+            return RBASE.SelectMulti<PendingAlertRS, int, int, int>(new PendingAlertRS(),
+                "usp_alert_get_pending_immediate", "@MaxRec", maxRec, "@LookbackMinutes", lookbackMinutes, "@CategoryFilter", categoryFilter);
         }
 
         public static void MarkAlertSent(int alertId)

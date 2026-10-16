@@ -18,7 +18,9 @@
     "Name": "{{Service_FriendlyName}}",
     "ServiceName": "{{Service_Name}}",
     "ServiceType": "SVC",
-    "Roles": [ "{{Service_Role}}" ],
+    "Roles": [
+      "{{Service_Role}}"
+    ],
     "AuthUsername": "{{Controller_Username}}",
     "AuthPassword": "{{Controller_Password}}",
     "CertThumbPrint": "{{CertThumbprint}}",
@@ -64,7 +66,8 @@
   },
   "PushOver": {
     "APIToken": "akypvaefo1yxd37dmu8ceuaugbdhmc"
+  },
+  "AlertProcessing": {
+    "Mode": "Combined"
   }
-
 }
-

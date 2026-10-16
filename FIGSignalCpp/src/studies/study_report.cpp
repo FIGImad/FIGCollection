@@ -1,5 +1,6 @@
 #include "fig/studies/study_report.hpp"
 #include "fig/prices/price_aggregator.hpp"
+#include "fig/studies/collection_plugin.hpp"
 #include <iomanip>
 #include <limits>
 #include <locale>
@@ -9,45 +10,22 @@
 
 namespace fig
 {
-StudyCalculator::StudyCalculator(const StudyReportOptions& o)
-    : source_(o.source), ma_(o.period, o.source), wma_(o.period, o.source), sem_(o.period, o.source),
-      bb_(o.period, 2, o.source), extended_(o.period, o.source), adx_(o.period, o.adx_smoothing), roc_(o.period),
-      slope_(3, 0.5L), trend_({o.period, o.period, 2, o.period, o.adx_smoothing, 20})
+StudyCalculator::StudyCalculator(const StudyReportOptions& options)
 {
-    (void)studies::source_value(PriceBar{}, o.source); // Validate before any database/output work.
+    if (options.source.empty() ||
+        options.source.find_first_not_of("abcdefghijklmnopqrstuvwxyz0123456789") != std::string::npos)
+        throw std::invalid_argument("Invalid price source");
+    StudyRegistry registry;
+    CollectionPlugin{options.collection_dll}.register_collections(registry);
+    const auto parameters = "{\"period\":" + std::to_string(options.period) +
+                            ",\"adx_smoothing\":" + std::to_string(options.adx_smoothing) + ",\"source\":\"" +
+                            options.source + "\"}";
+    collection_ = registry.create(
+        StudyCollectionConfig{.type = "ADXDiagnostics", .parameters = parameters}, Ticker{}, Interval{});
 }
-
 StudyBar StudyCalculator::process(const PriceBar& bar)
 {
-    StudyBar result{bar, {}};
-    auto& v = result.studies;
-    const auto ma = ma_.process(bar);
-    v["MA"] = ma;
-    v["WMA"] = wma_.process(bar);
-    v["SEM"] = sem_.process(bar);
-    v["ROC"] = roc_.process(bar.raw_time, studies::source_value(bar, source_));
-    const auto bb = bb_.process(bar);
-    v["BB_Middle"] = bb.middle;
-    v["BB_Upper"] = bb.upper;
-    v["BB_Lower"] = bb.lower;
-    const auto e = extended_.process(bar);
-    v["Extended_MA"] = e.moving_average;
-    v["Extended_SEM"] = e.sem;
-    v["Extended_Lower1"] = e.lower1;
-    v["Extended_Upper1"] = e.upper1;
-    v["Extended_Lower2"] = e.lower2;
-    v["Extended_Upper2"] = e.upper2;
-    const auto a = adx_.process(bar);
-    v["ADX"] = a.adx;
-    v["PDI"] = a.pdi;
-    v["NDI"] = a.ndi;
-    const auto s = slope_.process(bar.raw_time, ma);
-    // The underlying slope study uses zero for missing inputs; keep warmup blank in the report.
-    v["Slope_Direction"] = ma ? std::optional<Decimal>(s.direction) : std::nullopt;
-    v["Slope_PerBar"] = ma ? std::optional<Decimal>(s.slope_per_bar) : std::nullopt;
-    for (const auto& [name, value] : trend_.process(bar).studies)
-        v["ADXTrend_" + name] = value;
-    return result;
+    return collection_->process(bar);
 }
 
 namespace
@@ -107,12 +85,12 @@ std::size_t write_study_report(const MainRepository& repository,
         throw std::invalid_argument("Interval minutes must be positive and fit in seconds");
     PriceAggregator aggregator(options.interval_minutes * 60);
     std::unique_ptr<StudyCalculator> calculator;
-    std::unique_ptr<StudyCollection> integrated;
+    std::unique_ptr<StudyCollection> selected;
     if (collection)
     {
         StudyRegistry registry;
-        register_integrated_collections(registry);
-        integrated = registry.create(*collection, Ticker{}, Interval{});
+        CollectionPlugin{options.collection_dll}.register_collections(registry);
+        selected = registry.create(*collection, Ticker{}, Interval{});
     }
     else
         calculator = std::make_unique<StudyCalculator>(options);
@@ -122,7 +100,7 @@ std::size_t write_study_report(const MainRepository& repository,
     std::size_t count{};
     const auto consume = [&](const PriceBar& price)
     {
-        const auto bar = integrated ? integrated->process(price) : calculator->process(price);
+        const auto bar = selected ? selected->process(price) : calculator->process(price);
         if (first)
         {
             write_header(output, bar);

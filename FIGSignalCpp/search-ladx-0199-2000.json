@@ -1,0 +1,76 @@
+{
+  "DataSetId": 3,
+  "IntervalMinutes": 3,
+  "BaseParameters": "C:\\Roots\\OptimizationV2\\optimizer-output\\ladx-3m\\20261007-020924-cs-4a134798\\reports\\run-0199-parameters.json",
+  "Settings": "C:\\Roots\\OptimizationV2\\signal-settings.json",
+  "OutputRoot": "C:\\Roots\\OptimizationV2\\optimizer-output\\ladx-3m-refine-0199",
+  "Executable": "C:\\Roots\\OptimizationV2\\FIGSignalCpp.exe",
+  "CollectionDll": "C:\\Roots\\OptimizationV2\\FIGStudyCollection.LADX.dll",
+  "Collection": "LADX",
+  "Signal": "LADX_SIDE",
+  "PriceCacheDirectory": "C:\\Roots\\OptimizationV2\\price-cache",
+  "PriceCacheMode": "use",
+  "Samples": 1999,
+  "Seed": 12345,
+  "Jobs": 2,
+  "MaxSourceBars": 0,
+  "InitialCapital": 1200000,
+  "Quantity": 0,
+  "QuantityPct": 1.0,
+  "Multiplier": 20,
+  "CommissionPerContractPerSide": 1.6,
+  "SlippagePointsPerSide": 0,
+  "ForceCloseAtEnd": false,
+  "StartDate": "2016-01-01",
+  "EndDateExclusive": "",
+  "TrainEndExclusive": "2023-01-01",
+  "ValidationEndExclusive": "2025-01-01",
+  "Ranges": {
+    "AdxLen": [
+      36,
+      37,
+      38,
+      39,
+      40,
+      41,
+      42,
+      43,
+      44
+    ],
+    "FastMALen": [
+      3,
+      4,
+      5
+    ],
+    "GuideMALen": [
+      28,
+      29,
+      30,
+      31,
+      32
+    ],
+    "StartBias": [
+      1.5,
+      1.625,
+      1.75,
+      1.875,
+      2.0,
+      2.125,
+      2.25,
+      2.375,
+      2.5
+    ],
+    "StopBias": [
+      -2.5,
+      -2.375,
+      -2.25,
+      -2.125,
+      -2.0,
+      -1.875,
+      -1.75,
+      -1.625,
+      -1.5
+    ]
+  },
+  "ExecutableSHA256": null
+}

@@ -1,3 +1,4 @@
+using FIGCommon.Models.Alert;
 using FIGCommon.Exceptions;
 using FIGCommon.Models;
 using FIGCommon.Models.FIGController;
@@ -21,6 +22,7 @@ namespace FIGCommon.Services.LogMonitor
         private readonly LogAnalyzerSink _sink;
         private readonly IClientSignalRService? _signalR;
         private readonly ControllerConfig _controllerConfig;
+        private readonly bool _separateSystemAlerts;
 
         private readonly SemaphoreSlim _loginGate = new(1, 1);
         private readonly object _tokenLock = new();
@@ -39,6 +41,7 @@ namespace FIGCommon.Services.LogMonitor
             _sink = sink ?? throw new ArgumentNullException(nameof(sink));
             _signalR = signalR;
 
+            _separateSystemAlerts = config.GetValue<bool>("LogAlerts:SeparateSystemAlerts", false);
             _controllerConfig = new ControllerConfig();
             config.GetSection("ControllerConfig").Bind(_controllerConfig);
             _controllerConfig.Validate();
@@ -104,7 +107,8 @@ namespace FIGCommon.Services.LogMonitor
                     {
                         Method = HttpMethod.Post.Method,
                         Route = reqReportLogRec,
-                        DestinationRole = (int)ControllerClientRole.Alert,
+                        DestinationRole = (int)(_separateSystemAlerts && AlertCategory.IsSystemAlert(alert.Source, alert.Level)
+                            ? ControllerClientRole.SystemAlert : ControllerClientRole.Alert),
                         Load = JsonConvert.SerializeObject(alert),
                         Token = token
                     };

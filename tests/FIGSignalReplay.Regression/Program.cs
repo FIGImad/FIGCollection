@@ -138,6 +138,7 @@ Check(adaptivePublications == referenceDb.Signals.Count
     && adaptiveDb.Signals.GroupBy(s => (s.Strategy, s.StartTime)).All(g => g.Count() == 1),
     "100/30-bar restart replay generates no duplicate trade-driving signals");
 
+SignalDeadlockRetryChecks.Run(Check);
 Console.WriteLine($"{checks} signal replay checks passed.");
 if (args.Contains("--sql"))
 {

@@ -23,9 +23,64 @@ dotnet run --project ..\FIGOptimizationRunner -c Release --no-launch-profile -- 
 dotnet run --project ..\FIGOptimizationRunner -c Release --no-launch-profile -- self-test
 ```
 
-Visual Studio includes three launch profiles: **Prepare candidates (no database)**, **Small native verification**, and **Full optimization**. Preparation is the default. Starting without command arguments prints help.
+Visual Studio includes **Prepare candidates (no database)**, **Small native verification**, **Full optimization**, and LDAX prepare/run profiles for 200 cases at three-minute intervals. Preparation is the default. Starting without command arguments prints help.
+
+## LDAX: 200 cases at three-minute intervals
+
+From `FIGSignalCpp`, use `optimizer-search-ldax-3m-200.json`. It keeps `ldax-parameters.json` as case 1 and adds 199 unique seeded variations around its values. Build the native Release host and LDAX DLL first, then run:
+
+```cmd
+dotnet run --project ..\FIGOptimizationRunner -c Release --no-launch-profile -- run --config .\optimizer-search-ldax-3m-200.json
+```
+
+Replace `run` with `prepare` to save the 200 cases without running the backtests. See [LDAX optimization](../FIGSignalCpp/LDAX.md#optimization-200-cases-at-three-minute-intervals) for ranges, dates, finances, and executing a prepared batch.
+
+Collection selection is configurable through `CollectionDll`, `Collection`, and `Signal`. DLL paths resolve relative to the configuration file, like `Executable`. Their defaults retain the adjacent ADX DLL, `ADXBase`, and `STrend_LBaseADX_Side`. LDAX uses `FIGStudyCollection.LDAX.dll`, `LDAX`, and `STrend_LADX_LongSide` (the normalized 0/1 signal). Match the DLL's Debug/Release configuration to the native host.
+
+The random generator checks active parameter names for ADX and LDAX separately. In LDAX, `TrendReEntryShockMax` is active; the preserved `ReEntryCooldownBars` and unused `ContinuationMaxShockATR` stay fixed. For other plugins, ranges must refer to keys in the baseline and the native DLL validates the parameter values before loading prices. A custom collection must specify its own 0/1 long signal.
 
 ## Configuration and reports
+
+### Nested and mixed-type parameters
+
+The baseline can contain nested objects and arrays, numbers, booleans, strings, and nulls. Candidate generation preserves the complete JSON tree and changes only the selected paths. Existing flat numeric configurations still work. JSON nesting is supported up to 1,024 levels.
+
+Use dot-separated paths in `Ranges` for ordinary property names:
+
+```json
+"Ranges": {
+  "indicators.adxLength": [40, 55],
+  "entry.startBiasLongTrend": [1, 1.5],
+  "exit.exitOnGuideCrossShortTrend": [false, true],
+  "marketTrendSettings.timeframe": ["hourly", "daily"]
+}
+```
+
+Each range remains an array of choices. Choices may also be null, arrays, or complete objects when the target collection supports them. For example, `"optionalThreshold": [null, 2]` or `"weights": [[1, 2], [2, 1]]`. The native collection still validates its own parameter types and values; accepting a value in the generic runner does not mean every DLL accepts it.
+
+Use JSON Pointer paths for array elements and property names containing punctuation:
+
+```json
+"Ranges": {
+  "/strategies/0/settings/threshold": [1, 2],
+  "/group/property.with.dots": [true, false],
+  "/group/a~1b": ["first", "second"]
+}
+```
+
+Array indices start at zero. In a pointer, `~1` represents `/` and `~0` represents `~`; an empty final segment addresses an empty property name. For backwards compatibility, an exact top-level property name is resolved before interpreting a path. For example, a literal `"a.b"` at the root wins over dot traversal; use `/a/b` to select the nested property instead.
+
+Every search path must exist in the baseline. Missing paths, duplicate object keys, equivalent range choices, and overlapping ranges (such as both `entry` and `entry.startBiasLongTrend`) are rejected before preparation writes a batch. Equivalent numbers such as `1`, `1.0`, and `1e0` count as one choice, while `1`, `true`, and `"1"` are distinct. Object property order does not affect candidate identity; array order does.
+
+The baseline remains candidate 1, `Samples` counts additional candidates, and a fixed seed gives repeatable choices. Existing ADX/LDAX schema checks are retained. Other collections, including LADX2, use the generic tree handling and their DLL's validation.
+
+For LADX2, see `../FIGSignalCpp/optimizer-search-ladx2-5m-example.json`. It selects `FIGStudyCollection.LADX2.dll`, collection `LADX2`, and `LADX2_LongSide`, and demonstrates 16 combinations. These ranges illustrate the format rather than recommend trading settings. Prepare without accessing the database:
+
+```powershell
+dotnet run --project ..\FIGOptimizationRunner -c Release --no-launch-profile -- prepare --config .\optimizer-search-ladx2-5m-example.json
+```
+
+Run this from the `FIGSignalCpp` directory. Use `run` instead of `prepare` when ready to execute the search.
 
 Use the existing `optimizer-search.json`. Paths inside it are relative to the configuration file. Command-line paths are relative to the working directory. Supported overrides are `--samples`, `--max-source-bars`, `--jobs`, `--dataset`, `--executable`, and `--output-dir`. The default executable is `x64/Release/FIGSignalCpp.exe`; optionally add `"Executable"` to the configuration. Output directories must be new.
 
@@ -34,7 +89,7 @@ Use the existing `optimizer-search.json`. Paths inside it are relative to the co
 Each batch contains:
 
 - `parameters/`: individual parameter JSON files.
-- `search-settings.json` and `batch.json`: effective configuration, status, timestamps, candidate hashes, native executable hash, and attempt details.
+- `search-settings.json` and `batch.json`: effective configuration, status, timestamps, candidate hashes, native executable and collection DLL hashes, and attempt details.
 - `native-attempt-001.log`: native output and errors.
 - `reports/`: native `results.csv`, candidate mapping, per-run parameters, trades, and monthly NAV reports, plus `top-candidates.json` for the first ten ranked results.
 
@@ -51,7 +106,8 @@ The C# runner passes the settings filename to C++; database credentials and thei
 | `Configuration/SearchConfiguration.cs` | Search, finance, date, and execution settings |
 | `Search/ICandidateGenerator.cs` | Candidate generation extension point |
 | `Search/RandomCandidateGenerator.cs` | Current seeded random search without duplicates |
-| `Search/ParameterSet.cs` | Numeric parameter sets, serialization, and identity |
+| `Search/ParameterSet.cs` | JSON parameter trees, path resolution, and immutable replacements |
+| `Search/ParameterValue.cs` | Typed JSON choices, serialization, and exact canonical identity |
 | `Execution/IBatchExecutor.cs` | Execution extension point |
 | `Execution/NativeBatchExecutor.cs` | Launch, logging, and cancellation of C++ batches |
 | `Results/ResultReader.cs` | Typed results from native CSV |
@@ -64,4 +120,4 @@ To add grid search or another search method, implement `ICandidateGenerator` and
 
 The native executor reads and aggregates prices once per batch, then evaluates candidates with the configured worker count. Separate batches read the data again by default. To reuse raw and aggregated prices, set `"PriceCacheDirectory": "price-cache"` and `"PriceCacheMode": "use"` in the search configuration. Use `"refresh"` after database changes, then switch back to `"use"`. Cache freshness is explicit, not automatic. Both executables must be rebuilt/republished to enable this feature. See [cache details](../FIGSignalCpp/OPTIMIZATION.md#reusing-prices-between-batches). There is no distributed execution. The current C# configuration permits up to 100,000 additional candidates, but memory, report storage, and runtime still constrain practical batch size.
 
-Ctrl+C stops the child process tree, records cancellation, and preserves files. `execute` can retry a failed or cancelled batch; it reruns the entire batch into a new `reports-attempt-002` directory rather than skipping completed candidates. It refuses changed parameter files or a changed native executable; prepare a new batch after rebuilding C++. Batches left `Running` by a hard crash are not automatically recovered. A lock prevents simultaneous execution of the same batch.
+Ctrl+C stops the child process tree, records cancellation, and preserves files. `execute` can retry a failed or cancelled batch; it reruns the entire batch into a new `reports-attempt-002` directory rather than skipping completed candidates. It refuses changed parameter files, a changed native executable, or a changed collection DLL; prepare a new batch after rebuilding either native binary. Older manifests without a DLL checksum acquire it at execution. Batches left `Running` by a hard crash are not automatically recovered. A lock prevents simultaneous execution of the same batch.

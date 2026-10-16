@@ -14,16 +14,16 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.8" />
-    <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="10.0.8" />
-    <PackageReference Include="Microsoft.AspNetCore.Identity.UI" Version="10.0.8" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.13" />
+    <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="10.0.13" />
+    <PackageReference Include="Microsoft.AspNetCore.Identity.UI" Version="10.0.13" />
 
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="10.0.8">
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="10.0.13">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
-    <PackageReference Include="Microsoft.Extensions.Hosting.WindowsServices" Version="10.0.8" />
-    <PackageReference Include="Microsoft.Identity.Client" Version="4.84.1" />
+    <PackageReference Include="Microsoft.Extensions.Hosting.WindowsServices" Version="10.0.13" />
+    <PackageReference Include="Microsoft.Identity.Client" Version="4.91.0" />
   </ItemGroup>
 
   <ItemGroup>
@@ -40,8 +40,7 @@
     </ItemGroup>
     <RemoveDir Directories="$(DistribDir)" Condition="Exists('$(DistribDir)')" />
     <MakeDir Directories="$(DistribDir)" />
-    <Copy SourceFiles="@(DistribFile)"
-          DestinationFiles="@(DistribFile->'$(DistribDir)%(RecursiveDir)%(Filename)%(Extension)')" />
+    <Copy SourceFiles="@(DistribFile)" DestinationFiles="@(DistribFile->'$(DistribDir)%(RecursiveDir)%(Filename)%(Extension)')" />
   </Target>
 
 </Project>

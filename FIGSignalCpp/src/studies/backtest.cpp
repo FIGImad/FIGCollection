@@ -1,6 +1,7 @@
 #include "fig/studies/backtest.hpp"
 #include "fig/prices/price_aggregator.hpp"
 #include "fig/prices/price_cache.hpp"
+#include "fig/studies/collection_plugin.hpp"
 #include "fig/studies/study.hpp"
 #include <algorithm>
 #include <atomic>
@@ -73,12 +74,18 @@ std::string csv_quoted(const std::string& value)
     }
     return out + '"';
 }
+int signal_position(std::optional<Decimal> value, const std::string& signal)
+{
+    if (!value || !std::isfinite(*value))
+        throw std::runtime_error("Missing/invalid position signal: " + signal + " (expected a finite number)");
+    return *value > 0 ? 1 : *value < 0 ? -1 : 0;
+}
 struct Trade
 {
     std::int64_t entry_time{}, exit_time{};
     Decimal entry{}, exit{}, gross{}, fees{};
     std::string reason;
-    int quantity{};
+    int quantity{}, side{};
 };
 struct Month
 {
@@ -92,7 +99,7 @@ struct Segment
 {
     Decimal start{}, end{}, peak{}, drawdown{};
     std::size_t bars{}, trades{};
-    void update(Decimal before, Decimal equity, bool closed)
+    void update(Decimal before, Decimal equity, std::size_t closed)
     {
         if (!bars)
             start = peak = before;
@@ -101,8 +108,7 @@ struct Segment
         if (peak > 0)
             drawdown = std::min(drawdown, 100 * (equity / peak - 1));
         ++bars;
-        if (closed)
-            ++trades;
+        trades += closed;
     }
 };
 class Ledger
@@ -115,8 +121,8 @@ class Ledger
     }
     void process(const PriceBar& bar, int side, bool final = false)
     {
-        if (side != 0 && side != 1)
-            throw std::runtime_error("Long backtest expects Side 0 or 1");
+        if (side < -1 || side > 1)
+            throw std::runtime_error("Backtest expects normalized Side -1, 0 or 1");
         if (last_time && bar.raw_time <= *last_time)
             throw std::runtime_error("Backtest prices must increase");
         const Decimal before = equity;
@@ -132,13 +138,27 @@ class Ledger
                                            .unrealized = unrealized,
                                            .drawdown = 100 * (equity / peak - 1),
                                            .drawdown_points = 100 * (equity - peak) / o.capital,
-                                           .position = open ? position_quantity : 0});
+                                           .position = open ? position_side * position_quantity : 0});
             months.push_back(Month{.id = month, .start = equity});
         }
         auto& m = months.back();
         const auto previous_realized = realized, previous_fees = fees;
-        bool closed = false;
-        if (!open && side == 1 && previous_side == 0)
+        std::size_t closed = 0;
+        const auto close_position = [&](const char* reason)
+        {
+            const auto exit = bar.close - position_side * o.slippage_points;
+            const auto gross = (exit - entry) * position_side * position_quantity * o.multiplier;
+            const auto trade_fees = 2 * static_cast<Decimal>(position_quantity) * o.commission;
+            realized += gross;
+            fees += position_quantity * o.commission;
+            trades.push_back({entry_time, bar.raw_time, entry, exit, gross, trade_fees,
+                              reason, position_quantity, position_side});
+            open = false;
+            ++closed;
+        };
+        if (open && side != position_side)
+            close_position(side == 0 ? "SIGNAL" : "REVERSAL");
+        if (!open && side != 0)
         {
             position_quantity = o.quantity;
             if (o.quantity == 0)
@@ -152,24 +172,15 @@ class Ledger
                     throw std::runtime_error("EFS calculated quantity is outside the supported contract range");
                 position_quantity = static_cast<int>(sized);
             }
-            entry = bar.close + o.slippage_points;
+            position_side = side;
+            entry = bar.close + position_side * o.slippage_points;
             entry_time = bar.raw_time;
             fees += position_quantity * o.commission;
             open = true;
         }
-        if (open && (side == 0 || (final && o.force_close)))
-        {
-            const auto exit = bar.close - o.slippage_points;
-            const auto gross = (exit - entry) * position_quantity * o.multiplier;
-            const auto trade_fees = 2 * static_cast<Decimal>(position_quantity) * o.commission;
-            realized += gross;
-            fees += position_quantity * o.commission;
-            trades.push_back(
-                {entry_time, bar.raw_time, entry, exit, gross, trade_fees, side == 0 ? "SIGNAL" : "END_OF_DATA", position_quantity});
-            open = false;
-            closed = true;
-        }
-        unrealized = open ? (bar.close - entry) * position_quantity * o.multiplier : 0;
+        if (open && final && o.force_close)
+            close_position("END_OF_DATA");
+        unrealized = open ? (bar.close - entry) * position_side * position_quantity * o.multiplier : 0;
         equity = o.capital + realized + unrealized - fees;
         peak = std::max(peak, equity);
         const auto dd = 100 * (equity / peak - 1);
@@ -182,13 +193,11 @@ class Ledger
         m.fees += fees - previous_fees;
         m.equity = equity;
         m.unrealized = unrealized;
-        m.position = open ? position_quantity : 0;
+        m.position = open ? position_side * position_quantity : 0;
         m.last_time = bar.raw_time;
         ++m.bars;
-        if (closed)
-            ++m.trades;
+        m.trades += closed;
         segments[bar.raw_time < train_end ? 0 : bar.raw_time < validation_end ? 1 : 2].update(before, equity, closed);
-        previous_side = side;
         last_time = bar.raw_time;
     }
     BacktestOptions o;
@@ -196,7 +205,7 @@ class Ledger
     bool open{};
     Decimal entry{};
     std::int64_t entry_time{};
-    int previous_side{};
+    int position_side{};
     int position_quantity{};
     std::optional<std::int64_t> last_time;
     std::int64_t train_end{}, validation_end{};
@@ -235,7 +244,7 @@ Result save(const Candidate& candidate, const Ledger& ledger, const std::filesys
     }
     auto trades = file(dir / (candidate.id + "-trades.csv"));
     trades << "EntryRawTime,ExitRawTime,EntryPrice,ExitPrice,Contracts,Multiplier,GrossProfit,Commissions,NetProfit,"
-              "ExitReason\n";
+              "ExitReason,Side\n";
     Decimal wins{}, losses{};
     std::size_t winning{};
     for (const auto& t : ledger.trades)
@@ -248,9 +257,8 @@ Result save(const Candidate& candidate, const Ledger& ledger, const std::filesys
         }
         else
             losses -= net;
-        trades << t.entry_time << ',' << t.exit_time << ',' << t.entry << ',' << t.exit << ',' << t.quantity
-               << ',' << ledger.o.multiplier << ',' << t.gross << ',' << t.fees << ',' << net << ',' << t.reason
-               << '\n';
+        trades << t.entry_time << ',' << t.exit_time << ',' << t.entry << ',' << t.exit << ',' << t.quantity << ','
+               << ledger.o.multiplier << ',' << t.gross << ',' << t.fees << ',' << net << ',' << t.reason << ',' << t.side << '\n';
     }
     auto params = file(dir / (candidate.id + "-parameters.json"));
     params << candidate.json << '\n';
@@ -264,7 +272,7 @@ Result save(const Candidate& candidate, const Ledger& ledger, const std::filesys
     r.dd = ledger.max_drawdown;
     r.dd_points = ledger.max_drawdown_points;
     r.trades = ledger.trades.size();
-    r.position = ledger.open ? ledger.position_quantity : 0;
+    r.position = ledger.open ? ledger.position_side * ledger.position_quantity : 0;
     r.win_rate = r.trades ? 100 * static_cast<Decimal>(winning) / static_cast<Decimal>(r.trades) : 0;
     if (losses > 0)
         r.profit_factor = wins / losses;
@@ -303,14 +311,17 @@ void run_backtest_batch(const MainRepository& repository, const BacktestOptions&
     if (paths.empty())
         throw std::invalid_argument("No JSON parameter files in parameters directory");
     StudyRegistry registry;
-    register_integrated_collections(registry);
+    const CollectionPlugin plugin(o.collection_dll);
+    plugin.register_collections(registry);
+    if (o.collection.empty() || o.signal.empty())
+        throw std::invalid_argument("Collection type and backtest signal must be nonempty");
     std::vector<Candidate> candidates;
     for (std::size_t n = 0; n < paths.size(); ++n)
     {
         std::ostringstream id;
         id << "run-" << std::setw(4) << std::setfill('0') << n + 1;
         auto json = read(paths[n]);
-        (void)registry.create(StudyCollectionConfig{.type = "ADXBase", .parameters = json}, Ticker{}, Interval{});
+        (void)registry.create(StudyCollectionConfig{.type = o.collection, .parameters = json}, Ticker{}, Interval{});
         candidates.push_back({id.str(), std::move(json)});
     }
     // Never mix reports from different batches or overwrite an earlier optimization.
@@ -321,20 +332,21 @@ void run_backtest_batch(const MainRepository& repository, const BacktestOptions&
     const auto end = o.end_date.empty() ? std::numeric_limits<std::int64_t>::max() : date_time(o.end_date);
     PriceAggregator aggregator(o.interval_minutes * 60);
     const auto aggregate = [&](const PriceBar& p)
-        {
-            if (p.raw_time >= end)
-                return;
-            if (o.interval_minutes == 1)
-                bars.push_back(p);
-            else if (const auto completed = aggregator.process(p))
-                bars.push_back(*completed);
-        };
+    {
+        if (p.raw_time >= end)
+            return;
+        if (o.interval_minutes == 1)
+            bars.push_back(p);
+        else if (const auto completed = aggregator.process(p))
+            bars.push_back(*completed);
+    };
     std::size_t source_count{};
     std::string cache_status = "off";
     std::filesystem::path used_cache;
     const auto finish_aggregation = [&]()
     {
-        if (const auto tail = aggregator.finish()) bars.push_back(*tail);
+        if (const auto tail = aggregator.finish())
+            bars.push_back(*tail);
     };
     if (o.price_cache_mode == "off")
     {
@@ -355,22 +367,30 @@ void run_backtest_batch(const MainRepository& repository, const BacktestOptions&
         {
             std::cout << "Loading database prices and saving raw snapshot..." << std::endl;
             PriceCacheWriter writer(raw_path);
-            source_count = repository.for_each_price(o.dataset, [&](const PriceBar& p)
-                { writer.add(p); aggregate(p); }, o.maximum_source_rows);
+            source_count = repository.for_each_price(
+                o.dataset,
+                [&](const PriceBar& p)
+                {
+                    writer.add(p);
+                    aggregate(p);
+                },
+                o.maximum_source_rows);
             raw = writer.finish(source_count);
             finish_aggregation();
         }
-        else raw = price_cache_header(raw_path);
+        else
+            raw = price_cache_header(raw_path);
         source_count = static_cast<std::size_t>(raw.source_count);
         // Raw content fingerprint invalidates every interval/end-date derivative after a refresh.
-        used_cache = o.price_cache_directory / (identity + "-" + std::to_string(raw.checksum) + "-" +
-            std::to_string(raw.count) + "-i" + std::to_string(o.interval_minutes) + "-e" +
-            std::to_string(end) + "-aggregate-v1.bin");
+        used_cache = o.price_cache_directory /
+                     (identity + "-" + std::to_string(raw.checksum) + "-" + std::to_string(raw.count) + "-i" +
+                      std::to_string(o.interval_minutes) + "-e" + std::to_string(end) + "-aggregate-v1.bin");
         if (!newly_loaded && std::filesystem::exists(used_cache))
         {
             std::cout << "Reusing aggregated price snapshot: " << used_cache.string() << std::endl;
             const auto saved = read_price_cache(used_cache, [&](const PriceBar& p) { bars.push_back(p); });
-            if (saved.source_count != raw.source_count) throw std::runtime_error("Cache source count mismatch; refresh required.");
+            if (saved.source_count != raw.source_count)
+                throw std::runtime_error("Cache source count mismatch; refresh required.");
             cache_status = "aggregate-hit";
         }
         else
@@ -382,7 +402,8 @@ void run_backtest_batch(const MainRepository& repository, const BacktestOptions&
                 finish_aggregation();
             }
             PriceCacheWriter writer(used_cache);
-            for (const auto& p : bars) writer.add(p);
+            for (const auto& p : bars)
+                writer.add(p);
             writer.finish(source_count);
             cache_status = newly_loaded ? "database-snapshot" : "raw-hit";
         }
@@ -408,17 +429,18 @@ void run_backtest_batch(const MainRepository& repository, const BacktestOptions&
     {
         auto manifest = file(o.output_directory / "batch-settings.txt");
         manifest
-            << "Collection=ADXBase\nSignal=STrend_LBaseADX_Side\nDataset=" << o.dataset
-            << "\nIntervalMinutes=" << o.interval_minutes << "\nInitialCapital=" << o.capital
-            << "\nContracts=" << o.quantity << "\nMultiplier=" << o.multiplier
-            << "\nSizingMode=" << (o.quantity == 0 ? "efs-aum-hlc3" : "fixed")
-            << "\nQuantityPct=" << o.quantity_pct << "\nReinvestAUM=0"
+            << "Collection=" << o.collection << "\nCollectionDLL=" << plugin.path().string() << "\nSignal=" << o.signal
+            << "\nDataset=" << o.dataset << "\nIntervalMinutes=" << o.interval_minutes
+            << "\nInitialCapital=" << o.capital << "\nContracts=" << o.quantity << "\nMultiplier=" << o.multiplier
+            << "\nSizingMode=" << (o.quantity == 0 ? "efs-aum-hlc3" : "fixed") << "\nQuantityPct=" << o.quantity_pct
+            << "\nReinvestAUM=0"
             << "\nCommissionPerContractPerSide=" << o.commission << "\nSlippagePointsPerSide=" << o.slippage_points
             << "\nForceClose=" << o.force_close << "\nStartUTC=" << o.start_date << "\nEndExclusiveUTC=" << o.end_date
             << "\nTrainEndExclusiveUTC=" << o.train_end << "\nValidationEndExclusiveUTC=" << o.validation_end
             << "\nSourceRowsRead=" << source_count << "\nAggregatedBars=" << bars.size()
             << "\nPriceCache=" << cache_status << "\nPriceCacheFile=" << used_cache.string()
-            << "\nDatabaseRowsReadThisRun=" << ((cache_status == "off" || cache_status == "database-snapshot") ? source_count : 0)
+            << "\nDatabaseRowsReadThisRun="
+            << ((cache_status == "off" || cache_status == "database-snapshot") ? source_count : 0)
             << "\nFirstRawTime=" << first->raw_time << "\nLastRawTime=" << bars.back().raw_time
             << "\nCandidates=" << candidates.size()
             << "\nFill=signal bar close plus/minus configured slippage\nMonths=UTC\nRanking=training net profit only\n"
@@ -456,7 +478,7 @@ void run_backtest_batch(const MainRepository& repository, const BacktestOptions&
                             break;
                         const auto& candidate = candidates[index];
                         auto collection =
-                            registry.create(StudyCollectionConfig{.type = "ADXBase", .parameters = candidate.json},
+                            registry.create(StudyCollectionConfig{.type = o.collection, .parameters = candidate.json},
                                             Ticker{},
                                             Interval{});
                         Ledger ledger(o);
@@ -467,10 +489,12 @@ void run_backtest_batch(const MainRepository& repository, const BacktestOptions&
                             const auto study = collection->process(bars[n]);
                             if (n < first_index)
                                 continue;
-                            const auto side = study.studies.at("STrend_LBaseADX_Side");
-                            if (!side || (*side != 0 && *side != 1))
-                                throw std::runtime_error("Missing/invalid long signal");
-                            ledger.process(bars[n], static_cast<int>(*side), n + 1 == bars.size());
+                            const auto signal = study.studies.find(o.signal);
+                            if (signal == study.studies.end())
+                                throw std::runtime_error("Collection does not provide the selected position signal: " +
+                                                         o.signal);
+                            ledger.process(bars[n], signal_position(signal->second, o.signal),
+                                           n + 1 == bars.size());
                         }
                         results[index] = save(candidate, ledger, o.output_directory);
                         std::lock_guard lock(output_mutex);
@@ -539,9 +563,38 @@ void backtest_self_test()
             throw std::runtime_error("Backtest accounting regression failed");
     };
     check(csv_quoted("{\"x\":1}") == "\"{\"\"x\"\":1}\"");
+    check(signal_position(0, "LADX_SIDE") == 0);
+    for (const Decimal value : {0.00001L, 0.5L, 1.0L, 1.1L, 1.2L, 2.0L})
+    {
+        check(signal_position(value, "LADX_SIDE") == 1);
+        check(signal_position(-value, "ANY_SIDE") == -1);
+    }
+    for (const auto value : {std::optional<Decimal>{},
+                             std::optional<Decimal>{std::numeric_limits<Decimal>::quiet_NaN()},
+                             std::optional<Decimal>{std::numeric_limits<Decimal>::infinity()},
+                             std::optional<Decimal>{-std::numeric_limits<Decimal>::infinity()}})
+    {
+        bool invalid = false;
+        try { (void)signal_position(value, "selected signal"); }
+        catch (const std::runtime_error&) { invalid = true; }
+        check(invalid);
+    }
     BacktestOptions o;
     Ledger l(o);
     const auto jan = date_time("2022-01-31"), feb = date_time("2022-02-01"), april = date_time("2022-04-01");
+    Ledger subtype_ledger(o), binary_ledger(o);
+    const Decimal subtypes[]{0, 1.1L, 1.2L, 1.1L, 0};
+    for (std::size_t n = 0; n < std::size(subtypes); ++n)
+    {
+        const PriceBar bar{.raw_time = jan + static_cast<std::int64_t>(n) * 300,
+                           .close = 100 + static_cast<Decimal>(n)};
+        subtype_ledger.process(bar, signal_position(subtypes[n], "LADX_SIDE"));
+        binary_ledger.process(bar, subtypes[n] == 0 ? 0 : 1);
+    }
+    check(subtype_ledger.trades.size() == 1 && !subtype_ledger.open && subtype_ledger.fees == 48);
+    check(subtype_ledger.realized == binary_ledger.realized && subtype_ledger.equity == binary_ledger.equity &&
+          subtype_ledger.trades[0].entry_time == binary_ledger.trades[0].entry_time &&
+          subtype_ledger.trades[0].exit_time == binary_ledger.trades[0].exit_time);
     l.process(PriceBar{.raw_time = jan, .close = 100}, 1);
     l.process(PriceBar{.raw_time = jan + 300, .close = 102}, 1);
     check(l.fees == 24 && l.unrealized == 600 && l.trades.empty());
@@ -554,13 +607,46 @@ void backtest_self_test()
     for (const auto& m : l.months)
         monthly_profit += m.equity - m.start;
     check(monthly_profit == l.equity - o.capital);
+    Ledger shorts(o);
+    shorts.process(PriceBar{.raw_time = jan, .close = 100}, signal_position(-1.1L, "LADX_SIDE"));
+    shorts.process(PriceBar{.raw_time = feb, .close = 98}, signal_position(-1.2L, "LADX_SIDE"));
+    check(shorts.trades.empty() && shorts.fees == 24 && shorts.unrealized == 600);
+    check(shorts.months.back().position == -o.quantity);
+    shorts.process(PriceBar{.raw_time = april, .close = 97}, 0);
+    check(shorts.realized == 900 && shorts.fees == 48 && shorts.equity == o.capital + 852);
+    check(shorts.trades[0].side == -1 && shorts.months[2].position == -o.quantity);
+    Ledger reversals(o);
+    reversals.process(PriceBar{.raw_time = jan, .close = 100}, 1);
+    reversals.process(PriceBar{.raw_time = jan + 300, .close = 102}, -1);
+    check(reversals.realized == 600 && reversals.fees == 72 && reversals.position_side == -1);
+    reversals.process(PriceBar{.raw_time = jan + 600, .close = 103}, 1);
+    check(reversals.realized == 300 && reversals.fees == 120 && reversals.position_side == 1);
+    reversals.process(PriceBar{.raw_time = jan + 900, .close = 104}, 0);
+    check(reversals.realized == 600 && reversals.fees == 144 && reversals.trades.size() == 3);
+    check(reversals.trades[0].reason == "REVERSAL" && reversals.trades[1].side == -1);
+    check(reversals.months.back().trades == 3 && reversals.segments[0].trades == 3);
     o.slippage_points = 0.25L;
     o.force_close = true;
     Ledger forced(o);
     forced.process(PriceBar{.raw_time = jan, .close = 100}, 1);
     forced.process(PriceBar{.raw_time = feb, .close = 101}, 1, true);
     check(!forced.open && forced.realized == 150 && forced.fees == 48 && forced.equity == o.capital + 102);
+    Ledger short_forced(o);
+    short_forced.process(PriceBar{.raw_time = jan, .close = 100}, -1);
+    short_forced.process(PriceBar{.raw_time = feb, .close = 99}, -1, true);
+    check(short_forced.trades[0].entry == 99.75L && short_forced.trades[0].exit == 99.25L);
+    check(short_forced.realized == 150 && short_forced.fees == 48 && !short_forced.open);
+    Ledger final_reversal(o);
+    final_reversal.process(PriceBar{.raw_time = jan, .close = 100}, 1);
+    final_reversal.process(PriceBar{.raw_time = jan + 300, .close = 101}, -1, true);
+    check(final_reversal.trades.size() == 2 && final_reversal.months.back().trades == 2);
+    check(final_reversal.segments[0].trades == 2 && final_reversal.realized == 0 && final_reversal.fees == 96);
+    check(final_reversal.trades[1].reason == "END_OF_DATA" && !final_reversal.open);
     o.force_close = false;
+    Ledger short_marked(o);
+    short_marked.process(PriceBar{.raw_time = jan, .close = 100}, -1);
+    short_marked.process(PriceBar{.raw_time = feb, .close = 99}, -1, true);
+    check(short_marked.unrealized == 225 && short_marked.fees == 24 && short_marked.open);
     Ledger marked(o);
     marked.process(PriceBar{.raw_time = jan, .close = 100}, 1);
     marked.process(PriceBar{.raw_time = date_time("2023-01-01"), .close = 101}, 1, true);
@@ -591,8 +677,15 @@ void backtest_self_test()
     check(sized.trades[1].quantity == 2 && sized.months[2].position == 2);
     check_near(sized.equity, 1243955.2L);
     Decimal sized_month_profit{};
-    for (const auto& m : sized.months) sized_month_profit += m.equity - m.start;
+    for (const auto& m : sized.months)
+        sized_month_profit += m.equity - m.start;
     check_near(sized_month_profit, sized.equity - sized_options.capital);
+    Ledger sized_short(sized_options);
+    sized_short.process(PriceBar{.raw_time = jan, .high = 5200, .low = 4900, .close = 4900}, -1);
+    check(sized_short.position_quantity == 12 && sized_short.months.back().position == -12);
+    sized_short.process(PriceBar{.raw_time = feb, .close = 4800}, 0);
+    check_near(sized_short.realized, 24000);
+    check_near(sized_short.fees, 38.4L);
     sized_options.quantity_pct = 0.5L;
     sized_options.force_close = true;
     Ledger fractional(sized_options);
@@ -602,12 +695,26 @@ void backtest_self_test()
     check(fractional.trades[0].quantity == 1 && !fractional.open);
     check_near(fractional.equity, 1201996.8L);
     bool rejected = false;
-    try { Ledger invalid(sized_options); invalid.process(PriceBar{.raw_time = jan}, 1); }
-    catch (const std::runtime_error&) { rejected = true; }
+    try
+    {
+        Ledger invalid(sized_options);
+        invalid.process(PriceBar{.raw_time = jan}, 1);
+    }
+    catch (const std::runtime_error&)
+    {
+        rejected = true;
+    }
     check(rejected);
     rejected = false;
-    try { Ledger invalid(sized_options); invalid.process(PriceBar{.raw_time = jan, .high = 1e-20L}, 1); }
-    catch (const std::runtime_error&) { rejected = true; }
+    try
+    {
+        Ledger invalid(sized_options);
+        invalid.process(PriceBar{.raw_time = jan, .high = 1e-20L}, 1);
+    }
+    catch (const std::runtime_error&)
+    {
+        rejected = true;
+    }
     check(rejected);
 }
 } // namespace fig

@@ -1,3 +1,4 @@
+#include "../collections/adx/registration.hpp"
 #include "fig/studies/study_col_adx_base.hpp"
 #include "fig/studies/study_cycle_dir.hpp"
 #include "fig/studies/study_lbase_adx_variants.hpp"
@@ -324,7 +325,7 @@ void efs_study_self_test()
     }
 
     StudyRegistry registry;
-    register_integrated_collections(registry);
+    register_adx_collections(registry);
     StudyCollectionConfig config;
     config.type = "adxbase";
     config.parameters = R"({"AdxLen":3,"AdxLenConf":2,"FastMALen":2,"GuideMALen":5,"ShockATRLen":2})";

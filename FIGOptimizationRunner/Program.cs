@@ -55,6 +55,8 @@ public static class Program
             config.Validate();
             if (command == "run" && (!File.Exists(config.Executable) || !File.Exists(config.Settings)))
                 throw new FileNotFoundException("Native executable or database settings missing; build Release, specify --executable, or use prepare.");
+            if (command == "run" && !string.IsNullOrEmpty(config.CollectionDll) && !File.Exists(config.CollectionDll))
+                throw new FileNotFoundException("Collection DLL missing; build the matching native configuration or use prepare.", config.CollectionDll);
             var directory = runner.Prepare(config, flags.GetValueOrDefault("--output-dir"), cancellation.Token);
             if (command == "run") await runner.ExecuteAsync(directory, cancellation.Token);
             return 0;

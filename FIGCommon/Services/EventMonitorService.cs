@@ -21,6 +21,9 @@ namespace FIGCommon.Services
         protected Task? _periodicRefreshTask;
         protected readonly object _retryLock = new();
         protected string _eventTableName = "";
+        private bool _pollingEnabled;
+        private int _pollIntervalMilliseconds = 1000;
+        private Task? _pollingTask;
 
         // Database-Specific Operations
         protected readonly RepositoryBase RBASE = new RepositoryBase();
@@ -31,9 +34,24 @@ namespace FIGCommon.Services
         // protected constructor
         public EventMonitorService(IConfiguration config,
                                    ILogger<EventMonitorService> logger)
+            : this(config, logger, true) { }
+
+        protected EventMonitorService(IConfiguration config,
+                                   ILogger<EventMonitorService> logger, bool startMonitoring)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _config = config;
+            var mode = config["EventMonitor:Mode"] ?? "SqlDependency";
+            if (!string.Equals(mode, "SqlDependency", StringComparison.OrdinalIgnoreCase)
+                && !string.Equals(mode, "Polling", StringComparison.OrdinalIgnoreCase))
+                throw new ArgumentException("EventMonitor:Mode must be SqlDependency or Polling.");
+            _pollingEnabled = string.Equals(mode, "Polling", StringComparison.OrdinalIgnoreCase);
+            if (_pollingEnabled)
+            {
+                _pollIntervalMilliseconds = config.GetValue("EventMonitor:PollIntervalMilliseconds", 1000);
+                if (_pollIntervalMilliseconds <= 0)
+                    throw new ArgumentException("EventMonitor:PollIntervalMilliseconds must be positive.");
+            }
 
             string? connectionString = _config["EventMonitor:ConnectionString"];
             if (connectionString == null || connectionString == "")
@@ -46,7 +64,7 @@ namespace FIGCommon.Services
                 throw new ArgumentNullException("EventMonitor:EventTable");
             }
             InitializeDB(connectionString, eventTableName);
-            _ = InitializeAsync(); // Fire-and-forget initialization
+            if (startMonitoring) _ = InitializeAsync(); // Fire-and-forget initialization
         }
 
         #region Properties
@@ -121,6 +139,17 @@ namespace FIGCommon.Services
 
         public async Task StartMonitoringAsync()
         {
+            if (_pollingEnabled)
+            {
+                lock (_operationLock)
+                {
+                    if (_isDisposed || _pollingTask != null) return;
+                    var token = _cts.Token;
+                    _pollingTask = Task.Run(() => PollEventsAsync(token), token);
+                }
+                _logger?.LogInformation("Event monitoring uses polling every {Interval} ms", _pollIntervalMilliseconds);
+                return;
+            }
             try
             {
                 if (!IsBrokerEnabled())
@@ -454,6 +483,7 @@ namespace FIGCommon.Services
 
         protected void Destroy()
         {
+            if (_pollingEnabled) return;
 
             lock (_operationLock)
             {
@@ -480,6 +510,75 @@ namespace FIGCommon.Services
                 _logger?.LogError(ex, "Failed to stop SQL Dependency");
             }
 
+        }
+
+        // Poll committed state without registering query notifications or requiring Service Broker.
+        protected virtual async Task<List<EventRS>> ReadPollingEventsAsync(CancellationToken token)
+        {
+            using var connection = new SqlConnection(ConnectionString);
+            await connection.OpenAsync(token);
+            var table = EventTableName.Replace("]", "]]", StringComparison.Ordinal);
+            using var command = new SqlCommand(
+                $"SELECT [Id],[EventType],[EventId],[Message],[TimeStamp] FROM [dbo].[{table}]", connection);
+            using var reader = await command.ExecuteReaderAsync(token);
+            var events = new List<EventRS>();
+            while (await reader.ReadAsync(token)) events.Add(new EventRS().CreateFromSqlDataReader(reader));
+            return events;
+        }
+
+        private async Task PollEventsAsync(CancellationToken token)
+        {
+            bool initialized = false;
+            while (!token.IsCancellationRequested)
+            {
+                try
+                {
+                    var snapshot = await ReadPollingEventsAsync(token);
+                    token.ThrowIfCancellationRequested();
+                    ApplyPollingSnapshot(snapshot, initialized);
+                    initialized = true;
+                }
+                catch (OperationCanceledException) when (token.IsCancellationRequested) { break; }
+                catch (Exception ex)
+                {
+                    // Preserve the last successful snapshot so recovery still publishes changes.
+                    _logger?.LogError(ex, "Event polling failed; retrying on the next interval");
+                }
+                try { await Task.Delay(_pollIntervalMilliseconds, token); }
+                catch (OperationCanceledException) when (token.IsCancellationRequested) { break; }
+            }
+        }
+
+        protected void ApplyPollingSnapshot(List<EventRS> snapshot, bool publishChanges)
+        {
+            var notifications = new List<(string Type, EventRS? Data)>();
+            lock (_operationLock)
+            {
+                if (_isDisposed) return;
+                var previous = eventList.ToDictionary(e => e.Id);
+                var current = snapshot.ToDictionary(e => e.Id, e => new EventRS(e));
+                if (publishChanges)
+                {
+                    foreach (var row in current.Values.ToList())
+                    {
+                        if (!previous.TryGetValue(row.Id, out var old)
+                            || row.Timestamp > old.Timestamp
+                            || (row.Timestamp == old.Timestamp
+                                && !string.Equals(row.Message, old.Message, StringComparison.Ordinal)))
+                            notifications.Add((row.EventType, new EventRS(row)));
+                        else
+                            current[row.Id] = old; // Match notification mode: ignore older timestamps.
+                    }
+                    foreach (var old in previous.Values)
+                        if (!current.ContainsKey(old.Id)) notifications.Add((old.EventType, null));
+                }
+                eventList = current.Values.ToList();
+            }
+            foreach (var notification in notifications)
+            {
+                if (_isDisposed) break;
+                Publish(notification.Type, notification.Data);
+            }
         }
 
         protected async Task StartPeriodicRefresh()

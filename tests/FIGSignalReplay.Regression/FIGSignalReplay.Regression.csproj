@@ -7,5 +7,6 @@
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="../../FIGSignalSvc/FIGSignalSvc.csproj" />
+    <Compile Include="../../FIGSignalSvc/Services/SignalDeadlockRetry.cs" Link="SignalDeadlockRetry.cs" />
   </ItemGroup>
 </Project>

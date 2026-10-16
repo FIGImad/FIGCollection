@@ -90,6 +90,34 @@ Check(handler.Calls == before + 1 && AlertRepo.Sent.Count == 11, "Scheduled grou
 AlertRepo.Rows = boundary; AlertRepo.Sent.Clear(); handler.FailAt = handler.Calls + 2;
 await dispatcher.DispatchPendingAlertsAsync(default);
 Check(AlertRepo.Sent.SetEquals([200,201]), "Failed later batch does not mark its alerts; earlier batch completes");
+Check(AlertProcessingPolicy.Read(new ConfigurationBuilder().Build()) == AlertProcessingMode.Combined, "Legacy configuration defaults to Combined");
+Check(AlertCategory.IsSystemAlert(AlertCategory.SystemAlertProducer, "ALT"), "Database SystemAlert classified");
+Check(!AlertCategory.IsSystemAlert(AlertCategory.SystemAlertProducer, "Error"), "Monitor failures belong to other alerts");
+Check(!AlertCategory.IsSystemAlert("OtherProducer", "ALT"), "Ordinary custom alerts are not SystemAlerts");
+try
+{
+    AlertProcessingPolicy.Read(new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string,string?>
+        { ["AlertProcessing:Mode"] = "typo" }).Build());
+    throw new Exception("Invalid mode was accepted");
+}
+catch (InvalidOperationException) { Check(true, "Invalid mode fails startup"); }
+foreach (var immediate in new[] { false, true })
+{
+    AlertRepo.Rows = [new() { AlertId = 300, IsSystemAlert = true }, new() { AlertId = 301, IsSystemAlert = false }];
+    AlertRepo.Sent.Clear(); handler.FailAt = -1;
+    foreach (var mode in new[] { AlertProcessingMode.SystemOnly, AlertProcessingMode.OtherOnly })
+    {
+        var modeConfig = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string,string?>
+            { ["AlertProcessing:Mode"] = mode.ToString() }).Build();
+        var splitDispatcher = new AlertDispatchService(NullLogger<AlertDispatchService>.Instance, services, modeConfig);
+        if (immediate) await splitDispatcher.DispatchImmediateAlertsAsync(default);
+        else await splitDispatcher.DispatchPendingAlertsAsync(default);
+        Check(AlertRepo.Sent.Contains(mode == AlertProcessingMode.SystemOnly ? 300 : 301), "Split instance delivers its own category");
+        if (mode == AlertProcessingMode.SystemOnly)
+            Check(!AlertRepo.Sent.Contains(301), "System instance leaves other alerts pending");
+    }
+    Check(AlertRepo.Sent.SetEquals([300,301]), "Split instances drain both categories");
+}
 Console.WriteLine($"Passed {assertions} regression assertions. No external messages or database writes.");
 
 sealed class FakeHandler : HttpMessageHandler

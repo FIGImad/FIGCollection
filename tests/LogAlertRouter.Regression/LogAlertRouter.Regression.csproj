@@ -8,6 +8,7 @@
     <Using Include="Microsoft.Extensions.Logging" />
     <Using Include="Microsoft.Extensions.Configuration" />
     <Using Include="Microsoft.Extensions.Hosting" />
+    <Compile Include="../../FIGCommon/Models/Alert/AlertCategory.cs" Link="AlertCategory.cs" />
     <Compile Include="../../FIGCommon/Services/LogMonitor/LogAlertRouter.cs" Link="LogAlertRouter.cs" />
     <Compile Include="../../FIGCommon/Models/LogMonitor/LogAlertMessage.cs" Link="LogAlertMessage.cs" />
     <Compile Include="../../FIGCommon/Exceptions/AppErrorException.cs" Link="AppErrorException.cs" />

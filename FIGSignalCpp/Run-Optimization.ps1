@@ -2,6 +2,7 @@
 param(
     [string]$Config = "$PSScriptRoot/optimizer-search.json",
     [string]$Executable = "$PSScriptRoot/x64/Release/FIGSignalCpp.exe",
+    [string]$CollectionDll = '',
     [int]$Samples = -1,
     [int]$MaxSourceBars = -1,
     [string]$OutputDirectory = '',
@@ -102,6 +103,7 @@ $arguments = @('--backtest-batch','--dataset',"$($c.DataSetId)",'--interval-minu
     '--multiplier',(Num $c.Multiplier),'--commission',(Num $c.CommissionPerContractPerSide),
     '--slippage-points',(Num $c.SlippagePointsPerSide),'--force-close',"$([int][bool]$c.ForceCloseAtEnd)",
     '--start',$c.StartDate,'--train-end',$c.TrainEndExclusive,'--validation-end',$c.ValidationEndExclusive)
+if ($CollectionDll) { $arguments += @('--collection-dll', $CollectionDll) }
 if ($c.EndDateExclusive) { $arguments += @('--end',$c.EndDateExclusive) }
 if ($c.Quantity -eq 0) {
     $allocation = if ($c.Contains('QuantityPct')) { $c.QuantityPct } else { 1 }

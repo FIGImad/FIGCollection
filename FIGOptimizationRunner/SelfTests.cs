@@ -18,6 +18,7 @@ internal static class SelfTests
     }
     public static async Task RunAsync()
     {
+        NestedParameterTests.Run();
         var generator = new RandomCandidateGenerator();
         var baseline = new ParameterSet(new Dictionary<string, decimal?> { ["StartBias"] = 1m, ["AdxLen"] = 50 });
         var c = new SearchConfiguration { Samples = 3, Ranges = new() { ["StartBias"] = [0, 1, 2, 3] } };
@@ -31,7 +32,33 @@ internal static class SelfTests
         Reject(() => generator.Generate(c with { Ranges = new() { ["StartBias"] = [1, 1.0m] } }, baseline, default).ToArray(), "duplicate numeric values");
         Reject(() => generator.Generate(c with { Ranges = new() { ["AdxLenConf"] = [1] } }, baseline, default).ToArray(), "inactive range");
         Reject(() => generator.Generate(c with { Ranges = new() { ["AdxLen"] = [1.5m] } }, baseline, default).ToArray(), "fractional period");
-        var large = c with { Samples = 10, Ranges = new() { ["AdxLen"] = Enumerable.Range(1, 100001).Select(n => (decimal)n).ToArray() } };
+        var ldaxBase = new ParameterSet(new Dictionary<string, decimal?>
+        {
+            ["TrendReEntryShockMax"] = 4, ["ReEntryCooldownBars"] = 2,
+            ["ContinuationMaxShockATR"] = 1, ["ContinuationEntryBars"] = 3
+        });
+        var ldax = c with
+        {
+            Collection = "ldax", Signal = "STrend_LADX_LongSide", CollectionDll = "dll with spaces/LDAX.dll",
+            Ranges = new() { ["TrendReEntryShockMax"] = [3, 4, 5, 6] }
+        };
+        var ldaxCandidates = generator.Generate(ldax, ldaxBase, default).ToArray();
+        Check(ldaxCandidates.Length == 4 && ldaxCandidates[0].Identity == ldaxBase.Identity, "LDAX baseline and active reentry threshold");
+        Check(ldaxCandidates.All(p => p.Values["ReEntryCooldownBars"] == 2 && p.Values["ContinuationMaxShockATR"] == 1), "LDAX inactive values held fixed");
+        foreach (var inactive in new[] { "ReEntryCooldownBars", "ContinuationMaxShockATR", "ContinuationEntryBars" })
+            Reject(() => generator.Generate(ldax with { Ranges = new() { [inactive] = [0, 1, 2, 3] } }, ldaxBase, default).ToArray(), "LDAX inactive range " + inactive);
+        Reject(() => generator.Generate(ldax with { Ranges = new() { ["TrendReEntryShockMax"] = [-1, 0, 1, 4] } }, ldaxBase, default).ToArray(), "LDAX negative shock threshold");
+        Reject(() => generator.Generate(ldax with { Collection = "ADXBase" }, ldaxBase, default).ToArray(), "ADX inactive reentry threshold unchanged");
+        var customBase = new ParameterSet(new Dictionary<string, decimal?> { ["Threshold"] = 0 });
+        Check(generator.Generate(c with { Collection = "Custom", Ranges = new() { ["Threshold"] = [-1, 0, 1, 2] } }, customBase, default).Count() == 4, "custom plugin baseline schema");
+        var ldaxArgs = NativeBatchExecutor.Arguments(ldax, "parameters", "reports").ToList();
+        Check(ldaxArgs[ldaxArgs.IndexOf("--collection-dll") + 1] == Path.GetFullPath(ldax.CollectionDll), "DLL path forwarded as one argument");
+        Check(ldaxArgs[ldaxArgs.IndexOf("--collection") + 1] == "ldax" && ldaxArgs[ldaxArgs.IndexOf("--signal") + 1] == "STrend_LADX_LongSide", "LDAX collection and normalized signal forwarded");
+        var defaultArgs = NativeBatchExecutor.Arguments(c, "parameters", "reports").ToList();
+        Check(!defaultArgs.Contains("--collection-dll") && defaultArgs[defaultArgs.IndexOf("--collection") + 1] == "ADXBase" && defaultArgs[defaultArgs.IndexOf("--signal") + 1] == "STrend_LBaseADX_Side", "default ADX selection preserved");
+        Reject(() => (ldax with { Collection = " " }).Validate(), "empty collection");
+        Reject(() => (ldax with { Signal = "" }).Validate(), "empty signal");
+        var large = c with { Samples = 10, Ranges = new() { ["AdxLen"] = Enumerable.Range(1, 100001).Select(n => (ParameterValue)n).ToArray() } };
         Check(generator.Generate(large, baseline, default).Select(p => p.Identity).Distinct().Count() == 11, "large space");
         using var cancel = new CancellationTokenSource();
         cancel.Cancel();
@@ -67,6 +94,51 @@ internal static class SelfTests
         c = c with { BaseParameters = Path.Combine(root, "base.json"), Executable = Path.Combine(root, "native.exe"), Settings = Path.Combine(root, "settings.json"), OutputRoot = root };
         var fake = new FakeExecutor();
         var runner = new OptimizationRunner(generator, fake);
+        var nestedBaseFile = Path.Combine(root, "nested-base.json");
+        File.WriteAllText(nestedBaseFile, """{"entry":{"bias":1},"exit":{"enabled":true},"market":{"timeframe":"hourly","fixed":[null,2]}}""");
+        var nestedConfig = c with
+        {
+            Collection = "Custom", BaseParameters = nestedBaseFile, Samples = 7,
+            Ranges = new() { ["entry.bias"] = [1, 2], ["exit.enabled"] = [true, false], ["market.timeframe"] = ["hourly", "daily"] }
+        };
+        var nestedBatch = runner.Prepare(nestedConfig, Path.Combine(root, "nested-batch"), default);
+        var nestedManifest = OptimizationRunner.Load(nestedBatch);
+        Check(nestedManifest.Candidates.Count == 8 && nestedManifest.Configuration.Ranges["exit.enabled"].Contains(false), "nested batch manifest and booleans");
+        foreach (var candidateFile in Directory.GetFiles(Path.Combine(nestedBatch, "parameters"), "*.json"))
+        {
+            var candidate = ParameterSet.Load(candidateFile);
+            Check(candidate.Get("/market/fixed/0").Json.ValueKind == System.Text.Json.JsonValueKind.Null &&
+                candidate.Get("/market/fixed/1") == 2, "nested prepared candidates preserve fixed arrays");
+        }
+        await runner.ExecuteAsync(nestedBatch, default);
+        Check(OptimizationRunner.Load(nestedBatch).Status == "Completed", "nested batch fake execution");
+        var pluginFile = Path.Combine(root, "LDAX.dll");
+        File.WriteAllText(pluginFile, "fake collection for checksum test");
+        File.WriteAllText(Path.Combine(root, "ldax-base.json"), ldaxBase.ToJson());
+        var ldaxConfigFile = Path.Combine(root, "ldax-search.json");
+        File.WriteAllText(ldaxConfigFile, System.Text.Json.JsonSerializer.Serialize(ldax with
+        {
+            CollectionDll = "LDAX.dll", BaseParameters = "ldax-base.json", Executable = "native.exe", Settings = "settings.json", OutputRoot = "."
+        }, SearchConfiguration.Json));
+        var loadedLdax = SearchConfiguration.Load(ldaxConfigFile);
+        Check(loadedLdax.CollectionDll == pluginFile, "DLL resolves relative to configuration");
+        var pluginBatch = runner.Prepare(loadedLdax, Path.Combine(root, "plugin"), default);
+        Check(OptimizationRunner.Load(pluginBatch).CollectionDllSHA256 == OptimizationRunner.Hash(pluginFile), "DLL checksum saved");
+        Check(OptimizationRunner.Load(pluginBatch).Configuration.Signal == ldax.Signal, "selection survives manifest round trip");
+        File.AppendAllText(pluginFile, "changed");
+        try { await runner.ExecuteAsync(pluginBatch, default); throw new Exception("Missing DLL checksum rejection"); }
+        catch (InvalidDataException ex) when (ex.Message.Contains("Collection DLL changed")) { }
+        Check(OptimizationRunner.Load(pluginBatch).Attempts == 0, "changed DLL rejected before execution");
+        var pluginRun = runner.Prepare(loadedLdax, Path.Combine(root, "plugin-run"), default);
+        await runner.ExecuteAsync(pluginRun, default);
+        Check(OptimizationRunner.Load(pluginRun).Status == "Completed", "plugin batch execution");
+        var defaultDll = Path.Combine(root, "FIGStudyCollection.ADX.dll");
+        File.WriteAllText(defaultDll, "default ADX checksum test");
+        var defaultDllBatch = runner.Prepare(c, Path.Combine(root, "default-dll"), default);
+        Check(OptimizationRunner.Load(defaultDllBatch).CollectionDllSHA256 == OptimizationRunner.Hash(defaultDll), "default adjacent DLL hashed");
+        File.AppendAllText(defaultDll, "changed");
+        try { await runner.ExecuteAsync(defaultDllBatch, default); throw new Exception("Missing default DLL checksum rejection"); }
+        catch (InvalidDataException ex) when (ex.Message.Contains("Collection DLL changed")) { }
         var batch = runner.Prepare(c, Path.Combine(root, "prepared"), default);
         Check(OptimizationRunner.Load(batch).Status == "Prepared", "prepared manifest");
         await runner.ExecuteAsync(batch, default);

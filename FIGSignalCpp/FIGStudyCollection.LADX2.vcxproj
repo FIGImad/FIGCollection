@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|x64"><Configuration>Debug</Configuration><Platform>x64</Platform></ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64"><Configuration>Release</Configuration><Platform>x64</Platform></ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{FB741CD5-80E7-48E4-B81D-A31E5D7680FC}</ProjectGuid>
+    <Keyword>Win32Proj</Keyword><RootNamespace>FIGStudyCollection.LADX2</RootNamespace>
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <UseDebugLibraries Condition="'$(Configuration)'=='Debug'">true</UseDebugLibraries>
+    <UseDebugLibraries Condition="'$(Configuration)'=='Release'">false</UseDebugLibraries>
+    <PlatformToolset>v145</PlatformToolset><CharacterSet>Unicode</CharacterSet>
+    <WholeProgramOptimization Condition="'$(Configuration)'=='Release'">true</WholeProgramOptimization>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <Import Project="build\NativeStudies.props" />
+  <ItemGroup>
+    <ClCompile Include="src\collections\ladx2\market_trend.cpp" />
+    <ClInclude Include="include\fig\collections\ladx2\market_trend.hpp" />
+    <ClCompile Include="src\collections\ladx2\options.cpp" />
+    <ClCompile Include="src\collections\ladx2\study_price_shock.cpp" />
+    <ClCompile Include="src\collections\ladx2\study_ladx2.cpp" />
+    <ClCompile Include="src\collections\ladx2\study_col_ladx2.cpp" />
+    <ClCompile Include="src\collections\ladx2\plugin.cpp" />
+    <ClCompile Include="src\collections\ladx2\self_test.cpp" />
+    <ClInclude Include="include\fig\collections\ladx2\options.hpp" />
+    <ClInclude Include="include\fig\collections\ladx2\study_price_shock.hpp" />
+    <ClInclude Include="include\fig\collections\ladx2\study_ladx2.hpp" />
+    <ClInclude Include="include\fig\collections\ladx2\study_col_ladx2.hpp" />
+    <None Include="ladx2-parameters.json" />
+    <None Include="ladx2-2min-parameters.json" />
+    <None Include="efs\LADX2.efs" />
+    <None Include="LADX2.md" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="FIGStudyCore.vcxproj"><Project>{D204C4AD-C8E5-48A7-81AB-A6EC4B546ED4}</Project><LinkLibraryDependencies>true</LinkLibraryDependencies></ProjectReference>
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+</Project>
+

@@ -45,6 +45,18 @@ using var canceled = new CancellationTokenSource(); canceled.Cancel();
 before = transport.Requests.Count;
 Check(!await router.ForwardAlertAsync(alert, canceled.Token) && transport.Requests.Count == before, "Cancellation stops forwarding");
 Check(LogAnalyzerSink.SuppressionDepth == 0, "Suppression released after all paths");
+var splitConfig = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string,string?>
+    { ["LogAlerts:SeparateSystemAlerts"] = "true" }).Build();
+using var splitRouter = new LogAlertRouter(NullLogger<LogAlertRouter>.Instance, new LogAnalyzerSink(), splitConfig, transport);
+var systemAlert = new LogAlertMessage { Source = FIGCommon.Models.Alert.AlertCategory.SystemAlertProducer, Level = "ALT" };
+Check(await splitRouter.ForwardAlertAsync(systemAlert, default), "Split SystemAlert forwarded");
+Check(transport.Requests[^1].DestinationRole == (int)ControllerClientRole.SystemAlert, "SystemAlert routes to distinct role");
+systemAlert.Level = "Error";
+Check(await splitRouter.ForwardAlertAsync(systemAlert, default), "Monitor error forwarded");
+Check(transport.Requests[^1].DestinationRole == (int)ControllerClientRole.Alert, "Monitor error routes to ordinary alerts");
+systemAlert.Level = "ALT";
+Check(await router.ForwardAlertAsync(systemAlert, default), "Legacy SystemAlert forwarded");
+Check(transport.Requests[^1].DestinationRole == (int)ControllerClientRole.Alert, "Legacy routing remains combined");
 Console.WriteLine($"Passed {checks} checks.");
 
 sealed class FakeTransport : IClientSignalRService

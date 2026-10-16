@@ -1,10 +1,12 @@
 # FIGSignalCpp
 
-Native Windows/C++ rewrite of `FIGSignalSvc`. It is designed as one executable: study collections are registered at compile time and there is no assembly, manifest, or DLL loading.
+Native Windows/C++ rewrite of `FIGSignalSvc`. Study collections load from DLLs at runtime. The 12 common studies live in `FIGStudyCore.lib`; the existing ADX family lives in `FIGStudyCollection.ADX.dll`. See [collection DLLs and adding the next collection](COLLECTION_PLUGINS.md) for the project split, runtime selection, and example plugin.
+
+The separate [LADX collection](LADX.md) ports the newly supplied EFS's LADX signal and active studies into `FIGStudyCollection.LADX.dll`, with its own parameters and EFS comparison tests.
 
 ## Current parity gate
 
-Build x64 and run `FIGSignalCpp.exe --self-test`. Tests cover native primitives, aggregation, study collections, signal transitions, and timestamp replacement/rollback. The supplied EFS collection is registered as `ADXBase`; see [EFS parity and usage](EFS_PARITY.md) for its parameters, reference comparisons, and remaining platform differences.
+Open `FIGSignalCpp.slnx`, build x64, and run `FIGSignalCpp.exe --self-test`. Tests cover native primitives, aggregation, study collections, signal transitions, and timestamp replacement/rollback. The supplied EFS collection is registered as `ADXBase`; see [EFS parity and usage](EFS_PARITY.md) for its parameters, reference comparisons, and remaining platform differences.
 
 This directory is an active port. It must not replace `FIGSignalSvc` in production until the parity checklist in `PORTING.md` is complete.
 

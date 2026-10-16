@@ -34,3 +34,7 @@ An alert is marked sent only after all returned recipient/channel sends succeed.
 `dotnet run --project tests/FIGAlertSvc.Regression/FIGAlertSvc.Regression.csproj`
 
 The regression harness uses real dispatch, formatting, and Pushover code with in-memory database/SMTP boundaries and a simulated HTTP handler. It covers long messages, Unicode, API failures, partial recipient/part failures, recipient time zones/DST, disabled recipients, and configured age forwarding. SQL migration execution and live delivery require validation in the deployment environment.
+
+## Split instances
+
+See [README-split-services.md](README-split-services.md) for Combined, SystemOnly, and OtherOnly modes, migration, routing, and installation. Apply the split migration after older delivery/recipient migrations so pending queries retain category filtering.

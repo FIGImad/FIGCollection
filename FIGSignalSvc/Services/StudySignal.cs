@@ -1,6 +1,7 @@
 using FIGCommon.DataAccess;
 using FIGCommon.Models;
 using Microsoft.Data.SqlClient;
+using System.Diagnostics;
 
 namespace FIGSignalExSvc.Services
 {
@@ -32,6 +33,34 @@ namespace FIGSignalExSvc.Services
             List<StudyHistoryRS>? precedingUpdates = null, Action<SqlTransaction>? saveCheckpoint = null,
             Action<SqlTransaction>? saveHistory = null)
         {
+            // Freeze the bar boundary across retries; only durable state is reloaded.
+            long effectiveNow = clock.GetUtcNow().ToUnixTimeSeconds() + timeOffset;
+            long completedBefore = effectiveNow / studyInterval.IntervalLen * studyInterval.IntervalLen;
+            bool changed = false;
+            try
+            {
+                SignalDeadlockRetry.Execute(
+                () => changed = ProcessSignalsAttempt(studyHistory, updateOnly, precedingUpdates,
+                    saveCheckpoint, saveHistory, completedBefore),
+                (retry, milliseconds, error) => _logger.LogWarning(error,
+                    "StudyCol {Id}: SQL deadlock victim; retry {Retry}/3 of the entire transaction in {Milliseconds} ms",
+                    studyColRec.Id, retry, milliseconds));
+            }
+            catch (SqlException ex) when (SignalDeadlockRetry.IsDeadlock(ex))
+            {
+                _logger.LogError(ex, "StudyCol {Id}: deadlock retries exhausted after 4 transaction attempts", studyColRec.Id);
+                throw;
+            }
+            // Publication is outside the retry boundary: a successful commit is never retried
+            // because of a subsequent notification failure.
+            if (changed)
+                _serviceProvider.GetService<FIGSignalExSvc.Publication.SignalPublicationWakeup>()?.Notify();
+        }
+
+        private bool ProcessSignalsAttempt(List<StudyHistoryRS> studyHistory, bool updateOnly,
+            List<StudyHistoryRS>? precedingUpdates, Action<SqlTransaction>? saveCheckpoint,
+            Action<SqlTransaction>? saveHistory, long completedBefore)
+        {
             // Process all rows supplied by checkpoint recovery. The durable progress marker,
             // not the newest history row or checkpoint, decides which rows may emit signals.
             var candidates = precedingUpdates != null
@@ -46,8 +75,6 @@ namespace FIGSignalExSvc.Services
                 connection = tx.Connection;
                 var progress = signalStore.ReadProgressForUpdate(studyColRec.Id, tx);
                 var batch = new StudySignalBatch(strategies, progress, name => signalStore.ReadLatestSignal(name, tx));
-                long effectiveNow = clock.GetUtcNow().ToUnixTimeSeconds() + timeOffset;
-                long completedBefore = effectiveNow / studyInterval.IntervalLen * studyInterval.IntervalLen;
                 batch.Process(candidates, completedBefore);
 
                 if (saveHistory != null) saveHistory(tx);
@@ -63,19 +90,35 @@ namespace FIGSignalExSvc.Services
                 {
                     _logger.LogInformation("Upserting Signal for Strategy {Strategy} with Side {Side} and Status {Status}",
                         signal.Strategy, signal.Side, signal.Status);
-                    MainRepo.UpsertSignal(signal, tx);
+                    var writeWatch = Stopwatch.StartNew();
+                    try { MainRepo.UpsertSignal(signal, tx); }
+                    finally
+                    {
+                        _logger.LogInformation("Signal upsert call ended for StudyCol {Id}, Strategy {Strategy}, Signal {SignalId}: {Milliseconds} ms (transaction not yet committed)",
+                            studyColRec.Id, signal.Strategy, signal.Id, writeWatch.ElapsedMilliseconds);
+                    }
                 }
                 signalStore.SaveProgress(studyColRec.Id, progress, batch.ProcessedThrough, tx);
                 saveCheckpoint?.Invoke(tx);
-                tx.Commit();
-                if (batch.Changes.Count > 0)
-                    _serviceProvider.GetService<FIGSignalExSvc.Publication.SignalPublicationWakeup>()?.Notify();
+                var commitWatch = Stopwatch.StartNew();
+                try { tx.Commit(); }
+                finally
+                {
+                    _logger.LogInformation("StudyCol {Id}: transaction commit call ended after {Milliseconds} ms",
+                        studyColRec.Id, commitWatch.ElapsedMilliseconds);
+                }
+                return batch.Changes.Count > 0;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error committing study history, signals and signal progress; rolling back");
-                try { tx?.Rollback(); }
-                catch (Exception rollbackError) { _logger.LogError(rollbackError, "Rollback failed"); }
+                if (SignalDeadlockRetry.IsDeadlock(ex))
+                    _logger.LogWarning(ex, "StudyCol {Id}: transaction was rolled back by SQL Server after a deadlock", studyColRec.Id);
+                else
+                {
+                    _logger.LogError(ex, "Error committing study history, signals and signal progress; rolling back");
+                    try { tx?.Rollback(); }
+                    catch (Exception rollbackError) { _logger.LogError(rollbackError, "Rollback failed"); }
+                }
                 // No signal state survives a failed or uncertain commit. The next attempt
                 // reloads durable progress and signal rows under the transaction lock.
                 throw;

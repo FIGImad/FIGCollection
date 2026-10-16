@@ -61,8 +61,8 @@ Check(Json(afterDeletion.Calc(prices.TakeLast(100).ToList(), 0)) == Json(allOutp
 foreach (var options in new[]
 {
     new LADXOptions(),
-    new LADXOptions { AdxLen = 1, AdxLenConf = 1, FastMALen = 1, SlowMALen = 1, GuideMALen = 1, ShockATRLen = 1, RevisionDepth = 1 },
-    new LADXOptions { GuideMALen = 720, SlowMALen = 600, RevisionDepth = 5 }
+    new LADXOptions { AdxLen = 1, FastMALen = 1, GuideMALen = 1, ShockATRLen = 1, RevisionDepth = 1 },
+    new LADXOptions { GuideMALen = 720, RevisionDepth = 5 }
 })
 {
     var input = options.GuideMALen > 500 ? Prices(1000) : prices;
@@ -80,23 +80,22 @@ foreach (var options in new[]
     }
 }
 
-// Restores while signals are open and cooling down, not just at fixed warm-up boundaries.
-var streaming = Create();
-bool sawLong = false, sawShort = false, sawCooldown = false;
+// Restores while long signals are open and after exits, not just at fixed warm-up boundaries.
+var streamingOptions = new LADXOptions { AdxLen = 3, FastMALen = 2, GuideMALen = 7, StartBias = -10, ChopMinGuideWidthATR = 0, ShockDropATR = .5 };
+var streaming = Create(streamingOptions);
+bool sawLong = false, sawExit = false;
 foreach (var price in prices)
 {
     var saved = streaming.CaptureCheckpoint();
-    var resumed = Create();
+    var resumed = Create(streamingOptions);
     if (saved.Bars.Count > 0) resumed.RestoreCheckpoint(RoundTrip(saved));
     var expected = streaming.Calc([price], 0);
     if (Json(expected) != Json(resumed.Calc([price], 0))) throw new Exception("Per-bar restart mismatch");
     var values = expected[0].Studies;
-    sawLong |= Equals(values["STrend_LBaseADX_SIDE"], 1m);
-    sawShort |= Equals(values["STrend_SBaseADX_SIDE"], -1m);
-    sawCooldown |= Equals(values["STrend_LBaseADX_StartBlockReason"], "COOLDOWN")
-        || Equals(values["STrend_SBaseADX_StartBlockReason"], "COOLDOWN");
+    sawLong |= Equals(values["LADX_LongSide"], 1m);
+    sawExit |= Equals(values["LADX_BarsSinceExit"], 0m);
 }
-Check(sawLong && sawShort && sawCooldown, "Every-bar restarts cover open long/short trades and cooldown");
+Check(sawLong && sawExit, "Every-bar restarts cover open long trades and exits");
 
 foreach (var rewind in new[] { 1, 3, 5, 20 })
 {
@@ -148,4 +147,6 @@ Reject(() => Create().RestoreCheckpoint(Damage(root => LastState(root)["ATR"]!.A
 Reject(() => Create().RestoreCheckpoint(Damage(root => LastState(root)["Long"] = null)), "Null signal state rejected");
 Reject(() => Create().RestoreCheckpoint(Damage(root => LastState(root)["MA"]!.AsArray().RemoveAt(0))), "Missing moving average rejected");
 Reject(() => Create().RestoreCheckpoint(Damage(root => LastState(root)["Bands"]!["Values"] = null)), "Null rolling values rejected");
-Console.WriteLine($"All {checks} LADX checkpoint checks passed.");
+// The native LADX DLL implements v2; v3 parity is verified against the supplied EFS.
+Console.WriteLine("Run tests/FIGLADXEfs.Regression/verify.mjs for current EFS parity.");
+Console.WriteLine($"All {checks} LADX checks passed.");

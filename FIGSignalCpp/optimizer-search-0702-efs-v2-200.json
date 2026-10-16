@@ -1,0 +1,75 @@
+{
+  "DataSetId": 3,
+  "IntervalMinutes": 5,
+  "BaseParameters": "adx-base-parameters-0702-efs-v2.json",
+  "Settings": "signal-settings.json",
+  "OutputRoot": "optimizer-output-0702-efs-v2",
+  "Samples": 199,
+  "Seed": 12345,
+  "Jobs": 2,
+  "MaxSourceBars": 0,
+  "InitialCapital": 1200000,
+  "Quantity": 0,
+  "Multiplier": 20,
+  "CommissionPerContractPerSide": 1.6,
+  "SlippagePointsPerSide": 0,
+  "ForceCloseAtEnd": false,
+  "StartDate": "2016-01-01",
+  "EndDateExclusive": "",
+  "TrainEndExclusive": "2023-01-01",
+  "ValidationEndExclusive": "2025-01-01",
+  "Ranges": {
+    "AdxTriggerConf": [
+      0,
+      5,
+      10,
+      15,
+      20
+    ],
+    "ContinuationMinSlopeATR": [
+      0,
+      0.01,
+      0.02,
+      0.04,
+      0.06
+    ],
+    "ContinuationMaxShockATR": [
+      0,
+      0.5,
+      0.75,
+      1,
+      1.5,
+      2
+    ],
+    "FailFastBars": [
+      0,
+      1,
+      2,
+      3,
+      4
+    ],
+    "FailFastBuffer": [
+      0,
+      1,
+      2,
+      5,
+      10
+    ],
+    "TrendReEntryBars": [
+      0,
+      3,
+      6,
+      12
+    ],
+    "TrendReEntryShockMax": [
+      0.5,
+      1,
+      2,
+      4
+    ]
+  },
+  "Executable": "x64/Release/FIGSignalCpp.exe",
+  "QuantityPct": 1.0,
+  "PriceCacheDirectory": "C:\\Roots\\Optimization\\price-cache",
+  "PriceCacheMode": "use"
+}

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Collections" />
+    <Filter Include="Studies" />
+    <ClCompile Include="src\collections\example\plugin.cpp"><Filter>Collections</Filter></ClCompile>
+    <ClInclude Include="include\fig\studies\collection_plugin.hpp"><Filter>Studies</Filter></ClInclude>
+  </ItemGroup>
+</Project>

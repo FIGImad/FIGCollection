@@ -1,0 +1,114 @@
+{
+  "DataSetId": 3,
+  "IntervalMinutes": 2,
+  "BaseParameters": "C:\\Users\\Imad\\source\\FIGCollection\\FIGSignalCpp\\ladx-0026-base-2m.json",
+  "Settings": "C:\\Roots\\OptimizationV2\\signal-settings.json",
+  "OutputRoot": "C:\\Roots\\OptimizationV2\\optimizer-output\\ladx-2m-0026-exits-1000",
+  "Executable": "C:\\Roots\\OptimizationV2\\FIGSignalCpp.exe",
+  "CollectionDll": "C:\\Users\\Imad\\source\\FIGCollection\\FIGSignalCpp\\x64\\Release\\FIGStudyCollection.LADX.ArmedReset.dll",
+  "Collection": "LADX",
+  "Signal": "LADX_SIDE",
+  "PriceCacheDirectory": "C:\\Roots\\OptimizationV2\\price-cache",
+  "PriceCacheMode": "use",
+  "Samples": 999,
+  "Seed": 12345,
+  "Jobs": 2,
+  "MaxSourceBars": 0,
+  "InitialCapital": 1200000,
+  "Quantity": 0,
+  "QuantityPct": 1,
+  "Multiplier": 20,
+  "CommissionPerContractPerSide": 1.6,
+  "SlippagePointsPerSide": 0,
+  "ForceCloseAtEnd": false,
+  "StartDate": "2016-01-01",
+  "EndDateExclusive": "",
+  "TrainEndExclusive": "2023-01-01",
+  "ValidationEndExclusive": "2025-01-01",
+  "Ranges": {
+    "ReEntryCooldownBars": [
+      0,
+      2,
+      3,
+      4,
+      5
+    ],
+    "ContinuationEntryBars": [
+      0,
+      2,
+      3,
+      4,
+      5,
+      6,
+      8,
+      10
+    ],
+    "ShockATRLen": [
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      12,
+      14
+    ],
+    "ShockDropATR": [
+      3,
+      3.5,
+      4,
+      4.5,
+      5,
+      5.5,
+      6
+    ],
+    "ShockArmedDropATR": [
+      1,
+      1.25,
+      1.5,
+      1.75,
+      2,
+      2.25,
+      2.5,
+      2.75
+    ],
+    "ShockArmUpATR": [
+      1.5,
+      2,
+      2.5,
+      2.75,
+      3,
+      3.5,
+      4
+    ],
+    "ShockRangeATR": [
+      1.5,
+      2,
+      2.5,
+      3,
+      3.5,
+      4
+    ],
+    "ChopMinGuideWidthATR": [
+      0,
+      0.3,
+      0.4,
+      0.5,
+      0.6,
+      0.7,
+      0.8,
+      1
+    ],
+    "ChopMaxGuideSlopeATR": [
+      0,
+      0.05,
+      0.08,
+      0.1,
+      0.11,
+      0.125,
+      0.15,
+      0.2
+    ]
+  },
+  "ExecutableSHA256": null
+}

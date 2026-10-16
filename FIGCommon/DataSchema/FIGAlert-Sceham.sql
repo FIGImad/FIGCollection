@@ -74,6 +74,7 @@ GO
 SET QUOTED_IDENTIFIER ON
 GO
 CREATE TABLE [dbo].[Alert](
+    [IsSystemAlert] bit NOT NULL CONSTRAINT DF_Alert_IsSystemAlert DEFAULT (0),
 	[Id] [int] IDENTITY(1,1) NOT NULL,
 	[RawTime] [int] NOT NULL,
 	[MSec] [int] NOT NULL,
@@ -404,13 +405,16 @@ SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
 GO
-CREATE   PROCEDURE [dbo].[usp_alert_get_pending]
+CREATE OR ALTER PROCEDURE [dbo].[usp_alert_get_pending]
 (
-	@LookbackMinutes int = 30
+	@LookbackMinutes int = 30,
+    @CategoryFilter int = -1
 )
 AS
 BEGIN
 	SET NOCOUNT ON;
+    IF @CategoryFilter IS NULL OR @CategoryFilter NOT IN (-1, 0, 1)
+        THROW 50003, 'Invalid category filter: use -1, 0 or 1.', 1;
 
 	IF (@LookbackMinutes IS NULL OR @LookbackMinutes <= 0)
 		SET @LookbackMinutes = 30;
@@ -421,7 +425,8 @@ BEGIN
 	UPDATE [dbo].[Alert]
 	SET    [IgnoredAt]    = @NowUtc,
 	       [IgnoreReason] = CONCAT('Older than pending alert lookback window of ', @LookbackMinutes, ' minutes')
-	WHERE  [SentAt]          IS NULL
+	WHERE (@CategoryFilter = -1 OR [IsSystemAlert] = @CategoryFilter)
+      AND [SentAt]          IS NULL
 	  AND  [IgnoredAt]       IS NULL
 	  AND  [RawTime]         < @CutoffRawTime
 	  AND  [MatchedRuleId]   IS NOT NULL
@@ -442,7 +447,8 @@ BEGIN
 	FROM  [dbo].[Alert]                  a
 	INNER JOIN [dbo].[RecipientSubscription] rs ON rs.[AlertRuleId] = a.[MatchedRuleId]
 	INNER JOIN [dbo].[Recipient]             r  ON r.[Id]           = rs.[RecipientId]
-	WHERE r.[Enabled] = 1 AND a.[SentAt]          IS NULL
+	WHERE (@CategoryFilter = -1 OR a.[IsSystemAlert] = @CategoryFilter)
+      AND r.[Enabled] = 1 AND a.[SentAt]          IS NULL
 	  AND a.[IgnoredAt]       IS NULL
 	  AND a.[RawTime]         >= @CutoffRawTime
 	  AND a.[MatchedRuleId]   IS NOT NULL
@@ -459,14 +465,17 @@ GO
 SET QUOTED_IDENTIFIER ON
 GO
 
-CREATE   PROCEDURE [dbo].[usp_alert_get_pending_immediate]
+CREATE OR ALTER PROCEDURE [dbo].[usp_alert_get_pending_immediate]
 (
     @MaxRec int = 100,
-    @LookbackMinutes int = 30
+    @LookbackMinutes int = 30,
+    @CategoryFilter int = -1
 )
 AS
 BEGIN
     SET NOCOUNT ON;
+    IF @CategoryFilter IS NULL OR @CategoryFilter NOT IN (-1, 0, 1)
+        THROW 50003, 'Invalid category filter: use -1, 0 or 1.', 1;
 
     IF @MaxRec IS NULL OR @MaxRec <= 0
         SET @MaxRec = 100;
@@ -481,7 +490,8 @@ BEGIN
 	UPDATE [dbo].[Alert]
 	SET    [IgnoredAt]    = @NowUtc,
 	       [IgnoreReason] = CONCAT('Older than pending alert lookback window of ', @LookbackMinutes, ' minutes')
-	WHERE  [SentAt]          IS NULL
+	WHERE (@CategoryFilter = -1 OR [IsSystemAlert] = @CategoryFilter)
+      AND [SentAt]          IS NULL
 	  AND  [IgnoredAt]       IS NULL
 	  AND  [RawTime]         < @CutoffRawTime
 	  AND  [MatchedRuleId]   IS NOT NULL
@@ -498,7 +508,8 @@ BEGIN
             ON src.[Source] = a.[Source]
            AND src.[Enabled] = 1
 
-        WHERE a.[SentAt] IS NULL
+        WHERE (@CategoryFilter = -1 OR a.[IsSystemAlert] = @CategoryFilter)
+          AND a.[SentAt] IS NULL
           AND a.[IgnoredAt] IS NULL
           AND a.[MatchedRuleId] IS NOT NULL
           AND a.[FriendlyMessage] IS NOT NULL
@@ -615,7 +626,8 @@ BEGIN
         Source,
         Level,
         Message,
-        ExceptionText
+        ExceptionText,
+        IsSystemAlert
     FROM dbo.Alert
     WHERE ServiceId = @ServiceId
         AND RawTime >= @TwentyFourHoursAgo
@@ -647,6 +659,7 @@ BEGIN
            ,[Level]
            ,[Message]
            ,[ExceptionText]
+           ,[IsSystemAlert]
     FROM [dbo].[Alert]
     WHERE @Id = -1 OR [Id] = @Id
 END
@@ -679,6 +692,7 @@ BEGIN
            ,[Level]
            ,[Message]
            ,[ExceptionText]
+           ,[IsSystemAlert]
     FROM [dbo].[Alert]
     WHERE [RawTime] >= (@curRawTime - @Duration);
 END
@@ -708,7 +722,7 @@ SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
 GO
-CREATE PROCEDURE [dbo].[usp_alert_upsert]
+CREATE OR ALTER PROCEDURE [dbo].[usp_alert_upsert]
 (
     @IdNew    int OUTPUT,
     @Id       int,
@@ -722,7 +736,8 @@ CREATE PROCEDURE [dbo].[usp_alert_upsert]
     @Source         varchar(50),
     @Level          varchar(20),
     @Message        varchar(max),
-    @ExceptionText  varchar(max) = NULL
+    @ExceptionText  varchar(max) = NULL,
+    @IsSystemAlert bit = 0
 )
 AS
 BEGIN
@@ -744,6 +759,7 @@ BEGIN
             ,[Level]
             ,[Message]
             ,[ExceptionText]
+            ,[IsSystemAlert]
         )
         VALUES (
              @RawTime
@@ -757,6 +773,7 @@ BEGIN
             ,@Level
             ,@Message
             ,@ExceptionText
+            ,@IsSystemAlert
         )
         SET @IdNew = SCOPE_IDENTITY();
     END ELSE BEGIN
@@ -772,6 +789,7 @@ BEGIN
             ,[Source]        = @Source
             ,[Level]         = @Level
             ,[Message]       = @Message
+            ,[IsSystemAlert] = @IsSystemAlert
             ,[ExceptionText] = @ExceptionText
         WHERE [Id] = @IdNew;
     END

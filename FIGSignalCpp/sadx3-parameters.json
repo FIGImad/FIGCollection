@@ -1,0 +1,17 @@
+{
+  "indicators": {
+    "adxLength": 24,
+    "priceMaLength": 4,
+    "guideMaLength": 16,
+    "guideStdDev": 0.4
+  },
+  "entry": {
+    "reEntryCooldownBars": 2,
+    "continuationEntryBars": 5,
+    "startBiasShortTrend": 0.5
+  },
+  "exit": {
+    "stopBiasShortTrend": -2.6,
+    "exitOnCrossTrend": true
+  }
+}

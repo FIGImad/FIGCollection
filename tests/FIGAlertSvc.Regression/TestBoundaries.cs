@@ -3,6 +3,7 @@ namespace FIGCommon.Models.Alert
 {
     public class PendingAlertRS
     {
+        public bool IsSystemAlert { get; set; }
         public bool IsImmediate { get; set; }
         public int AlertId { get; set; }
         public int RecipientId { get; set; }
@@ -23,10 +24,10 @@ namespace FIGCommon.DataAccess
         public static List<Models.Alert.PendingAlertRS> Rows = [];
         public static HashSet<int> Sent = [];
         public static int Lookback;
-        public static List<Models.Alert.PendingAlertRS> GetPendingAlerts(int lookbackMinutes = 30)
-        { Lookback = lookbackMinutes; return Rows.Where(r => !Sent.Contains(r.AlertId)).ToList(); }
-        public static List<Models.Alert.PendingAlertRS> GetPendingImmediateAlerts(int maxRec = 100, int lookbackMinutes = 30)
-            => GetPendingAlerts(lookbackMinutes);
+        public static List<Models.Alert.PendingAlertRS> GetPendingAlerts(int lookbackMinutes = 30, int categoryFilter = -1)
+        { Lookback = lookbackMinutes; return Rows.Where(r => !Sent.Contains(r.AlertId) && (categoryFilter == -1 || r.IsSystemAlert == (categoryFilter == 1))).ToList(); }
+        public static List<Models.Alert.PendingAlertRS> GetPendingImmediateAlerts(int maxRec = 100, int lookbackMinutes = 30, int categoryFilter = -1)
+            => GetPendingAlerts(lookbackMinutes, categoryFilter);
         public static void MarkAlertSent(int id) => Sent.Add(id);
     }
 }

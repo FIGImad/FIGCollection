@@ -13,7 +13,7 @@ namespace FIGCommon.Models
 }
 namespace FIGCommon.Models.FIGController
 {
-    public enum ControllerClientRole { Alert = 256 }
+    public enum ControllerClientRole { Alert = 256, SystemAlert = 512 }
     public class ControllerConfig
     {
         public string AuthUsername { get; set; } = "test";

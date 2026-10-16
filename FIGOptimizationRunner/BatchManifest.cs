@@ -15,6 +15,7 @@ public sealed class BatchManifest
     public DateTimeOffset? FinishedUTC { get; set; }
     public int Attempts { get; set; }
     public string? ExecutableSHA256 { get; set; }
+    public string? CollectionDllSHA256 { get; set; }
     public string? ReportDirectory { get; set; }
     public string? Error { get; set; }
     public SearchConfiguration Configuration { get; set; } = new();

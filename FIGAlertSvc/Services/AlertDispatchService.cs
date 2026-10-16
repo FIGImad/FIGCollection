@@ -23,11 +23,13 @@ namespace FIGAlertSvc.Services
         private readonly ILogger<AlertDispatchService> _logger;
         private readonly IServiceProvider _serviceProvider;
         private readonly int _maxAgeMinutes;
+        private readonly int _categoryFilter;
 
         public AlertDispatchService(
             ILogger<AlertDispatchService> logger,
             IServiceProvider serviceProvider, IConfiguration configuration)
         {
+            _categoryFilter = AlertProcessingPolicy.CategoryFilter(AlertProcessingPolicy.Read(configuration));
             _maxAgeMinutes = configuration.GetValue<int>("AlertDispatch:MaxAlertAgeMinutes", 30);
             if (_maxAgeMinutes <= 0) throw new ArgumentOutOfRangeException(nameof(configuration), "MaxAlertAgeMinutes must be positive.");
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
@@ -74,7 +76,7 @@ namespace FIGAlertSvc.Services
                 while (true)
                 {
                     cancellationToken.ThrowIfCancellationRequested();
-                    var rows = immediate ? AlertRepo.GetPendingImmediateAlerts(lookbackMinutes: _maxAgeMinutes) : AlertRepo.GetPendingAlerts(_maxAgeMinutes);
+                    var rows = immediate ? AlertRepo.GetPendingImmediateAlerts(lookbackMinutes: _maxAgeMinutes, categoryFilter: _categoryFilter) : AlertRepo.GetPendingAlerts(_maxAgeMinutes, _categoryFilter);
                     // SQL filters disabled recipients; keep the same guard before sending or marking sent.
                     rows = rows.Where(row => row.RecipientEnabled).ToList();
                     if (rows.Count == 0) return;

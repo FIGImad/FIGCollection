@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using FIGOptimizationRunner.Search;
 
 namespace FIGOptimizationRunner.Configuration;
 
@@ -12,6 +13,13 @@ public sealed record SearchConfiguration
     public string Settings { get; init; } = "signal-settings.json";
     public string OutputRoot { get; init; } = "optimizer-output";
     public string Executable { get; init; } = "x64/Release/FIGSignalCpp.exe";
+    public string CollectionDll { get; init; } = "";
+    public string Collection { get; init; } = "ADXBase";
+    public string Signal { get; init; } = "STrend_LBaseADX_Side";
+    [JsonIgnore]
+    public string EffectiveCollectionDll => string.IsNullOrEmpty(CollectionDll)
+        ? Path.Combine(Path.GetDirectoryName(Path.GetFullPath(Executable))!, "FIGStudyCollection.ADX.dll")
+        : Path.GetFullPath(CollectionDll);
     public string PriceCacheDirectory { get; init; } = "price-cache";
     public string PriceCacheMode { get; init; } = "off";
     public int Samples { get; init; } = 1000;
@@ -29,20 +37,24 @@ public sealed record SearchConfiguration
     public string EndDateExclusive { get; init; } = "";
     public string TrainEndExclusive { get; init; } = "2023-01-01";
     public string ValidationEndExclusive { get; init; } = "2025-01-01";
-    public Dictionary<string, decimal[]> Ranges { get; init; } = new(StringComparer.Ordinal);
+    public Dictionary<string, ParameterValue[]> Ranges { get; init; } = new(StringComparer.Ordinal);
     // Accepted for compatibility with snapshots produced by the PowerShell runner.
     public string? ExecutableSHA256 { get; init; }
 
     public static readonly JsonSerializerOptions Json = new()
     {
         WriteIndented = true,
+        MaxDepth = 1024,
         UnmappedMemberHandling = JsonUnmappedMemberHandling.Disallow
     };
 
     public static SearchConfiguration Load(string path)
     {
         path = Path.GetFullPath(path);
-        var c = JsonSerializer.Deserialize<SearchConfiguration>(File.ReadAllText(path), Json)
+        var text = File.ReadAllText(path);
+        using var document = JsonDocument.Parse(text, new() { MaxDepth = Json.MaxDepth });
+        ParameterSet.CheckDuplicates(document.RootElement);
+        var c = JsonSerializer.Deserialize<SearchConfiguration>(text, Json)
             ?? throw new ArgumentException("Empty search configuration.");
         var root = Path.GetDirectoryName(path)!;
         string Resolve(string value) => Path.GetFullPath(value, root);
@@ -50,12 +62,15 @@ public sealed record SearchConfiguration
         {
             BaseParameters = Resolve(c.BaseParameters), Settings = Resolve(c.Settings),
             OutputRoot = Resolve(c.OutputRoot), Executable = Resolve(c.Executable),
+            CollectionDll = string.IsNullOrEmpty(c.CollectionDll) ? "" : Resolve(c.CollectionDll),
             PriceCacheDirectory = Resolve(c.PriceCacheDirectory)
         };
     }
 
     public void Validate()
     {
+        if (string.IsNullOrWhiteSpace(Collection) || string.IsNullOrWhiteSpace(Signal) || CollectionDll is null)
+            throw new ArgumentException("Collection and Signal must be nonempty; CollectionDll must be a path or an empty string.");
         if (PriceCacheMode is not ("off" or "use" or "refresh"))
             throw new ArgumentException("PriceCacheMode must be off, use, or refresh.");
         if (string.IsNullOrWhiteSpace(PriceCacheDirectory))

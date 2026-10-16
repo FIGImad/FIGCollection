@@ -1,0 +1,18 @@
+{
+  "AdxLen": 50,
+  "FastMALen": 3,
+  "GuideMALen": 28,
+  "GuideStdDev": 0.5,
+  "StartBias": 2.0,
+  "StopBias": -1.5,
+  "ReEntryCooldownBars": 2,
+  "TrendReEntryShockMax": 4,
+  "ShockATRLen": 7,
+  "ShockDropATR": 4.5,
+  "ShockArmedDropATR": 2.5,
+  "ShockArmUpATR": 3.0,
+  "ShockRangeATR": 2.5,
+  "ChopMinGuideWidthATR": 0.6,
+  "ChopMaxGuideSlopeATR": 0.1,
+  "ContinuationMaxShockATR": 1.0
+}

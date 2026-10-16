@@ -1,0 +1,169 @@
+diff --git a/FIGOptimizationRunner/SelfTests.cs b/FIGOptimizationRunner/SelfTests.cs
+index 4b2fbc7..005fa7a 100644
+--- a/FIGOptimizationRunner/SelfTests.cs
++++ b/FIGOptimizationRunner/SelfTests.cs
+@@ -31,32 +31,32 @@ internal static class SelfTests
+         Reject(() => generator.Generate(c with { Ranges = new() { ["StartBias"] = [1, 1.0m] } }, baseline, default).ToArray(), "duplicate numeric values");
+         Reject(() => generator.Generate(c with { Ranges = new() { ["AdxLenConf"] = [1] } }, baseline, default).ToArray(), "inactive range");
+         Reject(() => generator.Generate(c with { Ranges = new() { ["AdxLen"] = [1.5m] } }, baseline, default).ToArray(), "fractional period");
+-        var ldaxBase = new ParameterSet(new Dictionary<string, decimal?>
++        var ladxBase = new ParameterSet(new Dictionary<string, decimal?>
+         {
+             ["TrendReEntryShockMax"] = 4, ["ReEntryCooldownBars"] = 2,
+             ["ContinuationMaxShockATR"] = 1, ["ContinuationEntryBars"] = 3
+         });
+-        var ldax = c with
++        var ladx = c with
+         {
+-            Collection = "ldax", Signal = "STrend_LADX_LongSide", CollectionDll = "dll with spaces/LDAX.dll",
++            Collection = "ladx", Signal = "LADX_LongSide", CollectionDll = "dll with spaces/LADX.dll",
+             Ranges = new() { ["TrendReEntryShockMax"] = [3, 4, 5, 6] }
+         };
+-        var ldaxCandidates = generator.Generate(ldax, ldaxBase, default).ToArray();
+-        Check(ldaxCandidates.Length == 4 && ldaxCandidates[0].Identity == ldaxBase.Identity, "LDAX baseline and active reentry threshold");
+-        Check(ldaxCandidates.All(p => p.Values["ReEntryCooldownBars"] == 2 && p.Values["ContinuationMaxShockATR"] == 1), "LDAX inactive values held fixed");
++        var ladxCandidates = generator.Generate(ladx, ladxBase, default).ToArray();
++        Check(ladxCandidates.Length == 4 && ladxCandidates[0].Identity == ladxBase.Identity, "LADX baseline and active reentry threshold");
++        Check(ladxCandidates.All(p => p.Values["ReEntryCooldownBars"] == 2 && p.Values["ContinuationMaxShockATR"] == 1), "LADX inactive values held fixed");
+         foreach (var inactive in new[] { "ReEntryCooldownBars", "ContinuationMaxShockATR", "ContinuationEntryBars" })
+-            Reject(() => generator.Generate(ldax with { Ranges = new() { [inactive] = [0, 1, 2, 3] } }, ldaxBase, default).ToArray(), "LDAX inactive range " + inactive);
+-        Reject(() => generator.Generate(ldax with { Ranges = new() { ["TrendReEntryShockMax"] = [-1, 0, 1, 4] } }, ldaxBase, default).ToArray(), "LDAX negative shock threshold");
+-        Reject(() => generator.Generate(ldax with { Collection = "ADXBase" }, ldaxBase, default).ToArray(), "ADX inactive reentry threshold unchanged");
++            Reject(() => generator.Generate(ladx with { Ranges = new() { [inactive] = [0, 1, 2, 3] } }, ladxBase, default).ToArray(), "LADX inactive range " + inactive);
++        Reject(() => generator.Generate(ladx with { Ranges = new() { ["TrendReEntryShockMax"] = [-1, 0, 1, 4] } }, ladxBase, default).ToArray(), "LADX negative shock threshold");
++        Reject(() => generator.Generate(ladx with { Collection = "ADXBase" }, ladxBase, default).ToArray(), "ADX inactive reentry threshold unchanged");
+         var customBase = new ParameterSet(new Dictionary<string, decimal?> { ["Threshold"] = 0 });
+         Check(generator.Generate(c with { Collection = "Custom", Ranges = new() { ["Threshold"] = [-1, 0, 1, 2] } }, customBase, default).Count() == 4, "custom plugin baseline schema");
+-        var ldaxArgs = NativeBatchExecutor.Arguments(ldax, "parameters", "reports").ToList();
+-        Check(ldaxArgs[ldaxArgs.IndexOf("--collection-dll") + 1] == Path.GetFullPath(ldax.CollectionDll), "DLL path forwarded as one argument");
+-        Check(ldaxArgs[ldaxArgs.IndexOf("--collection") + 1] == "ldax" && ldaxArgs[ldaxArgs.IndexOf("--signal") + 1] == "STrend_LADX_LongSide", "LDAX collection and normalized signal forwarded");
++        var ladxArgs = NativeBatchExecutor.Arguments(ladx, "parameters", "reports").ToList();
++        Check(ladxArgs[ladxArgs.IndexOf("--collection-dll") + 1] == Path.GetFullPath(ladx.CollectionDll), "DLL path forwarded as one argument");
++        Check(ladxArgs[ladxArgs.IndexOf("--collection") + 1] == "ladx" && ladxArgs[ladxArgs.IndexOf("--signal") + 1] == "LADX_LongSide", "LADX collection and normalized signal forwarded");
+         var defaultArgs = NativeBatchExecutor.Arguments(c, "parameters", "reports").ToList();
+         Check(!defaultArgs.Contains("--collection-dll") && defaultArgs[defaultArgs.IndexOf("--collection") + 1] == "ADXBase" && defaultArgs[defaultArgs.IndexOf("--signal") + 1] == "STrend_LBaseADX_Side", "default ADX selection preserved");
+-        Reject(() => (ldax with { Collection = " " }).Validate(), "empty collection");
+-        Reject(() => (ldax with { Signal = "" }).Validate(), "empty signal");
++        Reject(() => (ladx with { Collection = " " }).Validate(), "empty collection");
++        Reject(() => (ladx with { Signal = "" }).Validate(), "empty signal");
+         var large = c with { Samples = 10, Ranges = new() { ["AdxLen"] = Enumerable.Range(1, 100001).Select(n => (decimal)n).ToArray() } };
+         Check(generator.Generate(large, baseline, default).Select(p => p.Identity).Distinct().Count() == 11, "large space");
+         using var cancel = new CancellationTokenSource();
+@@ -93,24 +93,24 @@ internal static class SelfTests
+         c = c with { BaseParameters = Path.Combine(root, "base.json"), Executable = Path.Combine(root, "native.exe"), Settings = Path.Combine(root, "settings.json"), OutputRoot = root };
+         var fake = new FakeExecutor();
+         var runner = new OptimizationRunner(generator, fake);
+-        var pluginFile = Path.Combine(root, "LDAX.dll");
++        var pluginFile = Path.Combine(root, "LADX.dll");
+         File.WriteAllText(pluginFile, "fake collection for checksum test");
+-        File.WriteAllText(Path.Combine(root, "ldax-base.json"), ldaxBase.ToJson());
+-        var ldaxConfigFile = Path.Combine(root, "ldax-search.json");
+-        File.WriteAllText(ldaxConfigFile, System.Text.Json.JsonSerializer.Serialize(ldax with
++        File.WriteAllText(Path.Combine(root, "ladx-base.json"), ladxBase.ToJson());
++        var ladxConfigFile = Path.Combine(root, "ladx-search.json");
++        File.WriteAllText(ladxConfigFile, System.Text.Json.JsonSerializer.Serialize(ladx with
+         {
+-            CollectionDll = "LDAX.dll", BaseParameters = "ldax-base.json", Executable = "native.exe", Settings = "settings.json", OutputRoot = "."
++            CollectionDll = "LADX.dll", BaseParameters = "ladx-base.json", Executable = "native.exe", Settings = "settings.json", OutputRoot = "."
+         }, SearchConfiguration.Json));
+-        var loadedLdax = SearchConfiguration.Load(ldaxConfigFile);
+-        Check(loadedLdax.CollectionDll == pluginFile, "DLL resolves relative to configuration");
+-        var pluginBatch = runner.Prepare(loadedLdax, Path.Combine(root, "plugin"), default);
++        var loadedLadx = SearchConfiguration.Load(ladxConfigFile);
++        Check(loadedLadx.CollectionDll == pluginFile, "DLL resolves relative to configuration");
++        var pluginBatch = runner.Prepare(loadedLadx, Path.Combine(root, "plugin"), default);
+         Check(OptimizationRunner.Load(pluginBatch).CollectionDllSHA256 == OptimizationRunner.Hash(pluginFile), "DLL checksum saved");
+-        Check(OptimizationRunner.Load(pluginBatch).Configuration.Signal == ldax.Signal, "selection survives manifest round trip");
++        Check(OptimizationRunner.Load(pluginBatch).Configuration.Signal == ladx.Signal, "selection survives manifest round trip");
+         File.AppendAllText(pluginFile, "changed");
+         try { await runner.ExecuteAsync(pluginBatch, default); throw new Exception("Missing DLL checksum rejection"); }
+         catch (InvalidDataException ex) when (ex.Message.Contains("Collection DLL changed")) { }
+         Check(OptimizationRunner.Load(pluginBatch).Attempts == 0, "changed DLL rejected before execution");
+-        var pluginRun = runner.Prepare(loadedLdax, Path.Combine(root, "plugin-run"), default);
++        var pluginRun = runner.Prepare(loadedLadx, Path.Combine(root, "plugin-run"), default);
+         await runner.ExecuteAsync(pluginRun, default);
+         Check(OptimizationRunner.Load(pluginRun).Status == "Completed", "plugin batch execution");
+         var defaultDll = Path.Combine(root, "FIGStudyCollection.ADX.dll");
+diff --git a/FIGOptimizationRunner/README.md b/FIGOptimizationRunner/README.md
+index 2f6cb31..d32a6b3 100644
+--- a/FIGOptimizationRunner/README.md
++++ b/FIGOptimizationRunner/README.md
+@@ -23,21 +23,21 @@ dotnet run --project ..\FIGOptimizationRunner -c Release --no-launch-profile --
+ dotnet run --project ..\FIGOptimizationRunner -c Release --no-launch-profile -- self-test
+ ```
+ 
+-Visual Studio includes **Prepare candidates (no database)**, **Small native verification**, **Full optimization**, and LDAX prepare/run profiles for 200 cases at three-minute intervals. Preparation is the default. Starting without command arguments prints help.
++Visual Studio includes **Prepare candidates (no database)**, **Small native verification**, **Full optimization**, and LADX prepare/run profiles for 200 cases at three-minute intervals. Preparation is the default. Starting without command arguments prints help.
+ 
+-## LDAX: 200 cases at three-minute intervals
++## LADX: 200 cases at three-minute intervals
+ 
+-From `FIGSignalCpp`, use `optimizer-search-ldax-3m-200.json`. It keeps `ldax-parameters.json` as case 1 and adds 199 unique seeded variations around its values. Build the native Release host and LDAX DLL first, then run:
++From `FIGSignalCpp`, use `optimizer-search-ladx-3m-200.json`. It keeps `ladx-parameters.json` as case 1 and adds 199 unique seeded variations around its values. Build the native Release host and LADX DLL first, then run:
+ 
+ ```cmd
+-dotnet run --project ..\FIGOptimizationRunner -c Release --no-launch-profile -- run --config .\optimizer-search-ldax-3m-200.json
++dotnet run --project ..\FIGOptimizationRunner -c Release --no-launch-profile -- run --config .\optimizer-search-ladx-3m-200.json
+ ```
+ 
+-Replace `run` with `prepare` to save the 200 cases without running the backtests. See [LDAX optimization](../FIGSignalCpp/LDAX.md#optimization-200-cases-at-three-minute-intervals) for ranges, dates, finances, and executing a prepared batch.
++Replace `run` with `prepare` to save the 200 cases without running the backtests. See [LADX optimization](../FIGSignalCpp/LADX.md#optimization-200-cases-at-three-minute-intervals) for ranges, dates, finances, and executing a prepared batch.
+ 
+-Collection selection is configurable through `CollectionDll`, `Collection`, and `Signal`. DLL paths resolve relative to the configuration file, like `Executable`. Their defaults retain the adjacent ADX DLL, `ADXBase`, and `STrend_LBaseADX_Side`. LDAX uses `FIGStudyCollection.LDAX.dll`, `LDAX`, and `STrend_LADX_LongSide` (the normalized 0/1 signal). Match the DLL's Debug/Release configuration to the native host.
++Collection selection is configurable through `CollectionDll`, `Collection`, and `Signal`. DLL paths resolve relative to the configuration file, like `Executable`. Their defaults retain the adjacent ADX DLL, `ADXBase`, and `STrend_LBaseADX_Side`. LADX uses `FIGStudyCollection.LADX.dll`, `LADX`, and `LADX_LongSide` (the normalized 0/1 signal). Match the DLL's Debug/Release configuration to the native host.
+ 
+-The random generator checks active parameter names for ADX and LDAX separately. In LDAX, `TrendReEntryShockMax` is active; the preserved `ReEntryCooldownBars` and unused `ContinuationMaxShockATR` stay fixed. For other plugins, ranges must refer to keys in the baseline and the native DLL validates the parameter values before loading prices. A custom collection must specify its own 0/1 long signal.
++The random generator checks active parameter names for ADX and LADX separately. In LADX, `TrendReEntryShockMax` is active; the preserved `ReEntryCooldownBars` and unused `ContinuationMaxShockATR` stay fixed. For other plugins, ranges must refer to keys in the baseline and the native DLL validates the parameter values before loading prices. A custom collection must specify its own 0/1 long signal.
+ 
+ ## Configuration and reports
+ 
+diff --git a/FIGOptimizationRunner/Search/RandomCandidateGenerator.cs b/FIGOptimizationRunner/Search/RandomCandidateGenerator.cs
+index 9a01052..1734bce 100644
+--- a/FIGOptimizationRunner/Search/RandomCandidateGenerator.cs
++++ b/FIGOptimizationRunner/Search/RandomCandidateGenerator.cs
+@@ -12,9 +12,9 @@ public sealed class RandomCandidateGenerator : ICandidateGenerator
+         "ShockATRLen", "ShockDropATR", "ShockArmedDropATR", "ShockArmUpATR", "ShockRangeATR",
+         "ChopMinGuideWidthATR", "ChopMaxGuideSlopeATR", "ContinuationEntryBars"
+     };
+-    // LDAX preserves the EFS cooldown behavior and ignores ContinuationMaxShockATR.
+-    // Neither is a useful search dimension. TrendReEntryShockMax actively gates LDAX entries.
+-    private static readonly IReadOnlySet<string> LdaxActiveParameters = ActiveParameters
++    // LADX preserves the EFS cooldown behavior and ignores ContinuationMaxShockATR.
++    // Neither is a useful search dimension. TrendReEntryShockMax actively gates LADX entries.
++    private static readonly IReadOnlySet<string> LadxActiveParameters = ActiveParameters
+         .Except(["ReEntryCooldownBars", "ContinuationEntryBars"])
+         .Append("TrendReEntryShockMax").ToHashSet(StringComparer.Ordinal);
+     private static readonly HashSet<string> Periods = ["AdxLen", "FastMALen", "GuideMALen", "ShockATRLen"];
+@@ -23,7 +23,7 @@ public sealed class RandomCandidateGenerator : ICandidateGenerator
+     public IEnumerable<ParameterSet> Generate(SearchConfiguration c, ParameterSet baseline, CancellationToken cancellation)
+     {
+         c.Validate();
+-        var active = c.Collection.Equals("LDAX", StringComparison.OrdinalIgnoreCase) ? LdaxActiveParameters
++        var active = c.Collection.Equals("LADX", StringComparison.OrdinalIgnoreCase) ? LadxActiveParameters
+             : c.Collection.Equals("ADXBase", StringComparison.OrdinalIgnoreCase) ||
+               c.Collection.Equals("ADXTrend", StringComparison.OrdinalIgnoreCase) ? ActiveParameters : null;
+         var keys = c.Ranges.Keys.Order(StringComparer.Ordinal).ToArray();
+diff --git a/FIGOptimizationRunner/Properties/launchSettings.json b/FIGOptimizationRunner/Properties/launchSettings.json
+index 67f07d7..93eccf3 100644
+--- a/FIGOptimizationRunner/Properties/launchSettings.json
++++ b/FIGOptimizationRunner/Properties/launchSettings.json
+@@ -15,15 +15,15 @@
+       "workingDirectory": "$(ProjectDir)..\\FIGSignalCpp",
+       "commandLineArgs": "run --config optimizer-search.json"
+     },
+-    "Prepare LDAX 200 cases (3 minutes)": {
++    "Prepare LADX 200 cases (3 minutes)": {
+       "commandName": "Project",
+       "workingDirectory": "$(ProjectDir)..\\FIGSignalCpp",
+-      "commandLineArgs": "prepare --config optimizer-search-ldax-3m-200.json"
++      "commandLineArgs": "prepare --config optimizer-search-ladx-3m-200.json"
+     },
+-    "Run LDAX 200 cases (3 minutes)": {
++    "Run LADX 200 cases (3 minutes)": {
+       "commandName": "Project",
+       "workingDirectory": "$(ProjectDir)..\\FIGSignalCpp",
+-      "commandLineArgs": "run --config optimizer-search-ldax-3m-200.json"
++      "commandLineArgs": "run --config optimizer-search-ladx-3m-200.json"
+     }
+   }
+ }

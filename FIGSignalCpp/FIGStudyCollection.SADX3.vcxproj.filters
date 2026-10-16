@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="SADX3" />
+    <ClCompile Include="src\collections\sadx3\options.cpp"><Filter>SADX3</Filter></ClCompile>
+    <ClCompile Include="src\collections\sadx3\study_sadx3.cpp"><Filter>SADX3</Filter></ClCompile>
+    <ClCompile Include="src\collections\sadx3\study_col_sadx3.cpp"><Filter>SADX3</Filter></ClCompile>
+    <ClCompile Include="src\collections\sadx3\plugin.cpp"><Filter>SADX3</Filter></ClCompile>
+    <ClCompile Include="src\collections\sadx3\self_test.cpp"><Filter>SADX3</Filter></ClCompile>
+    <ClInclude Include="include\fig\collections\sadx3\options.hpp"><Filter>SADX3</Filter></ClInclude>
+    <ClInclude Include="include\fig\collections\sadx3\study_sadx3.hpp"><Filter>SADX3</Filter></ClInclude>
+    <ClInclude Include="include\fig\collections\sadx3\study_col_sadx3.hpp"><Filter>SADX3</Filter></ClInclude>
+    <None Include="sadx3-parameters.json"><Filter>SADX3</Filter></None>
+    <None Include="efs\SADX3.efs"><Filter>SADX3</Filter></None>
+    <None Include="SADX3.md"><Filter>SADX3</Filter></None>
+  </ItemGroup>
+</Project>
+
+

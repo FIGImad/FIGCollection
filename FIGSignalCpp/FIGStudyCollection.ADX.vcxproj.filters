@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Studies" />
+    <Filter Include="Collections" />
+    <Filter Include="Application" />
+    <ClCompile Include="src\studies\study_adx_base_options.cpp"><Filter>Studies</Filter></ClCompile>
+    <ClCompile Include="src\studies\study_base_adx.cpp"><Filter>Studies</Filter></ClCompile>
+    <ClCompile Include="src\studies\study_col_adx_base.cpp"><Filter>Studies</Filter></ClCompile>
+    <ClCompile Include="src\studies\study_col_adx_trend.cpp"><Filter>Studies</Filter></ClCompile>
+    <ClCompile Include="src\studies\study_lbase_adx.cpp"><Filter>Studies</Filter></ClCompile>
+    <ClCompile Include="src\studies\study_lbase_adx_variants.cpp"><Filter>Studies</Filter></ClCompile>
+    <ClCompile Include="src\studies\study_price_shock.cpp"><Filter>Studies</Filter></ClCompile>
+    <ClCompile Include="src\studies\study_slope_trend.cpp"><Filter>Studies</Filter></ClCompile>
+    <ClCompile Include="src\collections\adx\plugin.cpp"><Filter>Collections</Filter></ClCompile>
+    <ClCompile Include="src\collections\adx\diagnostics.cpp"><Filter>Collections</Filter></ClCompile>
+    <ClCompile Include="src\collections\adx\self_test.cpp"><Filter>Collections</Filter></ClCompile>
+    <ClCompile Include="src\app\efs_study_tests.cpp"><Filter>Application</Filter></ClCompile>
+    <ClInclude Include="include\fig\studies\study_adx_base_options.hpp"><Filter>Studies</Filter></ClInclude>
+    <ClInclude Include="include\fig\studies\study_base_adx.hpp"><Filter>Studies</Filter></ClInclude>
+    <ClInclude Include="include\fig\studies\study_col_adx_base.hpp"><Filter>Studies</Filter></ClInclude>
+    <ClInclude Include="include\fig\studies\study_col_adx_trend.hpp"><Filter>Studies</Filter></ClInclude>
+    <ClInclude Include="include\fig\studies\study_lbase_adx.hpp"><Filter>Studies</Filter></ClInclude>
+    <ClInclude Include="include\fig\studies\study_lbase_adx_variants.hpp"><Filter>Studies</Filter></ClInclude>
+    <ClInclude Include="include\fig\studies\study_price_shock.hpp"><Filter>Studies</Filter></ClInclude>
+    <ClInclude Include="include\fig\studies\study_slope_trend.hpp"><Filter>Studies</Filter></ClInclude>
+    <ClInclude Include="include\fig\studies\collection_plugin.hpp"><Filter>Studies</Filter></ClInclude>
+    <ClInclude Include="src\collections\adx\registration.hpp"><Filter>Collections</Filter></ClInclude>
+    <ClInclude Include="src\collections\adx\diagnostics.hpp"><Filter>Collections</Filter></ClInclude>
+  </ItemGroup>
+</Project>

@@ -6,6 +6,8 @@ namespace fig
 {
 struct BacktestOptions
 {
+    std::filesystem::path collection_dll;
+    std::string collection{"ADXBase"}, signal{"STrend_LBaseADX_Side"};
     int dataset{3}, interval_minutes{5}, maximum_source_rows{}, jobs{2};
     int quantity{15};
     // quantity > 0: fixed contracts; quantity == 0: EFS sizing from initial capital and entry HLC3.

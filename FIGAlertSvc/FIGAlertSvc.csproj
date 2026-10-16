@@ -10,6 +10,8 @@
 
   <ItemGroup>
     <Content Include="FIG Logo.ico" />
+    <None Update="alerts-settings*.json" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <None Update="Install-SplitServices.ps1;README-split-services.md" CopyToPublishDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>
@@ -32,7 +34,11 @@
     <PropertyGroup>
       <DistribDir>$(MSBuildThisFileDirectory)..\FIGInstaller\Resources\Distrib\$(MSBuildProjectName)\</DistribDir>
     </PropertyGroup>
+    <ItemGroup>
+      <SplitServiceFiles Include="$(MSBuildThisFileDirectory)alerts-settings.system.json;$(MSBuildThisFileDirectory)alerts-settings.other.json;$(MSBuildThisFileDirectory)Install-SplitServices.ps1;$(MSBuildThisFileDirectory)README-split-services.md" />
+    </ItemGroup>
     <MakeDir Directories="$(DistribDir)" />
+    <Copy SourceFiles="@(SplitServiceFiles)" DestinationFolder="$(DistribDir)" />
     <Copy SourceFiles="$(PublishDir)$(AssemblyName).exe" DestinationFolder="$(DistribDir)" Condition="Exists('$(PublishDir)$(AssemblyName).exe')" />
     <Copy SourceFiles="$(MSBuildThisFileDirectory)alerts-settings.json" DestinationFolder="$(DistribDir)" Condition="Exists('$(MSBuildThisFileDirectory)alerts-settings.json')" />
   </Target>

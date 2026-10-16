@@ -1,4 +1,5 @@
 # Generated database study exports can be large; keep them local.
+/adx.csv
 /dataset-*-studies-*.csv
 /optimizer-output/
 /optimizer-candidates/

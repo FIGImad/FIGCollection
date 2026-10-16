@@ -3,28 +3,24 @@
 #include "fig/infrastructure/protected_data.hpp"
 #include "fig/prices/price_aggregator.hpp"
 #include "fig/studies/backtest.hpp"
+#include "fig/studies/collection_plugin.hpp"
 #include "fig/studies/study.hpp"
 #include "fig/studies/study_adx.hpp"
 #include "fig/studies/study_bb.hpp"
-#include "fig/studies/study_col_adx_trend.hpp"
 #include "fig/studies/study_extended.hpp"
 #include "fig/studies/study_ma.hpp"
 #include "fig/studies/study_report.hpp"
 #include "fig/studies/study_roc.hpp"
 #include "fig/studies/study_sem.hpp"
-#include "fig/studies/study_slope_trend.hpp"
 #include "fig/studies/study_wma.hpp"
+#include <algorithm>
+#include <cctype>
 #include <cmath>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
 #include <limits>
 #include <stdexcept>
-
-namespace fig
-{
-void efs_study_self_test();
-}
 
 namespace
 {
@@ -116,6 +112,12 @@ int backtest_batch(int argc, wchar_t** argv)
                 throw std::invalid_argument("--force-close requires 0 or 1");
             o.force_close = v == 1;
         }
+        else if (name == L"--collection")
+            o.collection = std::filesystem::path(value).string();
+        else if (name == L"--collection-dll")
+            o.collection_dll = value;
+        else if (name == L"--signal")
+            o.signal = std::filesystem::path(value).string();
         else if (name == L"--parameters-dir")
             o.parameters_directory = value;
         else if (name == L"--output-dir")
@@ -137,10 +139,19 @@ int backtest_batch(int argc, wchar_t** argv)
         else
             throw std::invalid_argument("Unknown backtest argument; use --help");
     }
+    // Resolve the selected DLL/type before database credentials or output work.
+    fig::StudyRegistry registry;
+    fig::CollectionPlugin{o.collection_dll}.register_collections(registry);
+    const auto types = registry.types();
+    std::string selected = o.collection;
+    std::ranges::transform(
+        selected, selected.begin(), [](unsigned char c) { return static_cast<char>(std::toupper(c)); });
+    if (std::ranges::find(types, selected) == types.end())
+        throw std::invalid_argument("Unsupported collection type in the loaded DLL: " + o.collection);
     // Namespace snapshots by settings location and contents (never persist credentials).
     std::ifstream cache_settings(settings, std::ios::binary);
     o.price_cache_source = std::filesystem::absolute(settings).lexically_normal().string() + "\n" +
-                          std::string(std::istreambuf_iterator<char>(cache_settings), {});
+                           std::string(std::istreambuf_iterator<char>(cache_settings), {});
     const fig::MainRepository repository(database_connection(settings));
     fig::run_backtest_batch(repository, o);
     return 0;
@@ -201,6 +212,8 @@ int calculate_studies(int argc, wchar_t** argv)
             settings_path = value;
         else if (option == L"--collection")
             collection.type = std::filesystem::path(value).string();
+        else if (option == L"--collection-dll")
+            options.collection_dll = value;
         else if (option == L"--parameters")
             parameters_path = value;
         else
@@ -229,7 +242,7 @@ int calculate_studies(int argc, wchar_t** argv)
     else
     {
         fig::StudyRegistry registry;
-        fig::register_integrated_collections(registry);
+        fig::CollectionPlugin{options.collection_dll}.register_collections(registry);
         (void)registry.create(collection, fig::Ticker{}, fig::Interval{});
     }
     const auto connection_string = database_connection(settings_path);
@@ -249,150 +262,38 @@ int calculate_studies(int argc, wchar_t** argv)
     return 0;
 }
 
-struct RevisionStudies
+std::filesystem::path plugin_path_argument(int argc, wchar_t** argv)
 {
-    fig::studies::StudyMA ma;
-    fig::studies::StudyWMA wma;
-    fig::studies::StudySEM sem;
-    fig::studies::StudyBB bb;
-    fig::studies::StudyExtended extended;
-    fig::studies::StudyADX adx;
-    fig::studies::StudyROC roc;
-    fig::studies::StudySlopeTrend slope;
-    fig::studies::StudyColADXTrend collection;
-
-    explicit RevisionStudies(std::size_t depth = fig::studies::default_revision_depth)
-        : ma(3, "close", depth), wma(3, "close", depth), sem(3, "close", depth), bb(3, 2, "close", depth),
-          extended(3, "ohlc4", 1, 2, depth), adx(3, 3, depth), roc(3, depth), slope(3, 0.5L, depth),
-          collection({3, 5, 2, 3, 3, 20}, depth)
-    {
-    }
-
-    auto process(const fig::PriceBar& bar)
-    {
-        auto result = collection.process(bar).studies;
-        result["MA"] = ma.process(bar);
-        result["WMA"] = wma.process(bar);
-        result["SEM"] = sem.process(bar);
-        result["ROC"] = roc.process(bar.raw_time, bar.close);
-        const auto b = bb.process(bar);
-        result["BBMiddle"] = b.middle;
-        result["BBUpper"] = b.upper;
-        result["BBLower"] = b.lower;
-        const auto e = extended.process(bar);
-        result["ExtendedMA"] = e.moving_average;
-        result["ExtendedSEM"] = e.sem;
-        result["ExtendedLower1"] = e.lower1;
-        result["ExtendedUpper1"] = e.upper1;
-        result["ExtendedLower2"] = e.lower2;
-        result["ExtendedUpper2"] = e.upper2;
-        const auto a = adx.process(bar);
-        result["ADX"] = a.adx;
-        result["PDI"] = a.pdi;
-        result["NDI"] = a.ndi;
-        const auto s = slope.process(bar.raw_time, result["MA"]);
-        result["SlopeDirection"] = static_cast<fig::Decimal>(s.direction);
-        result["SlopeMA"] = s.moving_average;
-        result["Slope"] = s.slope_per_bar;
-        return result;
-    }
-};
-
-void revision_test()
+    if (argc == 2)
+        return {};
+    if (argc == 4 && std::wstring_view(argv[2]) == L"--collection-dll")
+        return argv[3];
+    throw std::invalid_argument("Expected [--collection-dll PATH]; use --help");
+}
+int inspect_plugin(int argc, wchar_t** argv, bool test)
 {
-    using namespace fig;
-    struct Snapshot
+    const fig::CollectionPlugin plugin(plugin_path_argument(argc, argv));
+    fig::StudyRegistry registry;
+    plugin.register_collections(registry);
+    std::cout << "Collection DLL: " << plugin.path().string() << " (" << plugin.name() << ")\n";
+    for (const auto& type : registry.types())
+        std::cout << "  " << type << '\n';
+    if (test)
     {
-        std::int64_t raw_time{};
-        int total{};
-    };
-    studies::LiveStateHistory<Snapshot> history(1);
-    history.commit({0, 1});
-    history.commit({60, 3});
-    (void)history.begin(0); // An abandoned calculation must not discard committed bars.
-    if (history.begin(120).total != 3)
-        throw std::runtime_error("begin must preserve history until commit");
-    history.commit({120, 6});
-    bool initial_boundary_rejected = false;
-    try
-    {
-        (void)history.begin(0); // Two bars ago exceeds depth one, even before eviction.
+        plugin.self_test();
+        std::cout << "Collection self-test passed\n";
     }
-    catch (const std::out_of_range&)
-    {
-        initial_boundary_rejected = true;
-    }
-    if (!initial_boundary_rejected || history.begin(60).total != 1)
-        throw std::runtime_error("initial rollback boundary is incorrect");
-    std::vector<PriceBar> prices;
-    for (std::int64_t i = 0; i < 80; ++i)
-    {
-        const auto value = static_cast<Decimal>(100 + i % 7 * 3 - i % 11 * 2);
-        prices.push_back(
-            PriceBar{.raw_time = i * 60, .open = value, .high = value + 4, .low = value - 3, .close = value + 1});
-    }
-    for (const std::size_t depth : {1U, 5U, 20U, 32U})
-    {
-        RevisionStudies live(depth);
-        for (const auto& bar : prices)
-            (void)live.process(bar);
-        // The exact rollback boundary must work after older snapshots were evicted.
-        const auto target = prices.size() - 1 - depth;
-        RevisionStudies fresh(depth);
-        for (std::size_t i = 0; i < target; ++i)
-            (void)fresh.process(prices[i]);
-        auto revised = prices[target];
-        revised.high += 10;
-        revised.close += 8;
-        if (live.process(revised) != fresh.process(revised))
-            throw std::runtime_error("past-bar revision differs from fresh calculation");
-        revised.close -= 2;
-        if (live.process(revised) != fresh.process(revised))
-            throw std::runtime_error("repeated past-bar replacement differs from fresh calculation");
-        // Replay discarded bars and check every result, including recursive ADX/signal state.
-        for (std::size_t i = target + 1; i < prices.size(); ++i)
-            if (live.process(prices[i]) != fresh.process(prices[i]))
-                throw std::runtime_error("replayed studies differ from fresh calculation");
-        bool rejected = false;
-        try
-        {
-            (void)live.process(prices[target - 1]);
-        }
-        catch (const std::out_of_range&)
-        {
-            rejected = true;
-        }
-        if (!rejected || live.process(prices.back()) != fresh.process(prices.back()))
-            throw std::runtime_error("out-of-depth revision must fail without changing state");
-    }
-    // Exercise the public default, warmup rollback, and an unobserved timestamp between bars.
-    studies::StudyMA ma(3);
-    for (const auto& bar : prices)
-        (void)ma.process(bar);
-    const auto target = prices.size() - 21;
-    const auto value = ma.process(prices[target]);
-    const auto expected = (prices[target - 2].close + prices[target - 1].close + prices[target].close) / 3;
-    if (!value || *value != expected)
-        throw std::runtime_error("default revision depth must support twenty bars ago");
-    studies::StudyMA warmup(3);
-    for (std::size_t i = 0; i < 6; ++i)
-        (void)warmup.process(prices[i]);
-    if (warmup.process(prices[0]) || warmup.process(prices[0]))
-        throw std::runtime_error("rewinding to first bar must restore warmup");
-    (void)warmup.process(prices[1]);
-    (void)warmup.process(prices[2]);
-    if (warmup.process(PriceBar{.raw_time = 30, .close = 200}))
-        throw std::runtime_error("inserting a past timestamp must discard later bars");
+    return 0;
 }
 
 int self_test()
 {
     using namespace fig;
-    revision_test();
     study_report_self_test();
     protected_data_self_test();
     backtest_self_test();
-    efs_study_self_test();
+    CollectionPlugin{}.self_test();
+    collection_plugin_self_test();
     const std::vector<PriceBar> minutes{{-1, 1, 60, 10, 12, 9, 11, 3},
                                         {-1, 1, 120, 11, 13, 10, 12, 4},
                                         {-1, 1, 180, 12, 14, 11, 13, 5},
@@ -449,42 +350,6 @@ int self_test()
     if (warmup1 || warmup2 || !warmup3 || *warmup3 != 2 || !first_live || *first_live != 3 || !revised_live ||
         *revised_live != 4 || !next_live || *next_live != 5 || live_ma.evaluation_count() != 6)
         throw std::runtime_error("incremental/revised MA state test failed");
-    studies::StudyWMA live_wma(3);
-    studies::StudySEM live_sem(3);
-    studies::StudyBB live_bb(3, 2);
-    studies::StudyExtended live_extended(3);
-    studies::StudyADX live_adx(3, 3);
-    studies::StudyColADXTrend adx_collection({3, 5, 2, 3, 3, 20});
-    std::optional<Decimal> wma_value, sem_value;
-    studies::BollingerBands bb_value;
-    studies::ExtendedValues extended_value;
-    studies::AdxValues adx_value;
-    StudyBar collection_value;
-    for (std::int64_t i = 1; i <= 30; ++i)
-    {
-        const PriceBar bar{.raw_time = i * 60,
-                           .open = static_cast<Decimal>(i),
-                           .high = static_cast<Decimal>(i) + 1,
-                           .low = static_cast<Decimal>(i) - 1,
-                           .close = static_cast<Decimal>(i) + 0.5L,
-                           .volume = 100};
-        wma_value = live_wma.process(bar);
-        sem_value = live_sem.process(bar);
-        bb_value = live_bb.process(bar);
-        extended_value = live_extended.process(bar);
-        adx_value = live_adx.process(bar);
-        collection_value = adx_collection.process(bar);
-    }
-    const PriceBar revision{.raw_time = 1800, .open = 30, .high = 32, .low = 29, .close = 31, .volume = 110};
-    wma_value = live_wma.process(revision);
-    sem_value = live_sem.process(revision);
-    bb_value = live_bb.process(revision);
-    extended_value = live_extended.process(revision);
-    adx_value = live_adx.process(revision);
-    collection_value = adx_collection.process(revision);
-    if (!wma_value || !sem_value || !bb_value.middle || !extended_value.moving_average || !extended_value.sem ||
-        !adx_value.adx || !collection_value.studies["Active_ADX"])
-        throw std::runtime_error("one or more live study classes failed warmup/revision testing");
     std::cout << "FIGSignalCpp self-test passed\n";
     return 0;
 }
@@ -498,11 +363,18 @@ int wmain(int argc, wchar_t** argv)
             return calculate_studies(argc, argv);
         if (argc > 1 && std::wstring_view(argv[1]) == L"--backtest-batch")
             return backtest_batch(argc, argv);
+        if (argc > 1 && std::wstring_view(argv[1]) == L"--list-collections")
+            return inspect_plugin(argc, argv, false);
+        if (argc > 1 && std::wstring_view(argv[1]) == L"--test-collection")
+            return inspect_plugin(argc, argv, true);
         if (argc > 1 && std::wstring_view(argv[1]) == L"--help")
         {
             std::cout
                 << "FIGSignalCpp --self-test\n"
+                   "FIGSignalCpp --list-collections [--collection-dll PATH]\n"
+                   "FIGSignalCpp --test-collection [--collection-dll PATH]\n"
                    "FIGSignalCpp --backtest-batch --parameters-dir DIR --output-dir DIR\n"
+                   "  [--collection-dll PATH] [--collection ADXBase] [--signal STrend_LBaseADX_Side]\n"
                    "  [--dataset 3] [--interval-minutes 5] [--jobs 2] [--max-bars 0]\n"
                    "  [--capital 9255000] [--quantity 15] [--multiplier 20] [--commission 1.60]\n"
                    "  [--slippage-points 0] [--force-close 0] [--settings signal-settings.json]\n"
@@ -514,20 +386,23 @@ int wmain(int argc, wchar_t** argv)
                    "  [--period 14] [--adx-smoothing PERIOD] [--source close] [--max-bars 0]\n"
                    "  [--settings signal-settings.json]\n"
                    "  [--interval-minutes 1] (aggregate prices before calculating studies)\n"
-                   "  [--collection ADXBase --parameters adx-base-parameters.json]\n"
+                   "  [--collection-dll PATH] [--collection ADXBase --parameters adx-base-parameters.json]\n"
+                   "Default DLL: FIGStudyCollection.ADX.dll beside the executable.\n"
+                   "Omitting --collection in a report selects the legacy ADXDiagnostics report.\n"
                    "Reads FIGAutoTrader.dbo.PriceData using the settings file's ODBCName (DSN).\n"
                    "SQL authentication: ODBCUser and encrypted ODBCPassword in settings.\n"
                    "Zero max-bars reads all source rows; a positive value reads the earliest N source rows.\n"
                    "Aggregation includes partial first/last buckets and does not fill gaps.\n";
             return 0;
         }
-        for (int i = 1; i < argc; ++i)
-            if (std::wstring_view(argv[i]) == L"--self-test")
-                return self_test();
+        if (argc == 2 && std::wstring_view(argv[1]) == L"--self-test")
+            return self_test();
+        if (argc != 1)
+            throw std::invalid_argument("Unknown command or arguments; use --help");
         fig::Logger logger("FIGSignalCpp.log");
         logger.write(fig::LogLevel::info, "FIGSignalCpp native host starting");
         fig::StudyRegistry registry;
-        fig::register_integrated_collections(registry);
+        fig::CollectionPlugin{}.register_collections(registry);
         logger.write(fig::LogLevel::warning,
                      "Native service host is under parity construction; use --self-test for the verified core");
         return 0;

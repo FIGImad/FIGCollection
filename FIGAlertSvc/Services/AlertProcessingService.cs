@@ -10,6 +10,7 @@ namespace FIGAlertSvc.Services
     {
         private readonly ILogger<AlertProcessingService> _logger;
         private readonly IConfiguration _config;
+        private readonly AlertProcessingMode _mode;
 
         private readonly ConcurrentDictionary<string, DeviceRS> _deviceMap = new();
         private DateTime _deviceMapLastRefresh = DateTime.MinValue;
@@ -32,6 +33,7 @@ namespace FIGAlertSvc.Services
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _config = configuration ?? throw new ArgumentNullException(nameof(configuration));
+            _mode = AlertProcessingPolicy.Read(configuration);
         }
 
         protected string ServiceId
@@ -97,6 +99,10 @@ namespace FIGAlertSvc.Services
 
         public async Task ProcessAlertAsync(LogAlertMessage alertRec)
         {
+            bool isSystemAlert = AlertCategory.IsSystemAlert(alertRec.Source, alertRec.Level);
+            if (!AlertProcessingPolicy.Accepts(_mode, isSystemAlert))
+                throw new InvalidOperationException("This alert belongs to the other alert service instance.");
+
             // check if the device is in the map
             if (!_deviceMap.TryGetValue(alertRec.ServiceId, out DeviceRS? clientInfo))
             {
@@ -119,6 +125,7 @@ namespace FIGAlertSvc.Services
             var originalTime = AlertMessageFormatter.OriginalTime(alertRec.Source, alertRec.Message);
             var rec = new AlertRS()
             {
+                IsSystemAlert = isSystemAlert,
                 RawTime      = (int)(originalTime?.ToUnixTimeSeconds() ?? alertRec.RawTime),
                 MSec         = originalTime?.Millisecond ?? alertRec.Milliseconds,
                 ServiceId    = clientInfo?.Id          ?? alertRec.ServiceId,

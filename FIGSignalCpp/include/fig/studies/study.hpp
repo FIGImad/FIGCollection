@@ -3,6 +3,7 @@
 #include <functional>
 #include <memory>
 #include <span>
+#include <string_view>
 #include <unordered_map>
 
 namespace fig
@@ -28,11 +29,11 @@ class StudyRegistry final
     [[nodiscard]] std::vector<std::string> types() const;
 
   private:
+    friend class CollectionPlugin;
     std::unordered_map<std::string, Factory> factories_;
 };
 // Startup/backfill helpers. Live processing owns the stateful class from studies/*.hpp.
 [[nodiscard]] std::vector<std::optional<Decimal>> simple_moving_average(std::span<const Decimal>, std::size_t);
 [[nodiscard]] std::vector<std::optional<Decimal>> weighted_moving_average(std::span<const Decimal>, std::size_t);
 [[nodiscard]] std::vector<std::optional<Decimal>> rate_of_change(std::span<const Decimal>, std::size_t);
-void register_integrated_collections(StudyRegistry& registry);
 } // namespace fig

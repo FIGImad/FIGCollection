@@ -40,7 +40,8 @@ public sealed class OptimizationRunner(ICandidateGenerator generator, IBatchExec
         var manifest = new BatchManifest
         {
             Configuration = c, Generator = generator.Name,
-            ExecutableSHA256 = File.Exists(c.Executable) ? Hash(c.Executable) : null
+            ExecutableSHA256 = File.Exists(c.Executable) ? Hash(c.Executable) : null,
+            CollectionDllSHA256 = File.Exists(c.EffectiveCollectionDll) ? Hash(c.EffectiveCollectionDll) : null
         };
         Save(directory, manifest);
         try
@@ -100,6 +101,14 @@ public sealed class OptimizationRunner(ICandidateGenerator generator, IBatchExec
         if (m.ExecutableSHA256 is not null && m.ExecutableSHA256 != executableHash)
             throw new InvalidDataException("Native executable changed since preparation. Prepare a new batch with the new build.");
         m.ExecutableSHA256 = executableHash;
+        var dll = m.Configuration.EffectiveCollectionDll;
+        if (!string.IsNullOrEmpty(m.Configuration.CollectionDll) || m.CollectionDllSHA256 is not null || File.Exists(dll))
+        {
+            var dllHash = Hash(dll);
+            if (m.CollectionDllSHA256 is not null && m.CollectionDllSHA256 != dllHash)
+                throw new InvalidDataException("Collection DLL changed since preparation. Prepare a new batch with the new build.");
+            m.CollectionDllSHA256 = dllHash;
+        }
         ++m.Attempts;
         m.ReportDirectory = m.Attempts == 1 ? "reports" : $"reports-attempt-{m.Attempts:D3}";
         var reports = Path.Combine(directory, m.ReportDirectory);

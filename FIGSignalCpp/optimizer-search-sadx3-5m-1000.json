@@ -1,0 +1,93 @@
+{
+  "DataSetId": 3,
+  "IntervalMinutes": 5,
+  "BaseParameters": "sadx3-parameters.json",
+  "Settings": "C:\\Roots\\OptimizationV2\\signal-settings.json",
+  "OutputRoot": "optimizer-output/sadx3-5m-1000",
+  "Executable": "x64/Release/FIGSignalCpp.exe",
+  "CollectionDll": "x64/Release/FIGStudyCollection.SADX3.dll",
+  "Collection": "SADX3",
+  "Signal": "SADX3_ShortSide",
+  "PriceCacheDirectory": "price-cache",
+  "PriceCacheMode": "use",
+  "Samples": 999,
+  "Seed": 12345,
+  "Jobs": 1,
+  "MaxSourceBars": 0,
+  "InitialCapital": 1200000,
+  "Quantity": 0,
+  "QuantityPct": 1,
+  "Multiplier": 20,
+  "CommissionPerContractPerSide": 1.6,
+  "SlippagePointsPerSide": 0,
+  "ForceCloseAtEnd": false,
+  "StartDate": "2016-01-01",
+  "EndDateExclusive": "",
+  "TrainEndExclusive": "2023-01-01",
+  "ValidationEndExclusive": "2025-01-01",
+  "Ranges": {
+    "indicators.adxLength": [
+      16,
+      20,
+      24,
+      28,
+      32
+    ],
+    "indicators.priceMaLength": [
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "indicators.guideMaLength": [
+      8,
+      12,
+      16,
+      20,
+      24
+    ],
+    "indicators.guideStdDev": [
+      0.2,
+      0.3,
+      0.4,
+      0.5,
+      0.6
+    ],
+    "entry.startBiasShortTrend": [
+      -0.5,
+      -0.25,
+      0,
+      0.25,
+      0.5,
+      0.75,
+      1,
+      1.25,
+      1.5
+    ],
+    "entry.reEntryCooldownBars": [
+      0,
+      1,
+      2,
+      3,
+      4
+    ],
+    "entry.continuationEntryBars": [
+      3,
+      5,
+      7,
+      10
+    ],
+    "exit.stopBiasShortTrend": [
+      -3.6,
+      -3.1,
+      -2.6,
+      -2.1,
+      -1.6
+    ],
+    "exit.exitOnGuideCrossLongTrend": [
+      true,
+      false
+    ]
+  }
+}

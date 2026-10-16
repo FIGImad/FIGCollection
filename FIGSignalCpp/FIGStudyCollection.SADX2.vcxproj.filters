@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="SADX2" />
+    <ClCompile Include="src\collections\sadx2\market_trend.cpp" />
+    <ClInclude Include="include\fig\collections\sadx2\market_trend.hpp" />
+    <ClCompile Include="src\collections\sadx2\study_price_shock.cpp" />
+    <ClInclude Include="include\fig\collections\sadx2\study_price_shock.hpp" />
+    <ClCompile Include="src\collections\sadx2\options.cpp"><Filter>SADX2</Filter></ClCompile>
+    <ClCompile Include="src\collections\sadx2\study_sadx2.cpp"><Filter>SADX2</Filter></ClCompile>
+    <ClCompile Include="src\collections\sadx2\study_col_sadx2.cpp"><Filter>SADX2</Filter></ClCompile>
+    <ClCompile Include="src\collections\sadx2\plugin.cpp"><Filter>SADX2</Filter></ClCompile>
+    <ClCompile Include="src\collections\sadx2\self_test.cpp"><Filter>SADX2</Filter></ClCompile>
+    <ClInclude Include="include\fig\collections\sadx2\options.hpp"><Filter>SADX2</Filter></ClInclude>
+    <ClInclude Include="include\fig\collections\sadx2\study_sadx2.hpp"><Filter>SADX2</Filter></ClInclude>
+    <ClInclude Include="include\fig\collections\sadx2\study_col_sadx2.hpp"><Filter>SADX2</Filter></ClInclude>
+    <None Include="sadx2-parameters.json"><Filter>SADX2</Filter></None>
+    <None Include="efs\SADX2.efs"><Filter>SADX2</Filter></None>
+    <None Include="SADX2.md"><Filter>SADX2</Filter></None>
+  </ItemGroup>
+</Project>
+
+

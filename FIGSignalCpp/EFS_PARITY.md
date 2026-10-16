@@ -1,6 +1,6 @@
 # EFS study collection
 
-`register_integrated_collections` registers `ADXBase`, matching the active `StudyCollection` in the supplied EFS script. `ADXTrend` remains available for existing callers.
+`FIGStudyCollection.ADX.dll` registers `ADXBase`, matching the active `StudyCollection` in the supplied EFS script. `ADXTrend` remains available for existing callers.
 
 ## Running it
 
@@ -10,7 +10,7 @@
 
 Add `-MaxBars 4096` for an initial source-row sample and `-IntervalMinutes 5` to aggregate one-minute prices before calculating the collection. The default interval is one minute. Periods count the resulting bars. The parameters file contains the script's `preMain` defaults. Without a parameters file, the native collection uses the EFS constructors' fallback defaults, which differ (for example fast/slow 4, guide 8, shock ATR 14).
 
-For C++ callers, set `StudyCollectionConfig.type` to `ADXBase` and `parameters` to the JSON document, then use `StudyRegistry::create` and `process(bar)`. Use one instance per dataset. Numeric results are in `StudyBar.studies`; entry modes and reasons are in `StudyBar.text_studies`. CSV exports include both; missing numeric results are empty fields.
+For C++ callers, load `CollectionPlugin` and call `register_collections(registry)` first (see [DLL usage](COLLECTION_PLUGINS.md)), then set `StudyCollectionConfig.type` to `ADXBase` and `parameters` to the JSON document, then use `StudyRegistry::create` and `process(bar)`. Use one instance per dataset. Numeric results are in `StudyBar.studies`; entry modes and reasons are in `StudyBar.text_studies`. CSV exports include both; missing numeric results are empty fields.
 
 ## Mapping and execution order
 

@@ -32,8 +32,8 @@ namespace FIGPriceSyncSvc
             var builder = WebApplication.CreateBuilder(args);
 
             #region Configuration
-            string settingsFilename = "alerts-settings";
-            string settingsFile = $"{settingsFilename}.json";
+            string settingsFile = ResolveSettingsFile(args);
+            string settingsFilename = Path.GetFileNameWithoutExtension(settingsFile);
 
             builder.Configuration.Sources.Clear();
             builder.Configuration
@@ -43,10 +43,11 @@ namespace FIGPriceSyncSvc
             if (builder.Environment.IsDevelopment())
             {
                 string developmentSettingsFile =
-                    $"{settingsFilename}.{builder.Environment.EnvironmentName}.json";
+                    Path.Combine(Path.GetDirectoryName(settingsFile) ?? "",
+                        $"{settingsFilename}.{builder.Environment.EnvironmentName}.json");
 
                 // If the environment-specific file is absent, configuration
-                // automatically falls back to controller-settings.json.
+                // automatically falls back to the selected base settings file.
                 builder.Configuration.AddJsonFile(
                     developmentSettingsFile,
                     optional: true,
@@ -68,6 +69,16 @@ namespace FIGPriceSyncSvc
             ((IConfigurationBuilder)builder.Configuration).Add(new ConfigurationSourceWithVars(builder.Configuration));
             #endregion Configuration
 
+            // Fail before starting workers when an instance mode is invalid.
+            var alertMode = AlertProcessingPolicy.Read(builder.Configuration);
+            if (alertMode != AlertProcessingMode.Combined)
+            {
+                string expectedRole = alertMode == AlertProcessingMode.SystemOnly ? "SystemAlert" : "Alert";
+                var roles = builder.Configuration.GetSection("ControllerConfig:Roles").Get<string[]>() ?? [];
+                if (roles.Length != 1 || roles[0] != expectedRole)
+                    throw new InvalidOperationException($"{alertMode} requires exactly the {expectedRole} controller role.");
+            }
+
             #region WindowsServiceURLS
             builder.Host.UseWindowsService(c =>
             {
@@ -84,6 +95,7 @@ namespace FIGPriceSyncSvc
                 LogFileUtil.GetSerilogConfig(config, builder.Configuration);
             });
             Log.Debug("Logging has been configured.");
+            Log.Information("Alert service started in {Mode} mode using {SettingsFile}.", alertMode, settingsFile);
             #endregion Serilog_LogAnalyzer
 
             #region RequestBodySize
@@ -261,6 +273,7 @@ namespace FIGPriceSyncSvc
             {
                 // Listen to the same Alert database used by AlertRepo.
                 var monitorConfig = new ConfigurationBuilder()
+                    .AddConfiguration(builder.Configuration)
                     .AddInMemoryCollection(new Dictionary<string, string?>
                     {
                         ["EventMonitor:ConnectionString"] = AlertRepo.ConnectionString,
@@ -321,6 +334,21 @@ namespace FIGPriceSyncSvc
             }
         }
 
+        private static string ResolveSettingsFile(string[] args)
+        {
+            for (int i = 0; i < args.Length; i++)
+            {
+                if (args[i].StartsWith("--settings-file=", StringComparison.OrdinalIgnoreCase))
+                    return args[i]["--settings-file=".Length..];
+                if (string.Equals(args[i], "--settings-file", StringComparison.OrdinalIgnoreCase))
+                {
+                    if (i + 1 >= args.Length || args[i + 1].StartsWith("--"))
+                        throw new ArgumentException("--settings-file requires a JSON file path.");
+                    return args[i + 1];
+                }
+            }
+            return "alerts-settings.json";
+        }
         private static string ResolveWindowsServiceName(string[] args, string defaultServiceName)
         {
             for (int index = 0; index < args.Length; index++)

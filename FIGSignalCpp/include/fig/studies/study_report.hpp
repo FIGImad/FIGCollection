@@ -1,11 +1,7 @@
 #pragma once
 #include "fig/database/database.hpp"
-#include "fig/studies/study_col_adx_trend.hpp"
-#include "fig/studies/study_extended.hpp"
-#include "fig/studies/study_roc.hpp"
-#include "fig/studies/study_sem.hpp"
-#include "fig/studies/study_slope_trend.hpp"
-#include "fig/studies/study_wma.hpp"
+#include "fig/studies/study.hpp"
+#include <filesystem>
 #include <iosfwd>
 
 namespace fig
@@ -16,6 +12,7 @@ struct StudyReportOptions
     std::size_t adx_smoothing{14};
     std::string source{"close"};
     int interval_minutes{1};
+    std::filesystem::path collection_dll;
 };
 
 // One instance per dataset. Uses the same timestamp/revision rules as individual studies.
@@ -26,16 +23,7 @@ class StudyCalculator final
     [[nodiscard]] StudyBar process(const PriceBar& bar);
 
   private:
-    std::string source_;
-    studies::StudyMA ma_;
-    studies::StudyWMA wma_;
-    studies::StudySEM sem_;
-    studies::StudyBB bb_;
-    studies::StudyExtended extended_;
-    studies::StudyADX adx_;
-    studies::StudyROC roc_;
-    studies::StudySlopeTrend slope_;
-    studies::StudyColADXTrend trend_;
+    std::unique_ptr<StudyCollection> collection_;
 };
 
 // Empty optional values are emitted as empty CSV fields (study warmup).

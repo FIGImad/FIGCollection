@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="LADX2" />
+    <ClCompile Include="src\collections\ladx2\market_trend.cpp"><Filter>LADX2</Filter></ClCompile>
+    <ClInclude Include="include\fig\collections\ladx2\market_trend.hpp"><Filter>LADX2</Filter></ClInclude>
+    <ClCompile Include="src\collections\ladx2\options.cpp"><Filter>LADX2</Filter></ClCompile>
+    <ClCompile Include="src\collections\ladx2\study_price_shock.cpp"><Filter>LADX2</Filter></ClCompile>
+    <ClCompile Include="src\collections\ladx2\study_ladx2.cpp"><Filter>LADX2</Filter></ClCompile>
+    <ClCompile Include="src\collections\ladx2\study_col_ladx2.cpp"><Filter>LADX2</Filter></ClCompile>
+    <ClCompile Include="src\collections\ladx2\plugin.cpp"><Filter>LADX2</Filter></ClCompile>
+    <ClCompile Include="src\collections\ladx2\self_test.cpp"><Filter>LADX2</Filter></ClCompile>
+    <ClInclude Include="include\fig\collections\ladx2\options.hpp"><Filter>LADX2</Filter></ClInclude>
+    <ClInclude Include="include\fig\collections\ladx2\study_price_shock.hpp"><Filter>LADX2</Filter></ClInclude>
+    <ClInclude Include="include\fig\collections\ladx2\study_ladx2.hpp"><Filter>LADX2</Filter></ClInclude>
+    <ClInclude Include="include\fig\collections\ladx2\study_col_ladx2.hpp"><Filter>LADX2</Filter></ClInclude>
+    <None Include="ladx2-parameters.json"><Filter>LADX2</Filter></None>
+    <None Include="ladx2-2min-parameters.json"><Filter>LADX2</Filter></None>
+    <None Include="efs\LADX2.efs"><Filter>LADX2</Filter></None>
+    <None Include="LADX2.md"><Filter>LADX2</Filter></None>
+  </ItemGroup>
+</Project>
+

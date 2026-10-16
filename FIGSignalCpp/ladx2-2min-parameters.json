@@ -1,0 +1,41 @@
+{
+  "indicators": {
+    "adxLength": 55,
+    "priceMaLength": 4,
+    "guideMaLength": 39,
+    "guideStdDev": 0.8,
+    "shockAtrLength": 7
+  },
+  "entry": {
+    "reEntryCooldownBars": 2,
+    "continuationEntryBars": 5,
+    "chopMinGuideWidthAtr": 0,
+    "chopMaxGuideSlopeAtr": 0.05,
+    "startBiasLongTrend": 0.25,
+    "startBiasShortTrend": 1.25
+  },
+  "exit": {
+    "shockArmUpAtr": 4,
+    "shockArmedDropAtr": 2.5,
+    "shockDropAtr": 5,
+    "shockRangeAtr": 4,
+    "stopBiasLongTrend": -1.5,
+    "stopBiasShortTrend": 0,
+    "exitOnGuideCrossShortTrend": true
+  },
+  "marketTrendSettings": {
+    "timeframe": "hourly",
+    "smaLength": 200,
+    "slopeLookback": 5,
+    "slopeFlatPoints": 0.1,
+    "dmiLength": 14,
+    "adxLength": 14,
+    "emaLength": 20,
+    "atrLength": 20,
+    "atrMultiplier": 2,
+    "lineConfirmBars": 2,
+    "sessionStartMinute": 1080,
+    "sessionEndMinute": 1020,
+    "timeZone": "America/New_York"
+  }
+}

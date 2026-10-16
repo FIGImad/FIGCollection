@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="LADX" />
+    <ClCompile Include="src\collections\ladx\options.cpp"><Filter>LADX</Filter></ClCompile>
+    <ClCompile Include="src\collections\ladx\study_price_shock.cpp"><Filter>LADX</Filter></ClCompile>
+    <ClCompile Include="src\collections\ladx\study_ladx.cpp"><Filter>LADX</Filter></ClCompile>
+    <ClCompile Include="src\collections\ladx\study_col_ladx.cpp"><Filter>LADX</Filter></ClCompile>
+    <ClCompile Include="src\collections\ladx\plugin.cpp"><Filter>LADX</Filter></ClCompile>
+    <ClCompile Include="src\collections\ladx\self_test.cpp"><Filter>LADX</Filter></ClCompile>
+    <ClInclude Include="include\fig\collections\ladx\options.hpp"><Filter>LADX</Filter></ClInclude>
+    <ClInclude Include="include\fig\collections\ladx\study_price_shock.hpp"><Filter>LADX</Filter></ClInclude>
+    <ClInclude Include="include\fig\collections\ladx\study_ladx.hpp"><Filter>LADX</Filter></ClInclude>
+    <ClInclude Include="include\fig\collections\ladx\study_col_ladx.hpp"><Filter>LADX</Filter></ClInclude>
+    <None Include="ladx-parameters.json"><Filter>LADX</Filter></None>
+    <None Include="LADX.md"><Filter>LADX</Filter></None>
+  </ItemGroup>
+</Project>

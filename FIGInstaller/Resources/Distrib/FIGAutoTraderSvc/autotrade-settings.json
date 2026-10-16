@@ -42,6 +42,9 @@
     "AppName": "{{Service_Name}}",
     "LogAPICalls": false
   },
+  "LogAlerts": {
+    "SeparateSystemAlerts": true
+  },
   "Jwt": {
     "Key": "{{Jwt_Key}}",
     "Issuer": "{{Jwt_Issuer}}",
@@ -54,5 +57,11 @@
   "AutoTradeSettings": {
     "OpenSignalExpiryMinutes": 5,
     "CloseSignalExpiryMinutes": 5
+  },
+  "SignalIngress": {
+    "Enabled": false,
+    "ProducerId": "remote-signal-site-1",
+    "Subject": "<authenticated controller service-account identifier>",
+    "Strategies": [ "<allowed strategy name>" ]
   }
 }

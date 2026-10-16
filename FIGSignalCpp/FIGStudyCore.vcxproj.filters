@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Studies" />
+    <Filter Include="Database" />
+    <ClCompile Include="src\studies\study.cpp"><Filter>Studies</Filter></ClCompile>
+    <ClCompile Include="src\studies\study_adx.cpp"><Filter>Studies</Filter></ClCompile>
+    <ClCompile Include="src\studies\study_adx_roc.cpp"><Filter>Studies</Filter></ClCompile>
+    <ClCompile Include="src\studies\study_atr.cpp"><Filter>Studies</Filter></ClCompile>
+    <ClCompile Include="src\studies\study_bb.cpp"><Filter>Studies</Filter></ClCompile>
+    <ClCompile Include="src\studies\study_cycle_dir.cpp"><Filter>Studies</Filter></ClCompile>
+    <ClCompile Include="src\studies\study_extended.cpp"><Filter>Studies</Filter></ClCompile>
+    <ClCompile Include="src\studies\study_ma.cpp"><Filter>Studies</Filter></ClCompile>
+    <ClCompile Include="src\studies\study_roc.cpp"><Filter>Studies</Filter></ClCompile>
+    <ClCompile Include="src\studies\study_sem.cpp"><Filter>Studies</Filter></ClCompile>
+    <ClCompile Include="src\studies\study_sma_slope.cpp"><Filter>Studies</Filter></ClCompile>
+    <ClCompile Include="src\studies\study_volatility_ratio.cpp"><Filter>Studies</Filter></ClCompile>
+    <ClCompile Include="src\studies\study_wma.cpp"><Filter>Studies</Filter></ClCompile>
+    <ClInclude Include="include\fig\studies\study.hpp"><Filter>Studies</Filter></ClInclude>
+    <ClInclude Include="include\fig\studies\study_adx.hpp"><Filter>Studies</Filter></ClInclude>
+    <ClInclude Include="include\fig\studies\study_adx_roc.hpp"><Filter>Studies</Filter></ClInclude>
+    <ClInclude Include="include\fig\studies\study_atr.hpp"><Filter>Studies</Filter></ClInclude>
+    <ClInclude Include="include\fig\studies\study_bb.hpp"><Filter>Studies</Filter></ClInclude>
+    <ClInclude Include="include\fig\studies\study_cycle_dir.hpp"><Filter>Studies</Filter></ClInclude>
+    <ClInclude Include="include\fig\studies\study_extended.hpp"><Filter>Studies</Filter></ClInclude>
+    <ClInclude Include="include\fig\studies\study_ma.hpp"><Filter>Studies</Filter></ClInclude>
+    <ClInclude Include="include\fig\studies\study_roc.hpp"><Filter>Studies</Filter></ClInclude>
+    <ClInclude Include="include\fig\studies\study_sem.hpp"><Filter>Studies</Filter></ClInclude>
+    <ClInclude Include="include\fig\studies\study_sma_slope.hpp"><Filter>Studies</Filter></ClInclude>
+    <ClInclude Include="include\fig\studies\study_volatility_ratio.hpp"><Filter>Studies</Filter></ClInclude>
+    <ClInclude Include="include\fig\studies\study_wma.hpp"><Filter>Studies</Filter></ClInclude>
+    <ClInclude Include="include\fig\studies\live_state.hpp"><Filter>Studies</Filter></ClInclude>
+    <ClInclude Include="include\fig\database\models.hpp"><Filter>Database</Filter></ClInclude>
+  </ItemGroup>
+</Project>

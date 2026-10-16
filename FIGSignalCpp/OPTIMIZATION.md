@@ -1,6 +1,8 @@
 # ADXBase native batch optimization
 
-The optimizer uses the existing C++ `ADXBase` collection and `STrend_LBaseADX_Side`. It does not duplicate the strategy from FIGBacktestOptimizer. The study-report command continues to work unchanged.
+The optimizer uses the existing C++ `ADXBase` collection and `STrend_LBaseADX_Side`. It does not duplicate the strategy from FIGBacktestOptimizer. The study-report command continues to work unchanged. Collections are loaded from DLLs; the native batch accepts `--collection-dll`, `--collection`, and `--signal`, while retaining these ADX defaults. See [collection DLL usage](COLLECTION_PLUGINS.md) for the signed position signal contract.
+
+For **LADX with 200 total cases at three-minute intervals**, use `optimizer-search-ladx-3m-200.json` with the updated FIGOptimizationRunner build. It includes the `ladx-parameters.json` baseline plus 199 unique variations, selects the LADX DLL and normalized long signal, and holds ineffective EFS settings fixed. See [LADX preparation and execution](LADX.md#optimization-200-cases-at-three-minute-intervals) for the ready-to-run batch and the source update patch.
 
 ## Reusing prices between batches
 
@@ -66,9 +68,9 @@ For EFS-compatible position sizing, set `"InitialCapital": 1200000`, `"Quantity"
 
 Quantity remains fixed throughout each open trade; commissions, mark-to-market profit, and exits use that entry quantity. Each new entry sizes from original capital, not accumulated equity. Trade CSV `Contracts` and monthly/summary `OpenContracts` report actual quantities. Ceiling rounding can slightly exceed the target allocation. A positive finite entry HLC3 and a quantity fitting a positive integer are required. NAV remains `100 * equity / InitialCapital`. This matches the requested sizing formula, not a claim of complete EFS trade/date parity. The 0740 fine-search configuration now uses these EFS sizing settings and starts on January 1, 2016.
 
-- Enter at the signal bar's close when the long signal changes from 0 to 1; exit when it returns to 0. This is an explicit same-close simulation assumption, not a promise of executable fills. Slippage adds points to buys and subtracts points from sells.
-- Gross realized profit = `(exit - entry) * quantity * multiplier`.
-- Unrealized profit = `(current close - entry) * quantity * multiplier`.
+- The configured signal's sign selects the position: positive is long, negative is short, zero is flat. Enter and exit at the signal bar's close; an opposite sign closes and reverses the position. Changes in magnitude within the same sign do not trigger fills. This is an explicit same-close simulation assumption, not a promise of executable fills. Slippage adds points to buys and subtracts points from sells.
+- Gross realized profit = `(exit - entry) * side * quantity * multiplier`, where side is +1 for long and -1 for short.
+- Unrealized profit = `(current close - entry) * side * quantity * multiplier`.
 - Equity = `initial capital + gross realized profit + unrealized profit - commissions`.
 - NAV = `100 * equity / initial capital`.
 - Drawdown percent = `100 * (equity / running peak equity - 1)`; drawdown NAV points = `100 * (equity - peak) / initial capital`. Both are nonpositive. The latter corresponds to the supplied EFS non-reinvestment drawdown convention.
@@ -77,7 +79,7 @@ Commissions are deducted exactly once per fill. Trade net profit includes both e
 
 Open positions carry across months and across train/validation/test boundaries. By default the final position remains open and marked at the last close. `ForceCloseAtEnd` closes it at that close with exit costs; the trade is labeled END_OF_DATA. A signal opening on the final bar will also be closed under this option.
 
-Dates and monthly grouping are **UTC**, not the workstation's local time. All upper boundaries are exclusive. Bars before StartDate warm the entire study collection; portfolio accounting begins flat at StartDate and enters on its first observed active long signal. Partial first and last aggregate buckets are included. A month with no bars carries forward the previous equity/position and has Bars=0 and the previous LastPriceRawTime. No synthetic trades occur during gaps. Month-end open P&L is marked at the last available price, and the last report month can be incomplete.
+Dates and monthly grouping are **UTC**, not the workstation's local time. All upper boundaries are exclusive. Bars before StartDate warm the entire study collection; portfolio accounting begins flat at StartDate and enters on its first observed nonzero signal. Partial first and last aggregate buckets are included. A month with no bars carries forward the previous equity/position and has Bars=0 and the previous LastPriceRawTime. No synthetic trades occur during gaps. Month-end open P&L is marked at the last available price, and the last report month can be incomplete.
 
 ## Reports
 
@@ -108,3 +110,5 @@ Default segments are 2010–2022 training, 2023–2024 validation, and 2025 onwa
 ```powershell
 node .\tests\verify_backtest.mjs .\study-export.csv .\optimizer-output\BATCH\reports
 ```
+
+Trade reports include `Side` (+1 long, -1 short) with positive `Contracts`. Monthly and summary `OpenContracts` are signed (negative for short). Reversals charge an exit and a new entry commission; slippage applies to both fills.

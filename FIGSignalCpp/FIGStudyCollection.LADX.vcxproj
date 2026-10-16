@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|x64"><Configuration>Debug</Configuration><Platform>x64</Platform></ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64"><Configuration>Release</Configuration><Platform>x64</Platform></ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{A6C326F4-E479-4BB2-A075-6468F56F023D}</ProjectGuid>
+    <Keyword>Win32Proj</Keyword><RootNamespace>FIGStudyCollection.LADX</RootNamespace>
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <UseDebugLibraries Condition="'$(Configuration)'=='Debug'">true</UseDebugLibraries>
+    <UseDebugLibraries Condition="'$(Configuration)'=='Release'">false</UseDebugLibraries>
+    <PlatformToolset>v145</PlatformToolset><CharacterSet>Unicode</CharacterSet>
+    <WholeProgramOptimization Condition="'$(Configuration)'=='Release'">true</WholeProgramOptimization>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <Import Project="build\NativeStudies.props" />
+  <ItemGroup>
+    <ClCompile Include="src\collections\ladx\options.cpp" />
+    <ClCompile Include="src\collections\ladx\study_price_shock.cpp" />
+    <ClCompile Include="src\collections\ladx\study_ladx.cpp" />
+    <ClCompile Include="src\collections\ladx\study_col_ladx.cpp" />
+    <ClCompile Include="src\collections\ladx\plugin.cpp" />
+    <ClCompile Include="src\collections\ladx\self_test.cpp" />
+    <ClInclude Include="include\fig\collections\ladx\options.hpp" />
+    <ClInclude Include="include\fig\collections\ladx\study_price_shock.hpp" />
+    <ClInclude Include="include\fig\collections\ladx\study_ladx.hpp" />
+    <ClInclude Include="include\fig\collections\ladx\study_col_ladx.hpp" />
+    <None Include="ladx-parameters.json" />
+    <None Include="LADX.md" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="FIGStudyCore.vcxproj"><Project>{D204C4AD-C8E5-48A7-81AB-A6EC4B546ED4}</Project><LinkLibraryDependencies>true</LinkLibraryDependencies></ProjectReference>
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+</Project>

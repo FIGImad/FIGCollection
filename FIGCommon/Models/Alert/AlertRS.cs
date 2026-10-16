@@ -6,6 +6,7 @@ namespace FIGCommon.Models.Alert
 {
     public class AlertRS : IDbEntity<AlertRS>
     {
+        public bool IsSystemAlert { get; set; }
         public int Id { get; set; }
         public int RawTime { get; set; }
         public int MSec { get; set; }
@@ -37,6 +38,7 @@ namespace FIGCommon.Models.Alert
 
         public AlertRS(AlertRS rec)
         {
+            this.IsSystemAlert = rec.IsSystemAlert;
             this.Id = rec.Id;
             this.RawTime = rec.RawTime;
             this.MSec = rec.MSec;
@@ -53,6 +55,7 @@ namespace FIGCommon.Models.Alert
 
         public void ToSqlCommandParameters(SqlParameterCollection parameters)
         {
+            parameters.AddWithValue("@IsSystemAlert", IsSystemAlert);
             parameters.AddWithValue("@Id", Id);
             parameters.AddWithValue("@RawTime", RawTime);
             parameters.AddWithValue("@MSec", MSec);
@@ -83,7 +86,8 @@ namespace FIGCommon.Models.Alert
                 Source = SqlReaderUtil.GetString(reader, nSeq++),
                 Level = SqlReaderUtil.GetString(reader, nSeq++),
                 Message = SqlReaderUtil.GetString(reader, nSeq++),
-                ExceptionText = SqlReaderUtil.GetNullableString(reader, nSeq++)
+                ExceptionText = SqlReaderUtil.GetNullableString(reader, nSeq++),
+                IsSystemAlert = reader.GetBoolean(reader.GetOrdinal("IsSystemAlert"))
             };
             return rec;
         }

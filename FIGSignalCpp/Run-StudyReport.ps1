@@ -8,6 +8,7 @@ param(
     [ValidateRange(1, 35791394)]
     [int]$IntervalMinutes = 1,
     [string]$Collection = '',
+    [string]$CollectionDll = '',
     [string]$Parameters = '',
     [string]$Settings = "$PSScriptRoot/signal-settings.json",
     [string]$Executable = ''
@@ -26,6 +27,7 @@ if ($AdxSmoothing -eq 0) { $AdxSmoothing = $Period }
 $configuration = Get-Content -LiteralPath $Settings -Raw | ConvertFrom-Json
 if ([string]::IsNullOrWhiteSpace($configuration.ODBCName)) { throw 'Set ODBCName in the settings file.' }
 $collectionArguments = @()
+if ($CollectionDll) { $collectionArguments += @('--collection-dll', $CollectionDll) }
 if ($Collection) { $collectionArguments += @('--collection', $Collection) }
 if ($Parameters) { $collectionArguments += @('--parameters', $Parameters) }
 & $Executable --calculate-studies --dataset $DataSetId --period $Period --adx-smoothing $AdxSmoothing --source $Source --max-bars $MaxBars --interval-minutes $IntervalMinutes --output $Output --settings $Settings @collectionArguments
