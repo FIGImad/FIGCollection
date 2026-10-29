@@ -1,0 +1,42 @@
+[
+  {
+    "RunId": "run-0001",
+    "NetProfit": 100,
+    "FinalNAV": 101,
+    "MaxDrawdownPct": -2,
+    "ClosedTrades": 5,
+    "TrainNetProfit": 50,
+    "ValidationNetProfit": 30,
+    "TestNetProfit": 20
+  },
+  {
+    "RunId": "run-0002",
+    "NetProfit": 100,
+    "FinalNAV": 101,
+    "MaxDrawdownPct": -2,
+    "ClosedTrades": 5,
+    "TrainNetProfit": 50,
+    "ValidationNetProfit": 30,
+    "TestNetProfit": 20
+  },
+  {
+    "RunId": "run-0003",
+    "NetProfit": 100,
+    "FinalNAV": 101,
+    "MaxDrawdownPct": -2,
+    "ClosedTrades": 5,
+    "TrainNetProfit": 50,
+    "ValidationNetProfit": 30,
+    "TestNetProfit": 20
+  },
+  {
+    "RunId": "run-0004",
+    "NetProfit": 100,
+    "FinalNAV": 101,
+    "MaxDrawdownPct": -2,
+    "ClosedTrades": 5,
+    "TrainNetProfit": 50,
+    "ValidationNetProfit": 30,
+    "TestNetProfit": 20
+  }
+]

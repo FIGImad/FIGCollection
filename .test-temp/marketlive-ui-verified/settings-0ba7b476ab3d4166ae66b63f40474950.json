@@ -1,0 +1,74 @@
+{
+  "ConnectionString": "Server=localhost;Database=FIGMarketLive;Integrated Security=true",
+  "PluginPath": "Plugins",
+  "PollSeconds": 5,
+  "Broker": {
+    "BaseUrl": "https://localhost:9999/",
+    "AccountId": "test-account",
+    "ProtectedAccessToken": "AQAAANCMnd8BFdERjHoAwE/Cl\u002BsBAAAAed3rOgJaP0eA0IZynlwPRgAAAAACAAAAAAAQZgAAAAEAACAAAAAxSonSrKoZBRrlu3K3Cp1DOf/77S3cQ2wh5h\u002BSuLKtPQAAAAAOgAAAAAIAACAAAABlPpPvzNyKK24rev3zDhn6UJ/RFq3McNgNIiGPiy1c6iAAAADre/BE04KzQUWX34uwxCSs5LcFHNG6hYOKBhbR7UkjH0AAAADbdITRQLgAb7gXv9I23gTecRYWFsVJq\u002B6Yow\u002BNiWPDrUSFD5P3XaCAsFGJ9VG6AaHJMAQwHtS/F3i1FE0x2UHO"
+  },
+  "DataSelections": [
+    {
+      "DataSetId": 51,
+      "TickerId": 12,
+      "IntervalId": "1",
+      "Contract": {
+        "ConId": -1,
+        "Symbol": "",
+        "Name": "",
+        "SecType": "",
+        "LastTradeDateOrContractMonth": "",
+        "Strike": 0,
+        "Right": "",
+        "Multiplier": "",
+        "MinTick": 1.0,
+        "Exchange": "",
+        "Currency": "",
+        "LocalSymbol": "",
+        "PrimaryExch": "",
+        "TradingClass": "",
+        "IncludeExpired": false,
+        "SecIdType": "",
+        "SecId": "",
+        "Description": "",
+        "IssuerId": "",
+        "ComboLegsDescription": ""
+      }
+    }
+  ],
+  "Monitors": [
+    {
+      "DataSetId": 51,
+      "StudyCol": {
+        "Id": -1,
+        "TickerId": -1,
+        "IntervalId": "",
+        "ColType": "",
+        "OrderSeq": 0,
+        "ColParams": "{}",
+        "Enabled": true,
+        "Ticker": null,
+        "Interval": null
+      },
+      "Ticker": {
+        "Id": -1,
+        "Symbol": "",
+        "LocalSymbol": "",
+        "Name": "",
+        "SecurityType": "",
+        "Currency": "",
+        "ExpiryDate": 19700101,
+        "MinTick": 0.01,
+        "ContractSize": 1,
+        "Exchange": "",
+        "PeriodMultiplier": 92
+      },
+      "Interval": {
+        "Id": "",
+        "Name": "",
+        "Seq": 0,
+        "IntervalLen": 0
+      }
+    }
+  ]
+}

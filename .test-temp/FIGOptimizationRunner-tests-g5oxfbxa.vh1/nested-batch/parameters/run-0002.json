@@ -1,0 +1,15 @@
+{
+  "entry": {
+    "bias": 2
+  },
+  "exit": {
+    "enabled": true
+  },
+  "market": {
+    "timeframe": "hourly",
+    "fixed": [
+      null,
+      2
+    ]
+  }
+}

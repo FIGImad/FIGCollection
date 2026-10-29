@@ -4,6 +4,7 @@
     <ImplicitUsings>enable</ImplicitUsings><Nullable>enable</Nullable>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="../../FIGAutoTraderSvc/Services/SystemAlertMonitorService.cs" Link="SystemAlertMonitorService.cs" />
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
     <Using Include="Microsoft.Extensions.Logging" />
     <Using Include="Microsoft.Extensions.Configuration" />

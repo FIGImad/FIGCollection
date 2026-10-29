@@ -1,0 +1,1 @@
+PASS: branded tabs render; embedded tray icons load; tray states require connection and prioritize warnings; Save preserves monitors/datasets and adapter parameters. No SQL or provider connections were made.

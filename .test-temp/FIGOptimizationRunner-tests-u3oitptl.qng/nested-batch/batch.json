@@ -1,0 +1,93 @@
+{
+  "Version": 1,
+  "Status": "Completed",
+  "Generator": "seeded-random-json-v2",
+  "Runtime": ".NET 10.0.13",
+  "CreatedUTC": "2026-10-21T03:53:30.0079837+00:00",
+  "StartedUTC": "2026-10-21T03:53:30.0356651+00:00",
+  "FinishedUTC": "2026-10-21T03:53:30.0416344+00:00",
+  "Attempts": 1,
+  "ExecutableSHA256": "83F9BD6385295684351DBD6F8897396969B3931AE87FAF90D570BEE300E113A4",
+  "CollectionDllSHA256": null,
+  "ReportDirectory": "reports",
+  "Error": null,
+  "Configuration": {
+    "DataSetId": 3,
+    "PricesCsv": "",
+    "IntervalMinutes": 5,
+    "BaseParameters": "C:\\Users\\Imad\\source\\FIGCollection\\.test-temp\\FIGOptimizationRunner-tests-u3oitptl.qng\\nested-base.json",
+    "ConnectionStrings": "Data Source=localhost;Initial Catalog=Test;Integrated Security=True",
+    "OutputRoot": "C:\\Users\\Imad\\source\\FIGCollection\\.test-temp\\FIGOptimizationRunner-tests-u3oitptl.qng",
+    "FixedOutputDirectory": false,
+    "Executable": "C:\\Users\\Imad\\source\\FIGCollection\\.test-temp\\FIGOptimizationRunner-tests-u3oitptl.qng\\native.exe",
+    "CollectionDll": "",
+    "Collection": "Custom",
+    "Signal": "STrend_LBaseADX_Side",
+    "PriceCacheDirectory": "price-cache",
+    "PriceCacheMode": "off",
+    "Samples": 7,
+    "Seed": 12345,
+    "Jobs": 2,
+    "MaxSourceBars": 0,
+    "InitialCapital": 9255000,
+    "Quantity": 15,
+    "QuantityPct": 1,
+    "Multiplier": 20,
+    "CommissionPerContractPerSide": 1.60,
+    "SlippagePointsPerSide": 0,
+    "ForceCloseAtEnd": false,
+    "StartDate": "2010-01-01",
+    "EndDateExclusive": "",
+    "TrainEndExclusive": "2023-01-01",
+    "ValidationEndExclusive": "2025-01-01",
+    "Ranges": {
+      "entry.bias": [
+        1,
+        2
+      ],
+      "exit.enabled": [
+        true,
+        false
+      ],
+      "market.timeframe": [
+        "hourly",
+        "daily"
+      ]
+    },
+    "ExecutableSHA256": null
+  },
+  "Candidates": [
+    {
+      "FileName": "run-0001.json",
+      "SHA256": "B73D5F0E508749125535D290D72107A657E40336223CAC582FF6A530782104E0"
+    },
+    {
+      "FileName": "run-0002.json",
+      "SHA256": "1DA0B6A04EEA4587AAA983AE55297B1C3DB2E554B83F22A3EE95FA00057F35C5"
+    },
+    {
+      "FileName": "run-0003.json",
+      "SHA256": "17DF97FDAE3FC52576C27413806716B45C7E6758982675991EB36DD4BF94462F"
+    },
+    {
+      "FileName": "run-0004.json",
+      "SHA256": "2A432E783504EA517493925BA816843552B52BE4FCCAC60F0C1234887B3BF61D"
+    },
+    {
+      "FileName": "run-0005.json",
+      "SHA256": "DF036BAA6940D489A5F17ADCC8E4CF06C894763B16BFEA66C4692F6464D4B2DF"
+    },
+    {
+      "FileName": "run-0006.json",
+      "SHA256": "1DE5B91540B858BB7F2CDC67653CC808FAE701E170A8734399459934FB417888"
+    },
+    {
+      "FileName": "run-0007.json",
+      "SHA256": "7150C85608FA36F72497EE9E95E6022073140282C5FE1D36B7D198D86A6A109B"
+    },
+    {
+      "FileName": "run-0008.json",
+      "SHA256": "F15058310D1565D08791F886C49DDD20D85FAB1CC19356A5C2AC186E387111BE"
+    }
+  ]
+}

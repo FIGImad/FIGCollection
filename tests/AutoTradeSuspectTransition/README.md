@@ -30,3 +30,34 @@ that leaves that group and then fails again does mark an ACTIVE BOT SUSPECT.
 Service verification: build FIGAutoTraderSvc and inspect that unchanged pending
 signals are not saved and that the BOT is reloaded after close processing, before
 the new-signal eligibility check. A live broker integration test is not included.
+
+## Stopped AutoTrade signal reconciliation
+
+Before deploying this change to an existing database, run
+`FIGInstaller/Resources/fig_autotrader_stopped_signal_migration.sql` against the
+AutoTrader database. It adds code -16 without changing trades or BOT statuses.
+Deploy the updated service afterward. Startup and signal notifications reconcile
+all outstanding STOP signals for AutoTrades with persisted status Stopped. Stop
+completion and restart also run the check. Stopped status is preserved at startup.
+
+Eligible rows have CloseStatus NONE and no CLOSE order. They become FAILED / -16
+(FAIL_AUTOTRADE_STOPPED) through the existing upsert; filled or manually filled
+exposure therefore triggers the existing BOT suspect rule. Existing close orders,
+completed/failed closes, START signals, and running AutoTrades are left alone.
+This records a failed automatic close; it does not close the broker position.
+
+Run the SQL selection and suspect regression with temporary tables only:
+
+```powershell
+./tests/AutoTradeSuspectTransition/Test-StoppedSignals.ps1 -Server localhost
+```
+
+Run the production manager lifecycle tests with in-memory boundaries (no SQL):
+
+```powershell
+dotnet run --project tests/AutoTradeStoppedLifecycle.Regression
+```
+
+These cover startup ordering, stopped records without live instances, restart and
+stop ordering, a running peer on the same monitoring flow, and reconciliation
+failure/retry behavior. They do not replace a live broker or database concurrency test.

@@ -1,0 +1,1 @@
+PASS: branded tabs render; tray icons/status checked; connection success/failure icons and invalidation checked; Save preserves monitors/datasets and adapter parameters. No SQL or provider connections were made.

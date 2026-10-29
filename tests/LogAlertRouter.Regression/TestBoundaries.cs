@@ -16,6 +16,8 @@ namespace FIGCommon.Models.FIGController
     public enum ControllerClientRole { Alert = 256, SystemAlert = 512 }
     public class ControllerConfig
     {
+        public string Id { get; set; } = "monitor-test";
+        public string Name { get; set; } = "Monitor test";
         public string AuthUsername { get; set; } = "test";
         public string AuthPasswordFlat => "test";
         public string AuthURL => "https://offline.invalid";
@@ -54,10 +56,48 @@ namespace FIGCommon.Utilities
 }
 namespace FIGCommon.Services
 {
+    public class EventMonitorService
+    {
+        public Action<Models.EventRS?>? Callback;
+        public void Subscribe(string name, Action<Models.EventRS?> callback) => Callback = callback;
+        public void Unsubscribe(string name, Action<Models.EventRS?> callback) => Callback = null;
+    }
     public interface IClientSignalRService
     {
         Task WaitForConnectionAsync(CancellationToken ct);
         Task<string> SendToHostAsync(Models.FIGController.ControllerRouteRequest request, CancellationToken ct);
+    }
+}
+
+namespace FIGCommon.Models
+{
+    public class EventRS { public string EventType { get; set; } = "SYSTEMALERT"; }
+    public class SystemAlertRS
+    {
+        public int Id { get; set; }
+        public long RawTime { get; set; }
+        public int MSec { get; set; }
+        public string Source { get; set; } = "test";
+        public string Message { get; set; } = "test";
+    }
+}
+namespace FIGCommon.DataAccess
+{
+    public static class MainRepo
+    {
+        public static readonly System.Collections.Concurrent.ConcurrentDictionary<int, Models.SystemAlertRS> Pending = new();
+        public static int Reads;
+        public static bool FailAcknowledgement;
+        public static List<Models.SystemAlertRS> GetPendingSystemAlerts(int maxRec)
+        {
+            Interlocked.Increment(ref Reads);
+            return Pending.Values.OrderBy(r => r.Id).Take(maxRec).ToList();
+        }
+        public static void MarkSystemAlertDelivered(int id)
+        {
+            if (FailAcknowledgement) throw new Exception("Source database unavailable");
+            Pending.TryRemove(id, out _);
+        }
     }
 }
 namespace FIGCommon.Services.LogMonitor

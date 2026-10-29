@@ -1,0 +1,42 @@
+// Optimizer configuration
+{
+  /* Database dataset */ "DataSetId": 3,
+  "PricesCsv": "",
+  "IntervalMinutes": 5,
+  "BaseParameters": "ldax-base.json",
+  "ConnectionStrings": {
+    "DefaultConnection": "Data Source=localhost;Initial Catalog=Test;Integrated Security=True"
+  },
+  "OutputRoot": ".",
+  "FixedOutputDirectory": false,
+  "Executable": "native.exe",
+  "CollectionDll": "LDAX.dll",
+  "Collection": "ldax",
+  "Signal": "STrend_LADX_LongSide",
+  "PriceCacheDirectory": "price-cache",
+  "PriceCacheMode": "off",
+  "Samples": 3,
+  "Seed": 12345,
+  "Jobs": 2,
+  "MaxSourceBars": 0,
+  "InitialCapital": 9255000,
+  "Quantity": 15,
+  "QuantityPct": 1,
+  "Multiplier": 20,
+  "CommissionPerContractPerSide": 1.60,
+  "SlippagePointsPerSide": 0,
+  "ForceCloseAtEnd": false,
+  "StartDate": "2010-01-01",
+  "EndDateExclusive": "",
+  "TrainEndExclusive": "2023-01-01",
+  "ValidationEndExclusive": "2025-01-01",
+  "Ranges": {
+    "TrendReEntryShockMax": [
+      3,
+      4,
+      5,
+      6
+    ]
+  },
+  "ExecutableSHA256": null
+}

@@ -1,0 +1,4 @@
+System.Collections.Generic.KeyNotFoundException: The given key 'Port' was not present in the dictionary.
+   at System.Collections.Generic.Dictionary`2.get_Item(TKey key)
+   at FIGMarketLive.ConfigurationUiChecks.Run(String root) in C:\Users\Imad\source\FIGCollection\FIGMarketLive\ConfigurationUiChecks.cs:line 37
+   at FIGMarketLive.Program.Main(String[] args) in C:\Users\Imad\source\FIGCollection\FIGMarketLive\Program.cs:line 16

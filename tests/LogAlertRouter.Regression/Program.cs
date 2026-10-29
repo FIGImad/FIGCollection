@@ -57,10 +57,60 @@ Check(transport.Requests[^1].DestinationRole == (int)ControllerClientRole.Alert,
 systemAlert.Level = "ALT";
 Check(await router.ForwardAlertAsync(systemAlert, default), "Legacy SystemAlert forwarded");
 Check(transport.Requests[^1].DestinationRole == (int)ControllerClientRole.Alert, "Legacy routing remains combined");
+systemAlert.SystemAlertId = 42;
+Check(!await router.ForwardSystemAlertAsync(systemAlert, default), "Empty success response is not a durable receipt");
+Check(transport.Requests[^1].DestinationRole == (int)ControllerClientRole.SystemAlert
+    && transport.Requests[^1].Route == "/api/alert/systemrec", "Durable delivery always routes directly to SystemAlert");
+foreach (var body in new[] { "null", "not-json", "{}", "{\"systemAlertId\":43,\"alertId\":1}", "{\"systemAlertId\":42,\"alertId\":0}" })
+{
+    transport.Response = body;
+    Check(!await router.ForwardSystemAlertAsync(systemAlert, default), "Invalid or mismatched receipt rejected");
+}
+transport.Response = "{\"systemAlertId\":42,\"alertId\":123}";
+Check(await router.ForwardSystemAlertAsync(systemAlert, default), "Matching persisted receipt accepted");
+transport.Failures.Enqueue(500);
+Check(!await router.ForwardSystemAlertAsync(systemAlert, default), "Receiver outage leaves durable delivery unacknowledged");
+Check(await router.ForwardSystemAlertAsync(systemAlert, default), "Retry succeeds after receiver recovery");
+transport.Failures.Enqueue(401);
+Check(await router.ForwardSystemAlertAsync(systemAlert, default), "Durable receipt survives authentication renewal");
+Check(transport.Requests[^1].Load == transport.Requests[^2].Load, "Durable retry preserves source identity");
+var events = new EventMonitorService();
+FIGCommon.DataAccess.MainRepo.Pending[42] = new() { Id = 42, RawTime = 1700000000, MSec = 123 };
+transport.Response = "";
+using (var monitor = new FIGAutoTradeExSvc.Services.SystemAlertMonitorService(
+    NullLogger<FIGAutoTradeExSvc.Services.SystemAlertMonitorService>.Instance, events, router, new ConfigurationBuilder().Build()))
+{
+    await monitor.StartAsync(default);
+    await WaitUntil(() => FIGCommon.DataAccess.MainRepo.Reads > 0);
+    await Task.Delay(100);
+    Check(FIGCommon.DataAccess.MainRepo.Pending.ContainsKey(42), "Startup recovery retains alert without receipt");
+    transport.Response = "{\"systemAlertId\":42,\"alertId\":123}";
+    FIGCommon.DataAccess.MainRepo.FailAcknowledgement = true;
+    events.Callback!(new());
+    await Task.Delay(200);
+    Check(FIGCommon.DataAccess.MainRepo.Pending.ContainsKey(42), "Failed local acknowledgement preserves pending row");
+    FIGCommon.DataAccess.MainRepo.FailAcknowledgement = false;
+    // No new event: periodic retry must recover and acknowledge the row.
+    await WaitUntil(() => !FIGCommon.DataAccess.MainRepo.Pending.ContainsKey(42), 35000);
+    Check(!FIGCommon.DataAccess.MainRepo.Pending.ContainsKey(42), "Periodic retry acknowledges after recovery without new event");
+    await monitor.StopAsync(default);
+    Check(events.Callback == null, "Shutdown unsubscribes event callback");
+}
 Console.WriteLine($"Passed {checks} checks.");
+
+static async Task WaitUntil(Func<bool> condition, int timeoutMs = 3000)
+{
+    var deadline = DateTime.UtcNow.AddMilliseconds(timeoutMs);
+    while (!condition())
+    {
+        if (DateTime.UtcNow >= deadline) throw new Exception("Timed out waiting for monitor");
+        await Task.Delay(20);
+    }
+}
 
 sealed class FakeTransport : IClientSignalRService
 {
+    public string Response { get; set; } = "";
     public Queue<int> Failures { get; } = new();
     public List<ControllerRouteRequest> Requests { get; } = new();
     public Task WaitForConnectionAsync(CancellationToken ct) { ct.ThrowIfCancellationRequested(); return Task.CompletedTask; }
@@ -69,6 +119,6 @@ sealed class FakeTransport : IClientSignalRService
         if (LogAnalyzerSink.SuppressionDepth == 0) throw new Exception("Forwarding must remain suppressed during retries");
         Requests.Add(request);
         if (Failures.TryDequeue(out int status)) throw new AppErrorException(status, "", "Rejected");
-        return Task.FromResult("");
+        return Task.FromResult(Response);
     }
 }

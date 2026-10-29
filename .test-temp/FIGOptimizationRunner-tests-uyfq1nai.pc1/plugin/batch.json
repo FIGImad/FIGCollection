@@ -1,0 +1,70 @@
+{
+  "Version": 1,
+  "Status": "Prepared",
+  "Generator": "seeded-random-json-v2",
+  "Runtime": ".NET 10.0.13",
+  "CreatedUTC": "2026-10-21T02:15:29.1383306+00:00",
+  "StartedUTC": null,
+  "FinishedUTC": null,
+  "Attempts": 0,
+  "ExecutableSHA256": "83F9BD6385295684351DBD6F8897396969B3931AE87FAF90D570BEE300E113A4",
+  "CollectionDllSHA256": "F7E693C25529E4445C0ABA94B7A9D978BC3F1684C7C2AFFC903BA0D8E6C7E136",
+  "ReportDirectory": null,
+  "Error": null,
+  "Configuration": {
+    "DataSetId": 3,
+    "IntervalMinutes": 5,
+    "BaseParameters": "C:\\Users\\Imad\\source\\FIGCollection\\.test-temp\\FIGOptimizationRunner-tests-uyfq1nai.pc1\\ldax-base.json",
+    "Settings": "C:\\Users\\Imad\\source\\FIGCollection\\.test-temp\\FIGOptimizationRunner-tests-uyfq1nai.pc1\\settings.json",
+    "OutputRoot": "C:\\Users\\Imad\\source\\FIGCollection\\.test-temp\\FIGOptimizationRunner-tests-uyfq1nai.pc1",
+    "FixedOutputDirectory": false,
+    "Executable": "C:\\Users\\Imad\\source\\FIGCollection\\.test-temp\\FIGOptimizationRunner-tests-uyfq1nai.pc1\\native.exe",
+    "CollectionDll": "C:\\Users\\Imad\\source\\FIGCollection\\.test-temp\\FIGOptimizationRunner-tests-uyfq1nai.pc1\\LDAX.dll",
+    "Collection": "ldax",
+    "Signal": "STrend_LADX_LongSide",
+    "PriceCacheDirectory": "C:\\Users\\Imad\\source\\FIGCollection\\.test-temp\\FIGOptimizationRunner-tests-uyfq1nai.pc1\\price-cache",
+    "PriceCacheMode": "off",
+    "Samples": 3,
+    "Seed": 12345,
+    "Jobs": 2,
+    "MaxSourceBars": 0,
+    "InitialCapital": 9255000,
+    "Quantity": 15,
+    "QuantityPct": 1,
+    "Multiplier": 20,
+    "CommissionPerContractPerSide": 1.60,
+    "SlippagePointsPerSide": 0,
+    "ForceCloseAtEnd": false,
+    "StartDate": "2010-01-01",
+    "EndDateExclusive": "",
+    "TrainEndExclusive": "2023-01-01",
+    "ValidationEndExclusive": "2025-01-01",
+    "Ranges": {
+      "TrendReEntryShockMax": [
+        3,
+        4,
+        5,
+        6
+      ]
+    },
+    "ExecutableSHA256": null
+  },
+  "Candidates": [
+    {
+      "FileName": "run-0001.json",
+      "SHA256": "DCAE4B06C22F15A24E15F6F112A5B61921E8EE71823DD4CB4F5FE9B9A558D2D9"
+    },
+    {
+      "FileName": "run-0002.json",
+      "SHA256": "F6980D4532A7569CA17D9C57E6F87A3AA6D4856520A8FD0E4E2BB396A35FF2F5"
+    },
+    {
+      "FileName": "run-0003.json",
+      "SHA256": "93DE5C4F2AFFF34C2AC1F0710AE50CFB05995A706A30C73E56E78C91A9CCBA61"
+    },
+    {
+      "FileName": "run-0004.json",
+      "SHA256": "18175501DC872A5ED1A3869FB5CB66C170B96B8C1EC37DFBF0EF8AB378042B13"
+    }
+  ]
+}
