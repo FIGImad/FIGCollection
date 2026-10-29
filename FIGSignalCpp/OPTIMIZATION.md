@@ -92,8 +92,11 @@ Each batch contains `parameters`, `search-settings.json`, and `reports`:
 | run-NNNN-trades.csv | Each completed trade's timestamps, fill prices, size, gross/net profit, costs and exit reason |
 | run-NNNN-parameters.json | Exact candidate supplied to the collection |
 | prices.csv | Shared aggregated input snapshot |
+| run-NNNN-chart.figdata | FIGDATA v1 binary columns: OHLCV, Unix timestamps, every numeric/text study, and chart colors for all selected-interval bars within the backtest dates |
 | candidate-files.csv | Run ID to original parameter file mapping |
 | batch-settings.txt | Effective dates, costs, sizing, data bounds and execution assumptions |
+
+Chart binary files are written automatically by `FIGSignalCpp.exe` during each candidate’s backtest; no probe or post-processing command is required. Historical bars before the start date still warm up the studies but are excluded from chart rows. All selected-interval bars are included, even when no signal is active. See [the binary format](FIGDATA.md) and [the C++ declarations](include/fig/studies/figdata.hpp) for the reader contract. Other accounting reports and the shared prices snapshot remain CSV. Each candidate produces a full chart file, so disk use grows with history length and candidate count.
 
 Monthly net profit is the **change in equity**, not realized profit plus ending unrealized profit. It includes the change in unrealized profit on positions carried into the month. Returns are blank when starting equity is nonpositive. Segment metrics likewise use changes in continuous equity, including open P&L at each boundary. Segment drawdown restarts its peak at the segment's starting equity; all-run drawdown does not reset. Segments without observations have blank profit/return/drawdown and zero bars. Ranking is tied if no training data is present.
 

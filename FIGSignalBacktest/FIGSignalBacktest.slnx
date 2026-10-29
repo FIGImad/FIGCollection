@@ -1,0 +1,8 @@
+<Solution>
+  <Project Path="FIGSignalBacktest.csproj" />
+  <Project Path="../FIGPriceCsvConverter/FIGPriceCsvConverter.csproj" />
+  <Project Path="../FIG.Studies.Core/FIG.Studies.Core.csproj" />
+  <Project Path="../FIGCommon/FIGCommon.csproj" />
+  <Project Path="../FIGOptimizationRunner/FIGOptimizationRunner.csproj" />
+  <Project Path="../../FIGSignalCollection/FIG.StudyCollections.LADX/FIG.StudyCollections.LADX.csproj" />
+</Solution>

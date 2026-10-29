@@ -80,6 +80,13 @@ namespace FIGCommon.Services.LogMonitor
         }
 
         public async Task<bool> ForwardAlertAsync(LogAlertMessage alert, CancellationToken ct)
+            => await ForwardAsync(alert, false, ct);
+
+        // Direct durable-source delivery: never enqueue in LogAnalyzerSink.
+        public Task<bool> ForwardSystemAlertAsync(LogAlertMessage alert, CancellationToken ct)
+            => ForwardAsync(alert, true, ct);
+
+        private async Task<bool> ForwardAsync(LogAlertMessage alert, bool requireReceipt, CancellationToken ct)
         {
             // Any error raised by authentication or SignalR forwarding must not
             // become another alert, otherwise one outage creates a feedback loop.
@@ -106,15 +113,22 @@ namespace FIGCommon.Services.LogMonitor
                     var req = new ControllerRouteRequest
                     {
                         Method = HttpMethod.Post.Method,
-                        Route = reqReportLogRec,
-                        DestinationRole = (int)(_separateSystemAlerts && AlertCategory.IsSystemAlert(alert.Source, alert.Level)
+                        Route = requireReceipt ? "/api/alert/systemrec" : reqReportLogRec,
+                        DestinationRole = (int)(requireReceipt || (_separateSystemAlerts && AlertCategory.IsSystemAlert(alert.Source, alert.Level))
                             ? ControllerClientRole.SystemAlert : ControllerClientRole.Alert),
                         Load = JsonConvert.SerializeObject(alert),
                         Token = token
                     };
                     try
                     {
-                        await _signalR.SendToHostAsync(req, ct);
+                        string? body = await _signalR.SendToHostAsync(req, ct);
+                        if (requireReceipt)
+                        {
+                            var receipt = System.Text.Json.JsonSerializer.Deserialize<SystemAlertReceipt>(body ?? "",
+                                new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                            if (receipt == null || receipt.AlertId <= 0 || receipt.SystemAlertId != alert.SystemAlertId)
+                                return false;
+                        }
                     }
                     catch (AppErrorException ex) when (ex.errorCode == ErrorCodes.AuthError_Authentication)
                     {

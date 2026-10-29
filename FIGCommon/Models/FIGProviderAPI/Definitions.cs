@@ -60,6 +60,7 @@ namespace FIGCommon.Models.FIGProviderAPI
         public const int FAIL_AUTHORIZATION = -13;
         public const int IGNORED_LONG_POS_LIMIT = -14;
         public const int IGNORED_SHORT_POS_LIMIT = -15;
+        public const int FAIL_AUTOTRADE_STOPPED = -16;
 
         public const int FAIL_OTHER = -20;
 

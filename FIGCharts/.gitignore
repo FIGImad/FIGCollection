@@ -1,0 +1,9 @@
+# Local build and Visual Studio files
+/bin/
+/obj/
+/.vs/
+*.user
+*.suo
+*.aps
+*.VC.db
+*.VC.VC.opendb

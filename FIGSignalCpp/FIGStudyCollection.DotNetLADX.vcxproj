@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|x64"><Configuration>Debug</Configuration><Platform>x64</Platform></ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64"><Configuration>Release</Configuration><Platform>x64</Platform></ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{7239420D-25E2-4F52-B581-1A2BD62823AC}</ProjectGuid>
+    <Keyword>Win32Proj</Keyword><RootNamespace>FIGStudyCollection.DotNetLADX</RootNamespace>
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <UseDebugLibraries Condition="'$(Configuration)'=='Debug'">true</UseDebugLibraries>
+    <UseDebugLibraries Condition="'$(Configuration)'=='Release'">false</UseDebugLibraries>
+    <PlatformToolset>v145</PlatformToolset><CharacterSet>Unicode</CharacterSet>
+    <WholeProgramOptimization Condition="'$(Configuration)'=='Release'">true</WholeProgramOptimization>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <Import Project="build\NativeStudies.props" />
+  <ItemGroup>
+    <ClCompile Include="src\collections\dotnet_ladx\plugin.cpp" />
+    <ClInclude Include="src\collections\dotnet_ladx\package.hpp" />
+    <ResourceCompile Include="$(IntDir)dotnet-ladx.rc" />
+    <ClInclude Include="include\fig\studies\collection_plugin.hpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="FIGStudyCore.vcxproj"><Project>{D204C4AD-C8E5-48A7-81AB-A6EC4B546ED4}</Project><LinkLibraryDependencies>true</LinkLibraryDependencies></ProjectReference>
+  </ItemGroup>
+  <PropertyGroup>
+    <DotNetRoot Condition="'$(DotNetRoot)' == ''">$(ProgramW6432)\dotnet</DotNetRoot>
+    <DotNetHostNativeDir Condition="'$(DotNetHostNativeDir)' == '' and '$(DotNetHostPackVersion)' != ''">$(DotNetRoot)\packs\Microsoft.NETCore.App.Host.win-x64\$(DotNetHostPackVersion)\runtimes\win-x64\native</DotNetHostNativeDir>
+    <!-- Managed source dependencies are checked by dotnet publish on every Build. -->
+    <DisableFastUpToDateCheck>true</DisableFastUpToDateCheck>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(DotNetHostNativeDir)' == '' and Exists('$(DotNetRoot)\packs\Microsoft.NETCore.App.Host.win-x64')">
+    <DotNetHostPacks>$([System.IO.Directory]::GetDirectories('$(DotNetRoot)\packs\Microsoft.NETCore.App.Host.win-x64', '10.*'))</DotNetHostPacks>
+    <!-- Any installed .NET 10 host pack provides the required hosting ABI. -->
+    <DotNetHostPackPath Condition="'$(DotNetHostPacks)' != ''">$([System.String]::Copy('$(DotNetHostPacks)').Split(';')[0])</DotNetHostPackPath>
+    <DotNetHostNativeDir Condition="'$(DotNetHostPackPath)' != ''">$(DotNetHostPackPath)\runtimes\win-x64\native</DotNetHostNativeDir>
+  </PropertyGroup>
+  <ItemDefinitionGroup>
+    <ClCompile><AdditionalIncludeDirectories>$(DotNetHostNativeDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories></ClCompile>
+    <Link><AdditionalDependencies>bcrypt.lib;%(AdditionalDependencies)</AdditionalDependencies></Link>
+  </ItemDefinitionGroup>
+  <Target Name="CheckDotNetHostPack" BeforeTargets="PrepareForBuild">
+    <Error Condition="!Exists('$(DotNetHostNativeDir)\nethost.h')" Text="Install the x64 .NET 10 SDK, or set DotNetHostNativeDir to its host pack native directory." />
+  </Target>
+  <Target Name="PublishManagedLADX" BeforeTargets="PrepareForBuild" DependsOnTargets="CheckDotNetHostPack" Condition="'$(DesignTimeBuild)' != 'true'">
+    <PropertyGroup>
+      <LadxProjectArgument Condition="'$(LadxProject)' != ''">-p:LadxProject=&quot;$(LadxProject)&quot;</LadxProjectArgument>
+    </PropertyGroup>
+    <Exec Command="&quot;$(DotNetRoot)\dotnet.exe&quot; publish &quot;$(MSBuildProjectDirectory)\managed\FIG.LADXBridge\FIG.LADXBridge.csproj&quot; -c $(Configuration) -o &quot;$(OutDir)dotnet-ladx&quot; -m:1 -p:RestoreDisableParallel=true $(LadxProjectArgument)" />
+    <Exec Command="powershell.exe -NoProfile -ExecutionPolicy Bypass -File &quot;$(MSBuildProjectDirectory)\build\Pack-DotNetLADX.ps1&quot; -PublishDirectory &quot;$(OutDir)dotnet-ladx&quot; -NetHost &quot;$(DotNetHostNativeDir)\nethost.dll&quot; -OutputDirectory &quot;$(IntDir).&quot;" />
+  </Target>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+</Project>
+
+
+

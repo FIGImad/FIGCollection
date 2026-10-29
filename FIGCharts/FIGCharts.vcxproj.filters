@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Source Files"><UniqueIdentifier>{B9983DF6-C635-4FB4-98DA-20FB0577FB11}</UniqueIdentifier></Filter>
+    <Filter Include="Header Files"><UniqueIdentifier>{DAEE5234-D5E5-4824-ACAE-43807253BA36}</UniqueIdentifier></Filter>
+    <Filter Include="Resources"><UniqueIdentifier>{6B7B63AB-77DF-446C-BB98-E90AA12D399D}</UniqueIdentifier></Filter>
+    <Filter Include="Resources\Toolbar"><UniqueIdentifier>{230BEA2D-03F1-4E72-A100-511ADE31E31A}</UniqueIdentifier></Filter>
+    <Filter Include="Supporting Files"><UniqueIdentifier>{528F8FF1-A404-4D09-9069-55B8893A6A9A}</UniqueIdentifier></Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="src\main.cpp"><Filter>Source Files</Filter></ClCompile>
+    <ClCompile Include="src\CsvData.cpp"><Filter>Source Files</Filter></ClCompile>
+    <ClInclude Include="src\CsvData.h"><Filter>Header Files</Filter></ClInclude>
+    <ClInclude Include="src\DemoOverlay.h"><Filter>Header Files</Filter></ClInclude>
+    <ClInclude Include="src\FigDataReader.h"><Filter>Header Files</Filter></ClInclude>
+    <ClInclude Include="src\FigDataTests.h"><Filter>Header Files</Filter></ClInclude>
+    <ClInclude Include="src\ChartView.h"><Filter>Header Files</Filter></ClInclude>
+    <ClInclude Include="src\StudyUi.h"><Filter>Header Files</Filter></ClInclude>
+    <ClInclude Include="src\LegendGrid.h"><Filter>Header Files</Filter></ClInclude>
+    <ClInclude Include="src\AppPreferences.h"><Filter>Header Files</Filter></ClInclude>
+    <ClInclude Include="src\AppUi.h"><Filter>Header Files</Filter></ClInclude>
+    <ClInclude Include="src\Theme.h"><Filter>Header Files</Filter></ClInclude>
+    <ClInclude Include="src\LoadingUi.h"><Filter>Header Files</Filter></ClInclude>
+    <ClInclude Include="src\ThemedScrollbars.h"><Filter>Header Files</Filter></ClInclude>
+    <ClInclude Include="src\FinancialModel.h"><Filter>Header Files</Filter></ClInclude>
+    <ClInclude Include="src\FinancialUi.h"><Filter>Header Files</Filter></ClInclude>
+    <ClInclude Include="src\BackgroundRules.h"><Filter>Header Files</Filter></ClInclude>
+    <ClInclude Include="src\BackgroundUi.h"><Filter>Header Files</Filter></ClInclude>
+    <ClInclude Include="src\Workspace.h"><Filter>Header Files</Filter></ClInclude>
+    <ResourceCompile Include="src\ToolbarIcons.rc"><Filter>Resources</Filter></ResourceCompile>
+    <None Include="assets\FIG Logo.ico"><Filter>Resources</Filter></None>
+    <None Include="assets\toolbar\bin.png"><Filter>Resources\Toolbar</Filter></None>
+    <None Include="assets\toolbar\csv.png"><Filter>Resources\Toolbar</Filter></None>
+    <None Include="assets\toolbar\goto-calendar.png"><Filter>Resources\Toolbar</Filter></None>
+    <None Include="assets\toolbar\goto-end.png"><Filter>Resources\Toolbar</Filter></None>
+    <None Include="assets\toolbar\list.png"><Filter>Resources\Toolbar</Filter></None>
+    <None Include="assets\toolbar\price-list.png"><Filter>Resources\Toolbar</Filter></None>
+    <None Include="assets\toolbar\refresh.png"><Filter>Resources\Toolbar</Filter></None>
+    <None Include="assets\toolbar\settings.png"><Filter>Resources\Toolbar</Filter></None>
+    <None Include="assets\toolbar\zoom-in.png"><Filter>Resources\Toolbar</Filter></None>
+    <None Include="assets\toolbar\zoom-out.png"><Filter>Resources\Toolbar</Filter></None>
+    <None Include="Build.ps1"><Filter>Supporting Files</Filter></None>
+    <None Include="README.md"><Filter>Supporting Files</Filter></None>
+    <None Include="FIGCharts.slnx"><Filter>Supporting Files</Filter></None>
+    <None Include=".gitignore"><Filter>Supporting Files</Filter></None>
+  </ItemGroup>
+</Project>

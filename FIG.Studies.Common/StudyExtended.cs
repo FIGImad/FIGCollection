@@ -57,9 +57,29 @@ namespace FIG.Studies
             den = _params.den;
         }
 
+        public override bool TryCopyForNextBar(BaseParams previous, FIGCommon.Models.PriceDataRS price)
+        {
+            if (GetType() != typeof(StudyExtendedParams) || previous.GetType() != typeof(StudyExtendedParams)) return false;
+            var state = (StudyExtendedParams)previous;
+            CopyBaseForNextBar(previous, price);
+            sumY = state.sumY;
+            sumXY = state.sumXY;
+            sumYY = state.sumYY;
+            period = state.period;
+            source = state.source;
+            sumX = state.sumX;
+            sumXX = state.sumXX;
+            den = state.den;
+            return true;
+        }
+
         public override BaseParams Clone()
         {
-            return new StudyExtendedParams(this);
+            // Scalar regression state and immutable source can be copied directly.
+            // Price remains independent for correction replay and checkpoint history.
+            var clone = (StudyExtendedParams)MemberwiseClone();
+            clone.Price = new PriceDataRS(Price);
+            return clone;
         }
 
         public void Calc(CPriceList priceList)
@@ -237,10 +257,10 @@ namespace FIG.Studies
     }
 
 
-    public class StudyExtended : BaseStudy
+    public partial class StudyExtended : BaseStudy
     {
         protected override string? CheckpointConfiguration => GetType() == typeof(StudyExtended)
-            ? System.Text.Json.JsonSerializer.Serialize(new { period, source, stdDev1, stdDev2, label }) : null;
+            ? System.Text.Json.JsonSerializer.Serialize(new { Publication = publication?.Signature, period, source, stdDev1, stdDev2, label }) : null;
 
 
         public PriceDataRS? price = null;
@@ -249,6 +269,8 @@ namespace FIG.Studies
         public double stdDev1 = 1.0D;
         public double stdDev2 = 2.0D;
         public string label = "";
+        private string? cachedLabel;
+        private string[]? outputKeys;
 
         public StudyExtended(int period, string source, double stdDev1, double stdDev2, string label)
         {
@@ -278,6 +300,9 @@ namespace FIG.Studies
             }
 
             var study = (StudyExtended)obj;
+            publication = study.publication;
+            requiredPublicationKeys = study.requiredPublicationKeys;
+            publicationLabel = study.publicationLabel;
             price = study.price;
             period = study.period;
             source = study.source;
@@ -309,18 +334,33 @@ namespace FIG.Studies
         protected void UpdateStudyValues(BarStudy? cStudy, StudyExtendedParams cParam)
         {
             if (cStudy == null) return;
+            if (requiredPublicationKeys != null && publicationLabel != label)
+                RefreshPublication();
+
+            // label is public and mutable. Rebuild if it changes; preserve custom
+            // Tag implementations in derived studies rather than caching them.
+            string[]? keys = null;
+            if (GetType() == typeof(StudyExtended))
+            {
+                if (outputKeys == null || cachedLabel != label)
+                {
+                    outputKeys = [Tag("MA"), Tag("SEM"), Tag("LB"), Tag("UB"), Tag("MID"), Tag("MID2"), Tag("LB2"), Tag("UB2")];
+                    cachedLabel = label;
+                }
+                keys = outputKeys;
+            }
 
             var (lb1, ub1) = cParam.GetBB(stdDev1);
             var (lb2, ub2) = cParam.GetBB(stdDev2);
 
-            cStudy[Tag("MA")] = cParam.MA;
-            cStudy[Tag("SEM")] = cParam.SEM;
-            cStudy[Tag("LB")] = lb1;
-            cStudy[Tag("UB")] = ub1;
-            cStudy[Tag("MID")] = cParam.MA;
-            cStudy[Tag("MID2")] = cParam.MA;
-            cStudy[Tag("LB2")] = lb2;
-            cStudy[Tag("UB2")] = ub2;
+            if (publication?.IsEnabled(0) != false) cStudy[publication?.Key(0) ?? (keys?[0] ?? Tag("MA"))] = cParam.MA;
+            if (publication?.IsEnabled(1) != false) cStudy[publication?.Key(1) ?? (keys?[1] ?? Tag("SEM"))] = cParam.SEM;
+            if (publication?.IsEnabled(2) != false) cStudy[publication?.Key(2) ?? (keys?[2] ?? Tag("LB"))] = lb1;
+            if (publication?.IsEnabled(3) != false) cStudy[publication?.Key(3) ?? (keys?[3] ?? Tag("UB"))] = ub1;
+            if (publication?.IsEnabled(4) != false) cStudy[publication?.Key(4) ?? (keys?[4] ?? Tag("MID"))] = cParam.MA;
+            if (publication?.IsEnabled(5) != false) cStudy[publication?.Key(5) ?? (keys?[5] ?? Tag("MID2"))] = cParam.MA;
+            if (publication?.IsEnabled(6) != false) cStudy[publication?.Key(6) ?? (keys?[6] ?? Tag("LB2"))] = lb2;
+            if (publication?.IsEnabled(7) != false) cStudy[publication?.Key(7) ?? (keys?[7] ?? Tag("UB2"))] = ub2;
         }
 
 

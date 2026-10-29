@@ -27,6 +27,22 @@ namespace FIGAlertSvc.Controllers
         }
 
         #region Alerts
+        [Authorize(Roles = Role.Admin + "," + Role.SuperAdmin + "," + Role.SVC)]
+        [HttpPost("alert/systemrec")]
+        public async Task<IActionResult> ReportSystemAlert([FromBody] LogAlertMessage alertRec)
+        {
+            if (alertRec.SystemAlertId is not > 0 || string.IsNullOrWhiteSpace(alertRec.ServiceId)
+                || !FIGCommon.Models.Alert.AlertCategory.IsSystemAlert(alertRec.Source, alertRec.Level))
+                return BadRequest("A system alert requires a source service and positive source record ID.");
+            try
+            {
+                int id = await _alertSvc.ProcessAlertAsync(alertRec);
+                if (id <= 0) throw new InvalidOperationException("Alert persistence returned no record ID.");
+                return Ok(new SystemAlertReceipt { SystemAlertId = alertRec.SystemAlertId.Value, AlertId = id });
+            }
+            catch (Exception e) { return OnException(e); }
+        }
+
         // POST api/alert/logrec
         [Authorize(Roles = Role.Admin + "," + Role.SuperAdmin + "," + Role.SVC)]
         [Route("alert/logrec")]

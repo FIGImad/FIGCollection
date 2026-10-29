@@ -7,11 +7,15 @@ namespace FIGOptimizationRunner.Configuration;
 
 public sealed record SearchConfiguration
 {
-    public int DataSetId { get; init; } = 3;
+    public int DataSetId { get; init; }
+    public string PricesCsv { get; init; } = "";
     public int IntervalMinutes { get; init; } = 5;
     public string BaseParameters { get; init; } = "adx-base-parameters.json";
-    public string Settings { get; init; } = "signal-settings.json";
+    public string ConnectionStrings { get; init; } = "";
     public string OutputRoot { get; init; } = "optimizer-output";
+    public bool FixedOutputDirectory { get; init; }
+    [JsonIgnore]
+    public string ConfigurationFile { get; init; } = "";
     public string Executable { get; init; } = "x64/Release/FIGSignalCpp.exe";
     public string CollectionDll { get; init; } = "";
     public string Collection { get; init; } = "ADXBase";
@@ -44,6 +48,7 @@ public sealed record SearchConfiguration
     public static readonly JsonSerializerOptions Json = new()
     {
         WriteIndented = true,
+        ReadCommentHandling = JsonCommentHandling.Skip,
         MaxDepth = 1024,
         UnmappedMemberHandling = JsonUnmappedMemberHandling.Disallow
     };
@@ -52,19 +57,59 @@ public sealed record SearchConfiguration
     {
         path = Path.GetFullPath(path);
         var text = File.ReadAllText(path);
-        using var document = JsonDocument.Parse(text, new() { MaxDepth = Json.MaxDepth });
+        using var document = JsonDocument.Parse(text, new() { MaxDepth = Json.MaxDepth, CommentHandling = JsonCommentHandling.Skip });
         ParameterSet.CheckDuplicates(document.RootElement);
-        var c = JsonSerializer.Deserialize<SearchConfiguration>(text, Json)
+        var c = JsonSerializer.Deserialize<SearchConfiguration>(FlattenGroups(document.RootElement), Json)
             ?? throw new ArgumentException("Empty search configuration.");
         var root = Path.GetDirectoryName(path)!;
         string Resolve(string value) => Path.GetFullPath(value, root);
         return c with
         {
-            BaseParameters = Resolve(c.BaseParameters), Settings = Resolve(c.Settings),
+            ConfigurationFile = path,
+            PricesCsv = string.IsNullOrWhiteSpace(c.PricesCsv) ? "" : Resolve(c.PricesCsv),
+            BaseParameters = Resolve(c.BaseParameters),
             OutputRoot = Resolve(c.OutputRoot), Executable = Resolve(c.Executable),
             CollectionDll = string.IsNullOrEmpty(c.CollectionDll) ? "" : Resolve(c.CollectionDll),
             PriceCacheDirectory = Resolve(c.PriceCacheDirectory)
         };
+    }
+
+    private static byte[] FlattenGroups(JsonElement root)
+    {
+        if (root.ValueKind != JsonValueKind.Object) throw new ArgumentException("Search configuration must be an object.");
+        var groups = new Dictionary<string, string[]>(StringComparer.Ordinal)
+        {
+            ["ExecParams"] = [nameof(Executable), nameof(CollectionDll), nameof(Collection), nameof(Signal), nameof(Jobs), nameof(ExecutableSHA256)],
+            ["PriceParams"] = [nameof(PricesCsv), nameof(DataSetId), nameof(ConnectionStrings), nameof(IntervalMinutes), nameof(MaxSourceBars), nameof(PriceCacheDirectory), nameof(PriceCacheMode)],
+            ["Output"] = [nameof(OutputRoot), nameof(FixedOutputDirectory)],
+            ["SearchParams"] = [nameof(BaseParameters), nameof(Samples), nameof(Seed), nameof(Ranges)],
+            ["TradeParams"] = [nameof(InitialCapital), nameof(Quantity), nameof(QuantityPct), nameof(Multiplier), nameof(CommissionPerContractPerSide), nameof(SlippagePointsPerSide), nameof(ForceCloseAtEnd)],
+            ["DateParams"] = [nameof(StartDate), nameof(EndDateExclusive), nameof(TrainEndExclusive), nameof(ValidationEndExclusive)]
+        };
+        using var buffer = new MemoryStream();
+        using (var writer = new Utf8JsonWriter(buffer))
+        {
+            var seen = new HashSet<string>(StringComparer.Ordinal);
+            void Write(JsonProperty property)
+            {
+                if (!seen.Add(property.Name)) throw new ArgumentException("Configuration option specified more than once: " + property.Name);
+                property.WriteTo(writer);
+            }
+            writer.WriteStartObject();
+            foreach (var property in root.EnumerateObject())
+            {
+                if (!groups.TryGetValue(property.Name, out var allowed)) { Write(property); continue; }
+                if (property.Value.ValueKind != JsonValueKind.Object) throw new ArgumentException(property.Name + " must be an object.");
+                foreach (var member in property.Value.EnumerateObject())
+                {
+                    if (!allowed.Contains(member.Name, StringComparer.Ordinal))
+                        throw new ArgumentException($"Unknown option in {property.Name}: {member.Name}");
+                    Write(member);
+                }
+            }
+            writer.WriteEndObject();
+        }
+        return buffer.ToArray();
     }
 
     public void Validate()
@@ -75,7 +120,11 @@ public sealed record SearchConfiguration
             throw new ArgumentException("PriceCacheMode must be off, use, or refresh.");
         if (string.IsNullOrWhiteSpace(PriceCacheDirectory))
             throw new ArgumentException("PriceCacheDirectory must not be empty.");
-        if (DataSetId <= 0 || IntervalMinutes is < 1 or > 35791394 || Jobs is < 1 or > 64 ||
+        if (string.IsNullOrWhiteSpace(PricesCsv) && DataSetId <= 0)
+            throw new ArgumentException("DataSetId must be positive for database input; set PricesCsv for CSV input.");
+        if (string.IsNullOrWhiteSpace(PricesCsv) && string.IsNullOrWhiteSpace(ConnectionStrings))
+            throw new ArgumentException("ConnectionStrings is required for database input.");
+        if (IntervalMinutes is < 1 or > 35791394 || Jobs is < 1 or > 64 ||
             MaxSourceBars < 0 || Samples is < 0 or > 100000 || Quantity < 0)
             throw new ArgumentException("Invalid dataset, interval, jobs, source limit, samples, or quantity.");
         if (QuantityPct <= 0 || QuantityPct > 1)

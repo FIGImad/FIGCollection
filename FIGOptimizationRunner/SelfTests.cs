@@ -21,7 +21,16 @@ internal static class SelfTests
         NestedParameterTests.Run();
         var generator = new RandomCandidateGenerator();
         var baseline = new ParameterSet(new Dictionary<string, decimal?> { ["StartBias"] = 1m, ["AdxLen"] = 50 });
-        var c = new SearchConfiguration { Samples = 3, Ranges = new() { ["StartBias"] = [0, 1, 2, 3] } };
+        var c = new SearchConfiguration { DataSetId = 3, ConnectionStrings = "Data Source=localhost;Initial Catalog=Test;Integrated Security=True", Samples = 3, Ranges = new() { ["StartBias"] = [0, 1, 2, 3] } };
+        Reject(() => new SearchConfiguration().Validate(), "database requires dataset");
+        var csvConfig = c with { DataSetId = 0, PricesCsv = "prices with spaces.csv" };
+        csvConfig.Validate();
+        var csvArgs = NativeBatchExecutor.Arguments(csvConfig, "parameters", "reports");
+        Check(!csvArgs.Contains("--connection-string"), "CSV does not forward connection");
+        var databaseArgs = NativeBatchExecutor.Arguments(c, "parameters", "reports").ToList();
+        Check(databaseArgs[databaseArgs.IndexOf("--connection-string") + 1] == c.ConnectionStrings && !databaseArgs.Contains("--settings"), "connection forwarded as a single argument without settings");
+        Reject(() => (c with { ConnectionStrings = "" }).Validate(), "database requires connection string");
+        Check(csvArgs.Contains("--prices-csv") && csvArgs.Contains(Path.GetFullPath(csvConfig.PricesCsv)) && !csvArgs.Contains("--dataset") && !csvArgs.Contains("--settings"), "CSV source forwarded without database requirements");
         var a = generator.Generate(c, baseline, default).ToArray();
         var b = generator.Generate(c, baseline, default).ToArray();
         Check(a.Length == 4 && a[0].Identity == baseline.Identity && a.Select(x => x.Identity).Distinct().Count() == 4, "small space exhaustion");
@@ -91,9 +100,23 @@ internal static class SelfTests
         File.WriteAllText(Path.Combine(root, "base.json"), baseline.ToJson());
         File.WriteAllText(Path.Combine(root, "native.exe"), "fake executable for checksum test");
         File.WriteAllText(Path.Combine(root, "settings.json"), "{}");
-        c = c with { BaseParameters = Path.Combine(root, "base.json"), Executable = Path.Combine(root, "native.exe"), Settings = Path.Combine(root, "settings.json"), OutputRoot = root };
+        c = c with { BaseParameters = Path.Combine(root, "base.json"), Executable = Path.Combine(root, "native.exe"), OutputRoot = root };
         var fake = new FakeExecutor();
         var runner = new OptimizationRunner(generator, fake);
+        var fixedConfig = c with { FixedOutputDirectory = true, OutputRoot = Path.Combine(root, "fixed-output") };
+        Check(NativeBatchExecutor.Arguments(fixedConfig, "parameters", "reports").Contains("--fixed-output-dir"), "fixed output forwarded");
+        Check(!NativeBatchExecutor.Arguments(c, "parameters", "reports").Contains("--fixed-output-dir"), "default arguments unchanged");
+        var fixedBatch = runner.Prepare(fixedConfig, null, default);
+        Check(fixedBatch == fixedConfig.OutputRoot && OptimizationRunner.Load(fixedBatch).Configuration.FixedOutputDirectory, "fixed path and persisted option");
+        await runner.ExecuteAsync(fixedBatch, default);
+        Check(File.Exists(Path.Combine(fixedBatch, "results.csv")) && File.Exists(Path.Combine(fixedBatch, "top-candidates.json")) && !Directory.Exists(Path.Combine(fixedBatch, ".reports-staging")), "fixed reports at root");
+        Directory.CreateDirectory(Path.Combine(fixedBatch, "stale"));
+        File.WriteAllText(Path.Combine(fixedBatch, "stale", "old.txt"), "old");
+        runner.Prepare(fixedConfig, null, default);
+        Check(!Directory.Exists(Path.Combine(fixedBatch, "stale")) && !File.Exists(Path.Combine(fixedBatch, "results.csv")), "fixed preparation clears previous output");
+        try { runner.Prepare(fixedConfig, root, default); throw new Exception("Missing input overlap rejection"); }
+        catch (ArgumentException) { }
+        Check(File.Exists(c.BaseParameters), "cleanup preserves overlapping inputs");
         var nestedBaseFile = Path.Combine(root, "nested-base.json");
         File.WriteAllText(nestedBaseFile, """{"entry":{"bias":1},"exit":{"enabled":true},"market":{"timeframe":"hourly","fixed":[null,2]}}""");
         var nestedConfig = c with
@@ -118,9 +141,37 @@ internal static class SelfTests
         var ldaxConfigFile = Path.Combine(root, "ldax-search.json");
         File.WriteAllText(ldaxConfigFile, System.Text.Json.JsonSerializer.Serialize(ldax with
         {
-            CollectionDll = "LDAX.dll", BaseParameters = "ldax-base.json", Executable = "native.exe", Settings = "settings.json", OutputRoot = "."
+            CollectionDll = "LDAX.dll", BaseParameters = "ldax-base.json", Executable = "native.exe", OutputRoot = "."
         }, SearchConfiguration.Json));
         var loadedLdax = SearchConfiguration.Load(ldaxConfigFile);
+        var groupedFile = Path.Combine(root, "grouped.json");
+        File.WriteAllText(groupedFile, """
+            {
+              // Grouped input with relative paths
+              "ExecParams": {"Executable":"native.exe", "CollectionDll":"LDAX.dll", "Jobs":4},
+              "PriceParams": {"PricesCsv":"prices.csv", "IntervalMinutes":10, "ConnectionStrings":"Data Source=localhost;Integrated Security=True"},
+              "Output": {"OutputRoot":"grouped-output", "FixedOutputDirectory":true},
+              "SearchParams": {"BaseParameters":"base.json", "Samples":0, "Seed":42, "Ranges":{"StdDev1":[1.0]}},
+              "TradeParams": {"Quantity":0, "InitialCapital":1200000},
+              "DateParams": {"StartDate":"2016-01-01"}
+            }
+            """);
+        var grouped = SearchConfiguration.Load(groupedFile);
+        grouped.Validate();
+        Check(grouped.ConnectionStrings == "Data Source=localhost;Integrated Security=True", "grouped connection strings preserved");
+        Check(grouped.Jobs == 4 && grouped.PricesCsv == Path.Combine(root, "prices.csv") && grouped.IntervalMinutes == 10 && grouped.FixedOutputDirectory && grouped.Samples == 0 && grouped.Seed == 42 && grouped.Quantity == 0 && grouped.StartDate == "2016-01-01" && grouped.Ranges.ContainsKey("StdDev1"), "grouped configuration values and paths");
+        foreach (var invalid in new[] {
+            """{"Jobs":2,"ExecParams":{"Jobs":4}}""",
+            """{"ExecParams":{"Unknown":1}}""",
+            """{"ExecParams":{"PricesCsv":"wrong-group.csv"}}""",
+            """{"Output":true}"""
+        })
+        {
+            File.WriteAllText(groupedFile, invalid);
+            Reject(() => SearchConfiguration.Load(groupedFile), "invalid or ambiguous grouped configuration");
+        }
+        File.WriteAllText(ldaxConfigFile, "// Optimizer configuration\n" + File.ReadAllText(ldaxConfigFile).Replace("\"DataSetId\":", "/* Database dataset */ \"DataSetId\":"));
+        Check(SearchConfiguration.Load(ldaxConfigFile).DataSetId == loadedLdax.DataSetId, "line and block comments in optimizer configuration");
         Check(loadedLdax.CollectionDll == pluginFile, "DLL resolves relative to configuration");
         var pluginBatch = runner.Prepare(loadedLdax, Path.Combine(root, "plugin"), default);
         Check(OptimizationRunner.Load(pluginBatch).CollectionDllSHA256 == OptimizationRunner.Hash(pluginFile), "DLL checksum saved");

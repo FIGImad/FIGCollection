@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <ApplicationIcon>Branding/FIGMonitor.ico</ApplicationIcon>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../FIGMarketLive.Core/FIGMarketLive.Core.csproj" />
+    <ProjectReference Include="../FIGMarketLive.Adapters.IBKR/FIGMarketLive.Adapters.IBKR.csproj" />
+    <None Update="marketlive.example.json" CopyToOutputDirectory="PreserveNewest" />
+    <EmbeddedResource Include="Branding/*.png;Branding/*.ico" LogicalName="FIGMarketLive.Branding.%(Filename)%(Extension)" />
+  </ItemGroup>
+</Project>

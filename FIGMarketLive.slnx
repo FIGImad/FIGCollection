@@ -1,0 +1,10 @@
+<Solution>
+  <Project Path="FIGMarketLive/FIGMarketLive.csproj" />
+  <Project Path="FIGMarketLive.Core/FIGMarketLive.Core.csproj" />
+  <Project Path="FIGMarketLive.Adapters.IBKR/FIGMarketLive.Adapters.IBKR.csproj" />
+  <Project Path="IBKRProvider/IBKRProvider.csproj" />
+  <Project Path="FIGCommon/FIGCommon.csproj" />
+  <Project Path="FIG.Studies.Core/FIG.Studies.Core.csproj" />
+  <Project Path="FIG.Studies.Common/FIG.Studies.Common.csproj" />
+  <Project Path="tests/FIGMarketLive.Regression/FIGMarketLive.Regression.csproj" />
+</Solution>

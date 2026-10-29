@@ -1,0 +1,417 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{BF8733F1-A352-5537-D0ED-5F4E56A37CAF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="Header Files">
+      <UniqueIdentifier>{82061000-CBA4-3683-CF02-A33D0F717BB1}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
+    </Filter>
+    <Filter Include="Resource Files">
+      <UniqueIdentifier>{7981279D-5980-B5B7-922F-A69535A248D4}</UniqueIdentifier>
+      <Extensions>rc;ico;cur;bmp;gif;jpg;jpeg;png;dlg;rc2;rct;bin;rgs;resx;tiff;tif;wav;mfcribbon-ms</Extensions>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="HotSpotDlg.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="mfccharts.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="mfcdemo.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="mfcdemoDlg.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="stdafx.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="ContourCrossSectionDlg.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="RealTimeMultiChartDlg.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="RealTimeZoomScrollDlg.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="XYZoomScrollDlg.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="ContourZoomScrollDlg.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="MegaZoomScrollDlg.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="MegaRealTimeZoomScrollDlg.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="ZoomScrollTrack2Dlg.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="ViewPortControlDemoDlg.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="ZoomScrollTrackDlg.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="SimpleZoomScrollDlg.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="FinanceDemoDlg.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="TrackAxisDlg.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="TrackBoxDlg.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="TrackFinanceDlg.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="TrackLabelDlg.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="TrackLegendDlg.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="CrossHairDlg.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="ThreeDChartRotationDlg.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="RealTimeDemoDlg.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="RealTimeTrackDlg.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="ZoomScrollPdfDlg.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="ChartViewer.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="HotSpotDlg.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="mfccharts.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="mfcdemo.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="mfcdemoDlg.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Resource.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="stdafx.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="rantable.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="ContourCrossSectionDlg.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="RealTimeMultiChartDlg.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="RealTimeZoomScrollDlg.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="XYZoomScrollDlg.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="ContourZoomScrollDlg.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="MegaZoomScrollDlg.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="MegaRealTimeZoomScrollDlg.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="ZoomScrollTrack2Dlg.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="ViewPortControlDemoDlg.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="ZoomScrollTrackDlg.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="SimpleZoomScrollDlg.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="FinanceDemoDlg.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="TrackAxisDlg.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="TrackBoxDlg.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="TrackFinanceDlg.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="TrackLabelDlg.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="TrackLegendDlg.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="CrossHairDlg.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="ThreeDChartRotationDlg.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="RealTimeDemoDlg.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="RealTimeTrackDlg.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="ZoomScrollPdfDlg.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="ChartViewer.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="mfcdemo.rc">
+      <Filter>Resource Files</Filter>
+    </ResourceCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="res\mfcdemo.ico">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\angry.png">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\bg.png">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\clock.png">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\cloud.png">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\computer.png">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\doc.png">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\gas.png">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\laugh.png">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\marble.png">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\marble2.png">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\marble3.png">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\molecule.png">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\nocomment.png">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\rain.png">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\robot1.png">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\robot2.png">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\robot3.png">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\robot4.png">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\robot5.png">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\rock.png">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\sad.png">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\service.png">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\small_computer.png">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\small_molecule.png">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\small_user.png">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\smile.png">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\snow.png">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\snowy.png">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\software.png">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\star.png">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\sun.png">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\tile.png">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\wood.png">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="..\..\..\..\..\..\temp\aaa.png">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\zoomOutPB.ico">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\zoomInPB.ico">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\savePB.ico">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\pointerPB.ico">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\scrollPB.ico">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\save.ico">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\zoomOut.ico">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\zoomIn.ico">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\scroll.ico">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\runPB.ico">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\freezePB.ico">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\piechart.ico">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\barchart.ico">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\linechart.ico">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\areachart.ico">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\trendchart.ico">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\bubblechart.ico">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\boxchart.ico">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\ganttchart.ico">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\treemap.ico">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\pyramidchart.ico">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\polarchart.ico">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\zoomchart.ico">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\realtimechart.ico">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\trackcursor.ico">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\discreteheatmap.ico">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\contourchart.ico">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\financechart.ico">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\xychart.ico">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\angularmeter.ico">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\linearmeter.ico">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\barmeter.ico">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\surfacechart.ico">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\threedscatterchart.ico">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\maptexture.png">
+      <Filter>Resource Files</Filter>
+    </Image>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="res\mfcdemo.rc2">
+      <Filter>Resource Files</Filter>
+    </None>
+  </ItemGroup>
+</Project>

@@ -41,6 +41,14 @@ The random generator checks active parameter names for ADX and LDAX separately. 
 
 ## Configuration and reports
 
+Optimizer configuration files support `//` line comments and `/* ... */` block comments. Comments are ignored when loading and are not retained in generated settings snapshots. Trailing commas are still rejected.
+
+Settings can be grouped into `ExecParams` (executable, collection, signal, jobs), `PriceParams` (CSV/database source, interval, source limits, cache), `Output` (output root and fixed mode), `SearchParams` (base parameters, samples, seed, ranges), `TradeParams` (capital, sizing, costs, force close), and `DateParams` (date boundaries). See `examples/l2-grouped.json` for a commented example. Existing flat files remain supported, and flat settings may be combined with groups, but specifying the same option twice is rejected. Group and option names are case-sensitive; options must be in the appropriate group. Generated snapshots remain flat.
+
+Price input can be a database or CSV. Database runs require a positive `DataSetId` in the configuration or `--dataset ID`; the old implicit default of 3 has been removed. For CSV, set `"PricesCsv": "data/prices.csv"` in the optimizer configuration or pass `--prices-csv FILE`. Configuration paths resolve relative to the configuration file; CLI paths resolve relative to the working directory. CSV input takes precedence over `DataSetId`, requires no database settings, and is forwarded to FIGSignalBacktest without `--dataset` or `--connection-string`. Select an executable supporting `--prices-csv`; the native backtester is not changed by this feature. Keep `ConnectionStrings` for database connections only.
+
+CSV columns are `RawTime,Open,High,Low,Close,Volume`, with optional `Id,DataSetId`. `RawTime` is UTC Unix seconds. See FIGSignalBacktest's README for validation and aggregation details.
+
 ### Nested and mixed-type parameters
 
 The baseline can contain nested objects and arrays, numbers, booleans, strings, and nulls. Candidate generation preserves the complete JSON tree and changes only the selected paths. Existing flat numeric configurations still work. JSON nesting is supported up to 1,024 levels.
@@ -82,7 +90,9 @@ dotnet run --project ..\FIGOptimizationRunner -c Release --no-launch-profile -- 
 
 Run this from the `FIGSignalCpp` directory. Use `run` instead of `prepare` when ready to execute the search.
 
-Use the existing `optimizer-search.json`. Paths inside it are relative to the configuration file. Command-line paths are relative to the working directory. Supported overrides are `--samples`, `--max-source-bars`, `--jobs`, `--dataset`, `--executable`, and `--output-dir`. The default executable is `x64/Release/FIGSignalCpp.exe`; optionally add `"Executable"` to the configuration. Output directories must be new.
+Use the existing `optimizer-search.json`. Paths inside it are relative to the configuration file. Command-line paths are relative to the working directory. Supported overrides are `--samples`, `--max-source-bars`, `--jobs`, `--dataset`, `--executable`, and `--output-dir`. The default executable is `x64/Release/FIGSignalCpp.exe`; optionally add `"Executable"` to the configuration. Output directories must be new by default.
+
+For a reusable location, add `--fixed-output-dir` to `run` or `prepare`, or set `"FixedOutputDirectory": true` in the configuration. This clears the selected `--output-dir` (or `OutputRoot` when omitted) before preparation, without creating a timestamped folder. Reports are placed directly at the batch root alongside `parameters/`, the manifest, and settings. The option persists for `execute` and is forwarded to the backtester; select an executable supporting it, such as FIGSignalBacktest. Reports are temporarily staged during execution to protect the batch inputs and manifest, then moved to the root even on failure. Fixed-mode retries replace report files at that same location. Use a dedicated output directory outside inputs, application, and price cache; directory links are rejected.
 
 `Samples` counts additional unique candidates; the baseline is first. `MaxSourceBars: 0` uses all available source rows within the configured dates. Candidate values come from the explicit `Ranges` arrays, with a fixed random seed. The generator sorts keys ordinally, so its sequence may differ from PowerShell's culture-based ordering with the same seed. Keep the archived parameter files for exact reproduction; the batch records the .NET runtime as well.
 
@@ -97,7 +107,7 @@ Ranking remains based on training profit. The current configuration uses dataset
 
 For EFS position sizing, use `"InitialCapital": 1200000`, `"Quantity": 0`, and `"QuantityPct": 1.0`. Each entry uses `ceil(InitialCapital * QuantityPct / Multiplier / HLC3)` from the signal bar. Its quantity is held until exit, and later entries use original capital (no reinvestment). Positive `Quantity` retains fixed contracts. Rebuild/republish both executables before selecting dynamic sizing. The 0740 fine-search configuration uses dynamic sizing from January 2016.
 
-The C# runner passes the settings filename to C++; database credentials and their decryption remain in the native application. No AI service is called.
+For database input, set `PriceParams.ConnectionStrings` (or top-level `ConnectionStrings` in a flat file). The runner passes this value as one `--connection-string` argument to FIGSignalBacktest. `Settings` and `--settings` are no longer supported in this workflow. Database runs require both a positive DataSetId and a nonempty ConnectionStrings string. CSV runs ignore ConnectionStrings. Use a rebuilt FIGSignalBacktest executable supporting this option; the C++ host is not updated by this change. Configuration snapshots retain the configured connection value, so integrated authentication or the supported encrypted form avoids storing a plaintext password in those snapshots. No AI service is called.
 
 ## Where to extend it
 

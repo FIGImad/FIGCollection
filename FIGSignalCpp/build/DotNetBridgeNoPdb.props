@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Optional workaround for environments where the MSVC PDB service cannot run. -->
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemDefinitionGroup>
+    <ClCompile><DebugInformationFormat>OldStyle</DebugInformationFormat></ClCompile>
+    <Link><GenerateDebugInformation>false</GenerateDebugInformation></Link>
+  </ItemDefinitionGroup>
+</Project>

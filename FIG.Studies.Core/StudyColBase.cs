@@ -221,16 +221,20 @@ public abstract class StudyColBase
             var newStudy = new BarStudy(input[i]);
             studies.AddToFront(newStudy);
 
-            foreach (var study in studyList)
-            {
-                study.Process(input[i], studies, priceList);
-            }
+            ProcessStudies(input[i]);
 
             barStudyList.Add(new BarStudy(newStudy));
             onBarProcessed?.Invoke(newStudy);
         }
 
         return barStudyList;
+    }
+
+    // A collection may observe processing without wrapping studies or changing checkpoint identity.
+    protected virtual void ProcessStudies(PriceDataRS price)
+    {
+        foreach (var study in studyList!)
+            study.Process(price, studies, priceList);
     }
 
     public virtual int GetIntervalLen() => studyInterval.IntervalLen;

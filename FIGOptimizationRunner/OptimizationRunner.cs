@@ -29,13 +29,16 @@ public sealed class OptimizationRunner(ICandidateGenerator generator, IBatchExec
     {
         c.Validate();
         var baseline = ParameterSet.Load(c.BaseParameters);
-        var directory = Path.GetFullPath(outputDirectory ?? Path.Combine(c.OutputRoot,
-            DateTime.Now.ToString("yyyyMMdd-HHmmss") + "-cs-" + Guid.NewGuid().ToString("N")[..8]));
-        if (Directory.Exists(directory) || File.Exists(directory)) throw new IOException("Choose a new output directory for every batch.");
+        var directory = Path.GetFullPath(outputDirectory ?? (c.FixedOutputDirectory ? c.OutputRoot : Path.Combine(c.OutputRoot,
+            DateTime.Now.ToString("yyyyMMdd-HHmmss") + "-cs-" + Guid.NewGuid().ToString("N")[..8])));
+        if (!c.FixedOutputDirectory && (Directory.Exists(directory) || File.Exists(directory))) throw new IOException("Choose a new output directory for every batch.");
         // Materialize only the first candidate to validate ranges before creating output files.
         using var candidates = generator.Generate(c, baseline, cancellation).GetEnumerator();
         if (!candidates.MoveNext()) throw new InvalidDataException("Generator omitted the baseline.");
         if (candidates.Current.Identity != baseline.Identity) throw new InvalidDataException("First candidate must be the baseline.");
+        cancellation.ThrowIfCancellationRequested();
+        if (c.FixedOutputDirectory)
+            FIG.IO.FixedOutputDirectory.Clear(directory, c.BaseParameters, c.Executable, c.EffectiveCollectionDll, c.PriceCacheDirectory, c.ConfigurationFile, c.PricesCsv);
         Directory.CreateDirectory(directory);
         var manifest = new BatchManifest
         {
@@ -110,8 +113,9 @@ public sealed class OptimizationRunner(ICandidateGenerator generator, IBatchExec
             m.CollectionDllSHA256 = dllHash;
         }
         ++m.Attempts;
-        m.ReportDirectory = m.Attempts == 1 ? "reports" : $"reports-attempt-{m.Attempts:D3}";
-        var reports = Path.Combine(directory, m.ReportDirectory);
+        m.ReportDirectory = m.Configuration.FixedOutputDirectory ? "." : m.Attempts == 1 ? "reports" : $"reports-attempt-{m.Attempts:D3}";
+        // Stage reports separately so the child's cleanup cannot delete the manifest, inputs, or execution lock.
+        var reports = Path.Combine(directory, m.Configuration.FixedOutputDirectory ? ".reports-staging" : m.ReportDirectory);
         if (Directory.Exists(reports)) throw new IOException("Report directory already exists; refusing to overwrite.");
         m.StartedUTC = DateTimeOffset.UtcNow; m.FinishedUTC = null; m.Error = null; m.Status = "Running";
         Save(directory, m);
@@ -128,7 +132,7 @@ public sealed class OptimizationRunner(ICandidateGenerator generator, IBatchExec
             File.WriteAllText(Path.Combine(reports, "top-candidates.json"),
                 JsonSerializer.Serialize(results.Take(10), SearchConfiguration.Json));
             m.Status = "Completed";
-            Console.WriteLine($"Results: {Path.Combine(reports, "results.csv")}");
+            Console.WriteLine($"Results: {Path.Combine(directory, m.ReportDirectory, "results.csv")}");
         }
         catch (Exception ex)
         {
@@ -138,8 +142,25 @@ public sealed class OptimizationRunner(ICandidateGenerator generator, IBatchExec
         }
         finally
         {
-            m.FinishedUTC = DateTimeOffset.UtcNow;
-            Save(directory, m);
+            try
+            {
+                if (m.Configuration.FixedOutputDirectory && Directory.Exists(reports))
+                {
+                    foreach (var file in Directory.GetFiles(reports)) File.Move(file, Path.Combine(directory, Path.GetFileName(file)), overwrite: true);
+                    Directory.Delete(reports);
+                }
+            }
+            catch (Exception ex)
+            {
+                m.Status = "Failed";
+                m.Error = "Could not move staged reports: " + ex.Message;
+                throw;
+            }
+            finally
+            {
+                m.FinishedUTC = DateTimeOffset.UtcNow;
+                Save(directory, m);
+            }
         }
     }
 }

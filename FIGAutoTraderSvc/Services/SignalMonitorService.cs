@@ -78,7 +78,7 @@ namespace FIGAutoTradeExSvc.Services
 
         protected Task WakeupAutoTrade(object? sender = null, TaskEventArgs? e = null)
         {
-            // let each autoTrade task decide if they need to do anything based on the signal changes
+            // Reconcile stopped AutoTrades from persisted records, then wake live instances.
             _autoTradeManagementService.WakeupAll();
             return Task.CompletedTask;
         }

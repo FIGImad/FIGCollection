@@ -5,6 +5,7 @@ namespace FIGCommon.Models.LogMonitor
     /// </summary>
     public class LogAlertMessage
     {
+        public int? SystemAlertId { get; set; }
         /// <summary>Name of the log source (e.g. "ATS", "Interface").</summary>
         public string LogName { get; set; } = "";
 
@@ -27,5 +28,11 @@ namespace FIGCommon.Models.LogMonitor
         public long RawTime { get; set; } = 0;
         /// <summary>Milliseconds part of the original log entry timestamp.</summary>
         public int Milliseconds { get; set; } = 0;
+    }
+
+    public sealed class SystemAlertReceipt
+    {
+        public int SystemAlertId { get; set; }
+        public int AlertId { get; set; }
     }
 }

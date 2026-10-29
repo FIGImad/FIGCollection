@@ -6,6 +6,7 @@ namespace FIGCommon.Models.Alert
 {
     public class AlertRS : IDbEntity<AlertRS>
     {
+        public int? SystemAlertId { get; set; }
         public bool IsSystemAlert { get; set; }
         public int Id { get; set; }
         public int RawTime { get; set; }
@@ -38,6 +39,7 @@ namespace FIGCommon.Models.Alert
 
         public AlertRS(AlertRS rec)
         {
+            this.SystemAlertId = rec.SystemAlertId;
             this.IsSystemAlert = rec.IsSystemAlert;
             this.Id = rec.Id;
             this.RawTime = rec.RawTime;
@@ -55,6 +57,7 @@ namespace FIGCommon.Models.Alert
 
         public void ToSqlCommandParameters(SqlParameterCollection parameters)
         {
+            if (SystemAlertId.HasValue) parameters.AddWithValue("@SystemAlertId", SystemAlertId.Value);
             parameters.AddWithValue("@IsSystemAlert", IsSystemAlert);
             parameters.AddWithValue("@Id", Id);
             parameters.AddWithValue("@RawTime", RawTime);

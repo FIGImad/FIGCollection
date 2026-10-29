@@ -114,7 +114,11 @@ namespace IBKRProvider.Service
 
                     if (!_clientSocket.IsConnected())
                     {
-                        throw new BrokerConnectionException("Failed to connect to IBKR TWS/Gateway");
+                        var detail=_wrapper.LastErrorMessage;
+                        throw new BrokerConnectionException(
+                            $"Failed to connect to IBKR TWS/Gateway at {_options.Host}:{_options.Port} (client ID {_options.ClientId}). " +
+                            (string.IsNullOrWhiteSpace(detail)?"The API handshake did not establish a connection. ":detail+" ") +
+                            "Verify TWS/Gateway is running and logged in, socket API access is enabled, and its configured port matches this adapter.");
                     }
 
                     _reader = new EReader(_clientSocket, _readerSignal);

@@ -1,0 +1,910 @@
+// Microsoft Visual C++ generated resource script.
+//
+#include "resource.h"
+
+#define APSTUDIO_READONLY_SYMBOLS
+/////////////////////////////////////////////////////////////////////////////
+//
+// Generated from the TEXTINCLUDE 2 resource.
+//
+#include "afxres.h"
+
+/////////////////////////////////////////////////////////////////////////////
+#undef APSTUDIO_READONLY_SYMBOLS
+
+/////////////////////////////////////////////////////////////////////////////
+// English (United States) resources
+
+#if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_ENU)
+LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_US
+#pragma code_page(1252)
+
+#ifdef APSTUDIO_INVOKED
+/////////////////////////////////////////////////////////////////////////////
+//
+// TEXTINCLUDE
+//
+
+1 TEXTINCLUDE 
+BEGIN
+    "resource.h\0"
+END
+
+2 TEXTINCLUDE 
+BEGIN
+    "#include ""afxres.h""\r\n"
+    "\0"
+END
+
+3 TEXTINCLUDE 
+BEGIN
+    "#define _AFX_NO_SPLITTER_RESOURCES\r\n"
+    "#define _AFX_NO_OLE_RESOURCES\r\n"
+    "#define _AFX_NO_TRACKER_RESOURCES\r\n"
+    "#define _AFX_NO_PROPERTY_RESOURCES\r\n"
+    "\r\n"
+    "#if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_ENU)\r\n"
+    "LANGUAGE 9, 1\r\n"
+    "#pragma code_page(1252)\r\n"
+    "#include ""res\\mfcdemo.rc2""  // non-Microsoft Visual C++ edited resources\r\n"
+    "#include ""afxres.rc""     // Standard components\r\n"
+    "#endif\r\n"
+    "\0"
+END
+
+#endif    // APSTUDIO_INVOKED
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Icon
+//
+
+// Icon with lowest ID value placed first to ensure application icon
+// remains consistent on all systems.
+IDR_MAINFRAME           ICON                    "res\\mfcdemo.ico"
+
+IDI_ZoomOutPB           ICON                    "res\\zoomOutPB.ico"
+
+IDI_ZoomInPB            ICON                    "res\\zoomInPB.ico"
+
+IDI_SavePB              ICON                    "res\\savePB.ico"
+
+IDI_PointerPB           ICON                    "res\\pointerPB.ico"
+
+IDI_ZoomOut             ICON                    "res\\zoomOut.ico"
+
+IDI_ZoomIn              ICON                    "res\\zoomIn.ico"
+
+IDI_Save                ICON                    "res\\save.ico"
+
+IDI_Scroll              ICON                    "res\\scroll.ico"
+
+IDI_RunPB               ICON                    "res\\runPB.ico"
+
+IDI_FreezePB            ICON                    "res\\freezePB.ico"
+
+PIECHART.ICO            ICON                    "res\\piechart.ico"
+
+BARCHART.ICO            ICON                    "res\\barchart.ico"
+
+LINECHART.ICO           ICON                    "res\\linechart.ico"
+
+AREACHART.ICO           ICON                    "res\\areachart.ico"
+
+TRENDCHART.ICO          ICON                    "res\\trendchart.ico"
+
+BUBBLECHART.ICO         ICON                    "res\\bubblechart.ico"
+
+BOXCHART.ICO            ICON                    "res\\boxchart.ico"
+
+GANTTCHART.ICO          ICON                    "res\\ganttchart.ico"
+
+TREEMAP.ICO             ICON                    "res\\treemap.ico"
+
+PYRAMIDCHART.ICO        ICON                    "res\\pyramidchart.ico"
+
+POLARCHART.ICO          ICON                    "res\\polarchart.ico"
+
+ZOOMCHART.ICO           ICON                    "res\\zoomchart.ico"
+
+REALTIMECHART.ICO       ICON                    "res\\realtimechart.ico"
+
+TRACKCURSOR.ICO         ICON                    "res\\trackcursor.ico"
+
+DISCRETEHEATMAP.ICO     ICON                    "res\\discreteheatmap.ico"
+
+CONTOURCHART.ICO        ICON                    "res\\contourchart.ico"
+
+FINANCECHART.ICO        ICON                    "res\\financechart.ico"
+
+XYCHART.ICO             ICON                    "res\\xychart.ico"
+
+ANGULARMETER.ICO        ICON                    "res\\angularmeter.ico"
+
+LINEARMETER.ICO         ICON                    "res\\linearmeter.ico"
+
+BARMETER.ICO            ICON                    "res\\barmeter.ico"
+
+SURFACECHART.ICO        ICON                    "res\\surfacechart.ico"
+
+THREEDSCATTERCHART.ICO  ICON                    "res\\threedscatterchart.ico"
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Dialog
+//
+
+IDD_MFCDEMO_DIALOG DIALOGEX 0, 0, 751, 343
+STYLE DS_SETFONT | DS_FIXEDSYS | WS_MINIMIZEBOX | WS_MAXIMIZEBOX | WS_POPUP | WS_VISIBLE | WS_CAPTION | WS_SYSMENU | WS_THICKFRAME
+EXSTYLE WS_EX_APPWINDOW
+CAPTION "ChartDirector MFC Demo"
+FONT 8, "MS Shell Dlg", 400, 0, 0x0
+BEGIN
+    CONTROL         "",IDC_CHARTVIEWER0,"Static",SS_BITMAP,154,9,15,13
+    CONTROL         "",IDC_CHARTVIEWER1,"Static",SS_BITMAP,171,9,15,13
+    CONTROL         "",IDC_CHARTVIEWER2,"Static",SS_BITMAP,193,9,15,13
+    CONTROL         "",IDC_CHARTVIEWER3,"Static",SS_BITMAP,214,9,15,13
+    CONTROL         "",IDC_CHARTVIEWER4,"Static",SS_BITMAP,235,9,15,13
+    CONTROL         "",IDC_CHARTVIEWER5,"Static",SS_BITMAP,256,9,15,13
+    CONTROL         "",IDC_CHARTVIEWER6,"Static",SS_BITMAP,277,9,15,13
+    CONTROL         "",IDC_CHARTVIEWER7,"Static",SS_BITMAP,298,9,15,13
+    CONTROL         "",IDC_CHART_TREE,"SysTreeView32",TVS_HASBUTTONS | TVS_HASLINES | TVS_LINESATROOT | WS_BORDER | WS_HSCROLL | WS_TABSTOP,2,1,143,340
+END
+
+IDD_HOTSPOTPARAM DIALOGEX 0, 0, 228, 158
+STYLE DS_SETFONT | DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "Hot Spot Properties"
+FONT 8, "MS Shell Dlg", 0, 0, 0x0
+BEGIN
+    DEFPUSHBUTTON   "OK",IDOK,90,137,50,14
+    CONTROL         "List1",IDC_PARAMLIST,"SysListView32",LVS_REPORT | WS_BORDER | WS_TABSTOP,7,7,213,127
+END
+
+IDD_CONTOURCROSSSECTION DIALOGEX 0, 0, 461, 398
+STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_MINIMIZEBOX | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "Contour Plot with Cross Section"
+FONT 8, "MS Shell Dlg", 0, 0, 0x0
+BEGIN
+    CONTROL         "",IDC_ChartViewer,"Static",SS_BITMAP,6,7,15,13
+    CONTROL         "",IDC_CrossSectionViewerX,"Static",SS_BITMAP,389,7,15,13
+    CONTROL         "",IDC_CrossSectionViewerY,"Static",SS_BITMAP,6,331,15,13
+END
+
+IDD_REALTIMEMULTICHART DIALOGEX 0, 0, 519, 273
+STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "Real-Time MultiChart with Zoom/Scroll and Track Line"
+FONT 8, "MS Shell Dlg", 400, 0, 0x0
+BEGIN
+    COMBOBOX        IDC_UpdatePeriod,7,130,75,72,CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
+    CONTROL         "",IDC_ChartViewer,"Static",SS_BITMAP,89,3,15,13
+    CONTROL         "",IDC_STATIC,"Static",SS_ETCHEDFRAME,4,3,83,266
+    LTEXT           "Update Period (ms)",IDC_STATIC,7,117,68,12,SS_CENTERIMAGE
+    LTEXT           "Alpha",IDC_STATIC,10,212,30,12,SS_CENTERIMAGE
+    LTEXT           "Beta",IDC_STATIC,11,228,30,12,SS_CENTERIMAGE
+    LTEXT           "Gamma",IDC_STATIC,10,244,30,12,SS_CENTERIMAGE
+    LTEXT           "",IDC_AlphaValue,43,212,36,12,SS_CENTERIMAGE | SS_SUNKEN
+    LTEXT           "",IDC_GammaValue,43,244,36,12,SS_CENTERIMAGE | SS_SUNKEN
+    LTEXT           "",IDC_BetaValue,43,228,36,12,SS_CENTERIMAGE | SS_SUNKEN
+    CONTROL         "Scroll",IDC_PointerPB,"Button",BS_AUTORADIOBUTTON | BS_ICON | BS_PUSHLIKE | WS_GROUP,7,6,76,18
+    CONTROL         "Zoom In",IDC_ZoomInPB,"Button",BS_AUTORADIOBUTTON | BS_ICON | BS_PUSHLIKE,7,24,76,18
+    CONTROL         "Zoom Out",IDC_ZoomOutPB,"Button",BS_AUTORADIOBUTTON | BS_ICON | BS_PUSHLIKE,7,42,76,18
+    PUSHBUTTON      "Save",IDC_SavePB,7,80,76,18,BS_ICON
+    SCROLLBAR       IDC_HScrollBar,88,261,429,12
+END
+
+IDD_REALTIMEZOOMSCROLL DIALOGEX 0, 0, 519, 233
+STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "Real-Time Chart with Zoom/Scroll and Track Line"
+FONT 8, "MS Shell Dlg", 0, 0, 0x1
+BEGIN
+    COMBOBOX        IDC_UpdatePeriod,7,128,75,72,CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
+    CONTROL         "",IDC_ChartViewer,"Static",SS_BITMAP,89,3,15,13
+    CONTROL         "",IDC_STATIC,"Static",SS_ETCHEDFRAME,3,2,84,231
+    LTEXT           "Update Period (ms)",IDC_STATIC,7,115,68,12,SS_CENTERIMAGE
+    LTEXT           "Alpha",IDC_STATIC,10,179,30,12,SS_CENTERIMAGE
+    LTEXT           "Beta",IDC_STATIC,11,195,30,12,SS_CENTERIMAGE
+    LTEXT           "Gamma",IDC_STATIC,10,211,30,12,SS_CENTERIMAGE
+    LTEXT           "",IDC_AlphaValue,43,179,36,12,SS_CENTERIMAGE | SS_SUNKEN
+    LTEXT           "",IDC_GammaValue,43,211,36,12,SS_CENTERIMAGE | SS_SUNKEN
+    LTEXT           "",IDC_BetaValue,43,195,36,12,SS_CENTERIMAGE | SS_SUNKEN
+    CONTROL         "Pointer",IDC_PointerPB,"Button",BS_AUTORADIOBUTTON | BS_ICON | BS_PUSHLIKE | WS_GROUP,7,6,76,18
+    CONTROL         "Zoom In",IDC_ZoomInPB,"Button",BS_AUTORADIOBUTTON | BS_ICON | BS_PUSHLIKE,7,24,76,18
+    CONTROL         "Zoom Out",IDC_ZoomOutPB,"Button",BS_AUTORADIOBUTTON | BS_ICON | BS_PUSHLIKE,7,42,76,18
+    PUSHBUTTON      "Save As File",IDC_SavePB,7,80,76,18,BS_ICON
+    SCROLLBAR       IDC_HScrollBar,87,220,432,12
+END
+
+IDD_XYZOOMSCROLL DIALOGEX 0, 0, 428, 305
+STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "XY Zooming and Scrolling"
+FONT 8, "MS Shell Dlg", 400, 0, 0x0
+BEGIN
+    CONTROL         "Pointer",IDC_PointerPB,"Button",BS_AUTORADIOBUTTON | BS_ICON | BS_PUSHLIKE | WS_GROUP,8,8,72,18
+    CONTROL         "Zoom In",IDC_ZoomInPB,"Button",BS_AUTORADIOBUTTON | BS_ICON | BS_PUSHLIKE,8,26,72,18
+    CONTROL         "Zoom Out",IDC_ZoomOutPB,"Button",BS_AUTORADIOBUTTON | BS_ICON | BS_PUSHLIKE,8,44,72,18
+    CONTROL         "Slider1",IDC_ZoomBar,"msctls_trackbar32",TBS_AUTOTICKS | TBS_BOTH | WS_TABSTOP,8,144,72,32
+    CONTROL         "",IDC_ChartViewer,"Static",SS_BITMAP,88,4,15,13
+    CONTROL         "",IDC_STATIC,"Static",SS_ETCHEDFRAME,4,4,80,296
+    CTEXT           "Zoom Level",IDC_STATIC,12,136,64,8
+    CONTROL         "",IDC_ViewPortControl,"Static",SS_BITMAP,7,208,15,13
+    PUSHBUTTON      "Save As File",IDC_SavePB,7,80,73,18,BS_ICON
+END
+
+IDD_CONTOURZOOMSCROLL DIALOGEX 0, 0, 453, 309
+STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "Contour Plot Zoom/Scroll"
+FONT 8, "MS Shell Dlg", 400, 0, 0x0
+BEGIN
+    CONTROL         "Pointer",IDC_PointerPB,"Button",BS_AUTORADIOBUTTON | BS_ICON | BS_PUSHLIKE | WS_GROUP,8,8,72,18
+    CONTROL         "Zoom In",IDC_ZoomInPB,"Button",BS_AUTORADIOBUTTON | BS_ICON | BS_PUSHLIKE,8,26,72,18
+    CONTROL         "Zoom Out",IDC_ZoomOutPB,"Button",BS_AUTORADIOBUTTON | BS_ICON | BS_PUSHLIKE,8,44,72,18
+    CONTROL         "Slider1",IDC_ZoomBar,"msctls_trackbar32",TBS_AUTOTICKS | TBS_BOTH | WS_TABSTOP,8,144,72,32
+    CONTROL         "",IDC_ChartViewer,"Static",SS_BITMAP,88,4,15,13
+    CONTROL         "",IDC_STATIC,"Static",SS_ETCHEDFRAME,4,4,80,302
+    CTEXT           "Zoom Level",IDC_STATIC,12,136,64,8
+    CONTROL         "",IDC_ViewPortControl,"Static",SS_BITMAP,7,208,15,13
+    PUSHBUTTON      "Save As File",IDC_SavePB,7,80,73,18,BS_ICON
+END
+
+IDD_MEGAZOOMSCROLL DIALOGEX 0, 0, 535, 289
+STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "Mega Chart Zoom/Scroll with Track Line"
+FONT 8, "MS Shell Dlg", 0, 0, 0x0
+BEGIN
+    CONTROL         "",IDC_ChartViewer,"Static",SS_BITMAP,1,28,15,13
+    SCROLLBAR       IDC_HScrollBar,0,277,535,12
+    CONTROL         "Scroll",IDC_PointerPB,"Button",BS_AUTORADIOBUTTON | BS_ICON | BS_PUSHLIKE | WS_GROUP,4,3,25,22
+    CONTROL         "+Zoom",IDC_ZoomInPB,"Button",BS_AUTORADIOBUTTON | BS_ICON | BS_PUSHLIKE,32,3,25,22
+    CONTROL         "-Zoom",IDC_ZoomOutPB,"Button",BS_AUTORADIOBUTTON | BS_ICON | BS_PUSHLIKE,60,3,25,22
+    PUSHBUTTON      "Plot Chart",IDC_PlotChartPB,365,3,166,22
+END
+
+IDD_MEGAREALTIMEZOOMSCROLL DIALOGEX 0, 0, 535, 289
+STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "Mega Real-Time Chart with Zoom/Scroll with Track Line"
+FONT 8, "MS Shell Dlg", 0, 0, 0x0
+BEGIN
+    CONTROL         "",IDC_ChartViewer,"Static",SS_BITMAP,1,28,15,13
+    SCROLLBAR       IDC_HScrollBar,0,277,535,12
+    CONTROL         "Scroll",IDC_PointerPB,"Button",BS_AUTORADIOBUTTON | BS_ICON | BS_PUSHLIKE | WS_GROUP,4,3,25,22
+    CONTROL         "+Zoom",IDC_ZoomInPB,"Button",BS_AUTORADIOBUTTON | BS_ICON | BS_PUSHLIKE,32,3,25,22
+    CONTROL         "-Zoom",IDC_ZoomOutPB,"Button",BS_AUTORADIOBUTTON | BS_ICON | BS_PUSHLIKE,60,3,25,22
+    PUSHBUTTON      "Plot Chart",IDC_PlotChartPB,365,3,166,22
+END
+
+IDD_ZOOMSCROLLTRACK2 DIALOGEX 0, 0, 529, 233
+STYLE DS_SETFONT | DS_MODALFRAME | WS_POPUP | WS_VISIBLE | WS_CAPTION | WS_SYSMENU
+EXSTYLE WS_EX_APPWINDOW
+CAPTION "Zooming and Scrolling with Track Line (2)"
+FONT 8, "MS Shell Dlg", 0, 0, 0x1
+BEGIN
+    CONTROL         "",IDC_ChartViewer,"Static",SS_BITMAP,92,4,15,13
+    CONTROL         "Pointer",IDC_PointerPB,"Button",BS_AUTORADIOBUTTON | BS_ICON | BS_PUSHLIKE | WS_GROUP,8,6,76,18
+    CONTROL         "Zoom In",IDC_ZoomInPB,"Button",BS_AUTORADIOBUTTON | BS_ICON | BS_PUSHLIKE,8,24,76,18
+    CONTROL         "Zoom Out",IDC_ZoomOutPB,"Button",BS_AUTORADIOBUTTON | BS_ICON | BS_PUSHLIKE,8,42,76,18
+    SCROLLBAR       IDC_HScrollBar,92,223,433,10
+    CONTROL         "",IDC_STATIC,"Static",SS_ETCHEDFRAME,3,2,85,230
+    CONTROL         "",IDC_STARTDATE,"SysDateTimePick32",DTS_RIGHTALIGN | WS_TABSTOP,7,166,76,13
+    CONTROL         "",IDC_ENDDATE,"SysDateTimePick32",DTS_RIGHTALIGN | WS_TABSTOP,7,197,76,13
+    LTEXT           "Start Date",IDC_STATIC,8,156,65,9
+    LTEXT           "End Date",IDC_STATIC,8,187,65,9
+    CONTROL         "Alpha Series",IDC_ALPHA_CB,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,9,80,68,15
+    CONTROL         "Beta Series",IDC_BETA_CB,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,9,94,68,15
+    CONTROL         "Gamma Series",IDC_GAMMA_CB,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,9,108,68,15
+END
+
+IDD_VIEWPORTCONTROLDEMO DIALOGEX 0, 0, 523, 298
+STYLE DS_SETFONT | DS_MODALFRAME | WS_POPUP | WS_VISIBLE | WS_CAPTION | WS_SYSMENU
+EXSTYLE WS_EX_APPWINDOW
+CAPTION "Zooming and Scrolling with Viewport Control"
+FONT 8, "MS Shell Dlg", 0, 0, 0x1
+BEGIN
+    CONTROL         "",IDC_ChartViewer,"Static",SS_BITMAP,92,4,15,13
+    CONTROL         "",IDC_ViewPortControl,"Static",SS_BITMAP,92,251,15,13
+    CONTROL         "Pointer",IDC_PointerPB,"Button",BS_AUTORADIOBUTTON | BS_ICON | BS_PUSHLIKE | WS_GROUP,8,8,76,18
+    CONTROL         "Zoom In",IDC_ZoomInPB,"Button",BS_AUTORADIOBUTTON | BS_ICON | BS_PUSHLIKE,8,26,76,18
+    CONTROL         "Zoom Out",IDC_ZoomOutPB,"Button",BS_AUTORADIOBUTTON | BS_ICON | BS_PUSHLIKE,8,44,76,18
+    CONTROL         "",IDC_STATIC,"Static",SS_ETCHEDFRAME,3,4,85,290
+    PUSHBUTTON      "Save As File",IDC_SavePB,8,80,76,18,BS_ICON
+END
+
+IDD_ZOOMSCROLLTRACK DIALOGEX 0, 0, 529, 233
+STYLE DS_SETFONT | DS_MODALFRAME | WS_POPUP | WS_VISIBLE | WS_CAPTION | WS_SYSMENU
+EXSTYLE WS_EX_APPWINDOW
+CAPTION "Zooming and Scrolling with Track Line (1)"
+FONT 8, "MS Shell Dlg", 0, 0, 0x1
+BEGIN
+    CONTROL         "",IDC_ChartViewer,"Static",SS_BITMAP,92,4,15,13
+    CONTROL         "Pointer",IDC_PointerPB,"Button",BS_AUTORADIOBUTTON | BS_ICON | BS_PUSHLIKE | WS_GROUP,8,6,76,18
+    CONTROL         "Zoom In",IDC_ZoomInPB,"Button",BS_AUTORADIOBUTTON | BS_ICON | BS_PUSHLIKE,8,24,76,18
+    CONTROL         "Zoom Out",IDC_ZoomOutPB,"Button",BS_AUTORADIOBUTTON | BS_ICON | BS_PUSHLIKE,8,42,76,18
+    SCROLLBAR       IDC_HScrollBar,92,223,433,10
+    CONTROL         "",IDC_STATIC,"Static",SS_ETCHEDFRAME,3,2,85,230
+END
+
+IDD_SIMPLEZOOMSCROLL DIALOGEX 0, 0, 495, 193
+STYLE DS_SETFONT | DS_MODALFRAME | WS_POPUP | WS_VISIBLE | WS_CAPTION | WS_SYSMENU
+EXSTYLE WS_EX_APPWINDOW
+CAPTION "Simple Zooming and Scrolling"
+FONT 8, "MS Shell Dlg", 0, 0, 0x1
+BEGIN
+    CONTROL         "",IDC_ChartViewer,"Static",SS_BITMAP,92,4,15,13
+    CONTROL         "Pointer",IDC_PointerPB,"Button",BS_AUTORADIOBUTTON | BS_ICON | BS_PUSHLIKE | WS_GROUP,8,6,76,18
+    CONTROL         "Zoom In",IDC_ZoomInPB,"Button",BS_AUTORADIOBUTTON | BS_ICON | BS_PUSHLIKE,8,24,76,18
+    CONTROL         "Zoom Out",IDC_ZoomOutPB,"Button",BS_AUTORADIOBUTTON | BS_ICON | BS_PUSHLIKE,8,42,76,18
+    CONTROL         "",IDC_STATIC,"Static",SS_ETCHEDFRAME,3,2,85,187
+END
+
+IDD_FINANCEDEMO DIALOGEX 0, 0, 643, 312
+STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_MINIMIZEBOX | WS_MAXIMIZEBOX | WS_POPUP | WS_VISIBLE | WS_CAPTION | WS_SYSMENU
+EXSTYLE WS_EX_APPWINDOW
+CAPTION "ChartDirector Interactive Financial Chart Demonstration"
+FONT 8, "MS Shell Dlg", 0, 0, 0x1
+BEGIN
+    LTEXT           "Ticker Symbol",IDC_STATIC,7,33,46,8
+    EDITTEXT        IDC_TICKERSYMBOL,7,42,96,13,ES_AUTOHSCROLL
+    LTEXT           "Compare With",IDC_STATIC,7,59,46,8
+    EDITTEXT        IDC_COMPAREWITH,7,68,96,13,ES_AUTOHSCROLL
+    LTEXT           "Time Period",IDC_STATIC,7,86,46,8
+    COMBOBOX        IDC_TIMERANGE,7,94,96,120,CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
+    CONTROL         "Show Volume Bars",IDC_VOLUME,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,8,116,80,10
+    CONTROL         "Parabolic SAR",IDC_PABABOLICSAR,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,8,130,62,10
+    CONTROL         "Log Scale",IDC_LOGSCALE,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,8,143,76,10
+    CONTROL         "Percentage Scale",IDC_PERCENTAGESCALE,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,8,156,84,10
+    LTEXT           "Chart Type",IDC_STATIC,8,176,84,8
+    COMBOBOX        IDC_CHARTTYPE,8,185,96,120,CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
+    LTEXT           "Price Band",IDC_STATIC,8,202,88,8
+    COMBOBOX        IDC_BAND,8,211,96,120,CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
+    LTEXT           "Moving Averages",IDC_STATIC,8,228,68,9
+    COMBOBOX        IDC_AVGTYPE1,8,236,70,120,CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
+    EDITTEXT        IDC_MOVAVG1,80,236,24,13,ES_AUTOHSCROLL
+    COMBOBOX        IDC_AVGTYPE2,8,250,70,120,CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
+    EDITTEXT        IDC_MOVAVG2,80,250,24,13,ES_AUTOHSCROLL
+    LTEXT           "Technical Indicators",IDC_STATIC,8,267,88,9
+    COMBOBOX        IDC_INDICATOR1,8,276,96,120,CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
+    COMBOBOX        IDC_INDICATOR2,8,290,96,120,CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
+    CONTROL         "",IDC_STATIC,"Static",SS_ETCHEDFRAME,2,3,108,305
+    CONTROL         "",IDC_ChartViewer,"Static",SS_BITMAP | SS_NOTIFY,116,4,15,13
+    CONTROL         "Scroll",IDC_PointerPB,"Button",BS_AUTORADIOBUTTON | BS_ICON | BS_PUSHLIKE | WS_GROUP,8,6,25,22
+    CONTROL         "+Zoom",IDC_ZoomInPB,"Button",BS_AUTORADIOBUTTON | BS_ICON | BS_PUSHLIKE,42,6,25,22
+    CONTROL         "-Zoom",IDC_ZoomOutPB,"Button",BS_AUTORADIOBUTTON | BS_ICON | BS_PUSHLIKE,76,6,25,22
+END
+
+IDD_TRACKCURSOR_DEMO DIALOGEX 0, 0, 320, 200
+STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_POPUP | WS_VISIBLE | WS_CAPTION | WS_SYSMENU
+EXSTYLE WS_EX_APPWINDOW
+CAPTION "Prorgrammable Track Cursor Demo"
+FONT 8, "MS Shell Dlg", 0, 0, 0x1
+BEGIN
+    CONTROL         "",IDC_ChartViewer,"Static",SS_BITMAP,2,2,20,20
+END
+
+IDD_THREEDCHARTROTATION DIALOGEX 0, 0, 481, 394
+STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_POPUP | WS_VISIBLE | WS_CAPTION | WS_SYSMENU
+EXSTYLE WS_EX_APPWINDOW
+CAPTION "3D Chart Interactive Rotation"
+FONT 8, "MS Shell Dlg", 0, 0, 0x1
+BEGIN
+    CONTROL         "",IDC_ChartViewer,"Static",SS_BITMAP,1,24,15,13
+    CONTROL         " Draw Frame On Rotate",IDC_CHECK1,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,14,3,141,18
+END
+
+IDD_REALTIMEDEMO DIALOGEX 0, 0, 492, 177
+STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_POPUP | WS_VISIBLE | WS_CAPTION | WS_SYSMENU
+EXSTYLE WS_EX_APPWINDOW
+CAPTION "Simple Real-Time Chart"
+FONT 8, "MS Shell Dlg", 0, 0, 0x1
+BEGIN
+    CONTROL         "Run",IDC_RunPB,"Button",BS_AUTORADIOBUTTON | BS_ICON | BS_PUSHLIKE | WS_GROUP,7,8,73,16
+    CONTROL         "Freeze",IDC_FreezePB,"Button",BS_AUTORADIOBUTTON | BS_ICON | BS_PUSHLIKE,7,24,73,16
+    COMBOBOX        IDC_UpdatePeriod,8,71,73,72,CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
+    CONTROL         "",IDC_ChartViewer,"Static",SS_BITMAP,88,4,15,13
+    CONTROL         "",IDC_STATIC,"Static",SS_ETCHEDFRAME,3,4,81,167
+    LTEXT           "Update Period (ms)",IDC_STATIC,8,58,68,12,SS_CENTERIMAGE
+    LTEXT           "Alpha",IDC_STATIC,11,120,30,12,SS_CENTERIMAGE
+    LTEXT           "Beta",IDC_STATIC,12,136,30,12,SS_CENTERIMAGE
+    LTEXT           "Gamma",IDC_STATIC,11,152,30,12,SS_CENTERIMAGE
+    LTEXT           "",IDC_AlphaValue,44,120,36,12,SS_CENTERIMAGE | SS_SUNKEN
+    LTEXT           "",IDC_GammaValue,44,152,36,12,SS_CENTERIMAGE | SS_SUNKEN
+    LTEXT           "",IDC_BetaValue,44,136,36,12,SS_CENTERIMAGE | SS_SUNKEN
+END
+
+IDD_REALTIMETRACK DIALOGEX 0, 0, 492, 177
+STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_POPUP | WS_VISIBLE | WS_CAPTION | WS_SYSMENU
+EXSTYLE WS_EX_APPWINDOW
+CAPTION "Real-Time Chart with Track Line"
+FONT 8, "MS Shell Dlg", 0, 0, 0x1
+BEGIN
+    CONTROL         "Run",IDC_RunPB,"Button",BS_AUTORADIOBUTTON | BS_ICON | BS_PUSHLIKE | WS_GROUP,7,8,73,16
+    CONTROL         "Freeze",IDC_FreezePB,"Button",BS_AUTORADIOBUTTON | BS_ICON | BS_PUSHLIKE,7,24,73,16
+    COMBOBOX        IDC_UpdatePeriod,8,71,73,72,CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
+    CONTROL         "",IDC_ChartViewer,"Static",SS_BITMAP,88,4,15,13
+    CONTROL         "",IDC_STATIC,"Static",SS_ETCHEDFRAME,3,4,81,167
+    LTEXT           "Update Period (ms)",IDC_STATIC,8,58,68,12,SS_CENTERIMAGE
+    LTEXT           "Alpha",IDC_STATIC,11,120,30,12,SS_CENTERIMAGE
+    LTEXT           "Beta",IDC_STATIC,12,136,30,12,SS_CENTERIMAGE
+    LTEXT           "Gamma",IDC_STATIC,11,152,30,12,SS_CENTERIMAGE
+    LTEXT           "",IDC_AlphaValue,44,120,36,12,SS_CENTERIMAGE | SS_SUNKEN
+    LTEXT           "",IDC_GammaValue,44,152,36,12,SS_CENTERIMAGE | SS_SUNKEN
+    LTEXT           "",IDC_BetaValue,44,136,36,12,SS_CENTERIMAGE | SS_SUNKEN
+END
+
+IDD_ZOOMSCROLLPDF DIALOGEX 0, 0, 529, 233
+STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_POPUP | WS_VISIBLE | WS_CAPTION | WS_SYSMENU
+EXSTYLE WS_EX_APPWINDOW
+CAPTION "PDF Report Demonstration"
+FONT 8, "MS Shell Dlg", 0, 0, 0x1
+BEGIN
+    CONTROL         "",IDC_ChartViewer,"Static",SS_BITMAP,92,4,15,13
+    CONTROL         "Pointer",IDC_PointerPB,"Button",BS_AUTORADIOBUTTON | BS_ICON | BS_PUSHLIKE | WS_GROUP,8,6,76,18
+    CONTROL         "Zoom In",IDC_ZoomInPB,"Button",BS_AUTORADIOBUTTON | BS_ICON | BS_PUSHLIKE,8,24,76,18
+    CONTROL         "Zoom Out",IDC_ZoomOutPB,"Button",BS_AUTORADIOBUTTON | BS_ICON | BS_PUSHLIKE,8,42,76,18
+    SCROLLBAR       IDC_HScrollBar,92,223,433,10
+    CONTROL         "",IDC_STATIC,"Static",SS_ETCHEDFRAME,3,2,85,230
+    PUSHBUTTON      "Save Chart Image",IDC_SavePB,8,80,76,18,BS_ICON
+    PUSHBUTTON      "Create PDF Report",IDC_SavePdfPB,8,103,76,18,BS_ICON
+END
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Version
+//
+
+VS_VERSION_INFO VERSIONINFO
+ FILEVERSION 7,0,0,0
+ PRODUCTVERSION 7,0,0,0
+ FILEFLAGSMASK 0x3fL
+#ifdef _DEBUG
+ FILEFLAGS 0x1L
+#else
+ FILEFLAGS 0x0L
+#endif
+ FILEOS 0x4L
+ FILETYPE 0x1L
+ FILESUBTYPE 0x0L
+BEGIN
+    BLOCK "StringFileInfo"
+    BEGIN
+        BLOCK "040904e4"
+        BEGIN
+            VALUE "CompanyName", "Advanced Software Engineering Ltd"
+            VALUE "FileDescription", "ChartDirector for C++ MFC Sample Program"
+            VALUE "FileVersion", "7.0.0.0"
+            VALUE "InternalName", "mfcdemo.exe"
+            VALUE "LegalCopyright", "(c) Advanced Software Engineering Ltd"
+            VALUE "OriginalFilename", "mfcdemo.exe"
+            VALUE "ProductName", "ChartDirector for C++ MFC Sample Program"
+            VALUE "ProductVersion", "7.0.0.0"
+        END
+    END
+    BLOCK "VarFileInfo"
+    BEGIN
+        VALUE "Translation", 0x409, 1252
+    END
+END
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// DESIGNINFO
+//
+
+#ifdef APSTUDIO_INVOKED
+GUIDELINES DESIGNINFO
+BEGIN
+    IDD_MFCDEMO_DIALOG, DIALOG
+    BEGIN
+        LEFTMARGIN, 2
+        RIGHTMARGIN, 749
+        TOPMARGIN, 1
+        BOTTOMMARGIN, 341
+    END
+
+    IDD_HOTSPOTPARAM, DIALOG
+    BEGIN
+    END
+
+    IDD_CONTOURCROSSSECTION, DIALOG
+    BEGIN
+        LEFTMARGIN, 6
+        RIGHTMARGIN, 454
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 390
+    END
+
+    IDD_REALTIMEMULTICHART, DIALOG
+    BEGIN
+        RIGHTMARGIN, 518
+        BOTTOMMARGIN, 269
+    END
+
+    IDD_REALTIMEZOOMSCROLL, DIALOG
+    BEGIN
+        BOTTOMMARGIN, 231
+    END
+
+    IDD_XYZOOMSCROLL, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 421
+        TOPMARGIN, 4
+        BOTTOMMARGIN, 298
+    END
+
+    IDD_CONTOURZOOMSCROLL, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 446
+        TOPMARGIN, 4
+        BOTTOMMARGIN, 305
+    END
+
+    IDD_MEGAZOOMSCROLL, DIALOG
+    BEGIN
+        TOPMARGIN, 1
+    END
+
+    IDD_MEGAREALTIMEZOOMSCROLL, DIALOG
+    BEGIN
+        TOPMARGIN, 1
+    END
+
+    IDD_ZOOMSCROLLTRACK2, DIALOG
+    BEGIN
+        RIGHTMARGIN, 527
+    END
+
+    IDD_VIEWPORTCONTROLDEMO, DIALOG
+    BEGIN
+        RIGHTMARGIN, 520
+        TOPMARGIN, 4
+        BOTTOMMARGIN, 294
+    END
+
+    IDD_ZOOMSCROLLTRACK, DIALOG
+    BEGIN
+        RIGHTMARGIN, 527
+    END
+
+    IDD_SIMPLEZOOMSCROLL, DIALOG
+    BEGIN
+        RIGHTMARGIN, 493
+        BOTTOMMARGIN, 190
+    END
+
+    IDD_FINANCEDEMO, DIALOG
+    BEGIN
+        LEFTMARGIN, 2
+        RIGHTMARGIN, 640
+        BOTTOMMARGIN, 306
+    END
+
+    IDD_TRACKCURSOR_DEMO, DIALOG
+    BEGIN
+        LEFTMARGIN, 2
+        RIGHTMARGIN, 318
+        TOPMARGIN, 2
+        BOTTOMMARGIN, 198
+    END
+
+    IDD_THREEDCHARTROTATION, DIALOG
+    BEGIN
+        BOTTOMMARGIN, 393
+    END
+
+    IDD_REALTIMEDEMO, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 485
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 170
+    END
+
+    IDD_REALTIMETRACK, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 485
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 170
+    END
+
+    IDD_ZOOMSCROLLPDF, DIALOG
+    BEGIN
+        RIGHTMARGIN, 527
+    END
+END
+#endif    // APSTUDIO_INVOKED
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// PNG
+//
+
+ANGRY.PNG               PNG                     "res\\angry.png"
+
+BG.PNG                  PNG                     "res\\bg.png"
+
+CLOCK.PNG               PNG                     "res\\clock.png"
+
+CLOUD.PNG               PNG                     "res\\cloud.png"
+
+COMPUTER.PNG            PNG                     "res\\computer.png"
+
+DOC.PNG                 PNG                     "res\\doc.png"
+
+GAS.PNG                 PNG                     "res\\gas.png"
+
+LAUGH.PNG               PNG                     "res\\laugh.png"
+
+MARBLE.PNG              PNG                     "res\\marble.png"
+
+MARBLE2.PNG             PNG                     "res\\marble2.png"
+
+MARBLE3.PNG             PNG                     "res\\marble3.png"
+
+MOLECULE.PNG            PNG                     "res\\molecule.png"
+
+NOCOMMENT.PNG           PNG                     "res\\nocomment.png"
+
+RAIN.PNG                PNG                     "res\\rain.png"
+
+ROBOT1.PNG              PNG                     "res\\robot1.png"
+
+ROBOT2.PNG              PNG                     "res\\robot2.png"
+
+ROBOT3.PNG              PNG                     "res\\robot3.png"
+
+ROBOT4.PNG              PNG                     "res\\robot4.png"
+
+ROBOT5.PNG              PNG                     "res\\robot5.png"
+
+ROCK.PNG                PNG                     "res\\rock.png"
+
+SAD.PNG                 PNG                     "res\\sad.png"
+
+SERVICE.PNG             PNG                     "res\\service.png"
+
+SMALL_COMPUTER.PNG      PNG                     "res\\small_computer.png"
+
+SMALL_MOLECULE.PNG      PNG                     "res\\small_molecule.png"
+
+SMALL_USER.PNG          PNG                     "res\\small_user.png"
+
+SMILE.PNG               PNG                     "res\\smile.png"
+
+SNOW.PNG                PNG                     "res\\snow.png"
+
+SNOWY.PNG               PNG                     "res\\snowy.png"
+
+SOFTWARE.PNG            PNG                     "res\\software.png"
+
+STAR.PNG                PNG                     "res\\star.png"
+
+SUN.PNG                 PNG                     "res\\sun.png"
+
+TILE.PNG                PNG                     "res\\tile.png"
+
+WOOD.PNG                PNG                     "res\\wood.png"
+
+MAPTEXTURE.PNG          PNG                     "res\\maptexture.png"
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// AFX_DIALOG_LAYOUT
+//
+
+IDD_MFCDEMO_DIALOG AFX_DIALOG_LAYOUT
+BEGIN
+    0
+END
+
+IDD_HOTSPOTPARAM AFX_DIALOG_LAYOUT
+BEGIN
+    0
+END
+
+IDD_CONTOURCROSSSECTION AFX_DIALOG_LAYOUT
+BEGIN
+    0
+END
+
+IDD_REALTIMEMULTICHART AFX_DIALOG_LAYOUT
+BEGIN
+    0
+END
+
+IDD_REALTIMEZOOMSCROLL AFX_DIALOG_LAYOUT
+BEGIN
+    0
+END
+
+IDD_XYZOOMSCROLL AFX_DIALOG_LAYOUT
+BEGIN
+    0
+END
+
+IDD_CONTOURZOOMSCROLL AFX_DIALOG_LAYOUT
+BEGIN
+    0
+END
+
+IDD_MEGAZOOMSCROLL AFX_DIALOG_LAYOUT
+BEGIN
+    0
+END
+
+IDD_MEGAREALTIMEZOOMSCROLL AFX_DIALOG_LAYOUT
+BEGIN
+    0
+END
+
+IDD_ZOOMSCROLLTRACK2 AFX_DIALOG_LAYOUT
+BEGIN
+    0
+END
+
+IDD_VIEWPORTCONTROLDEMO AFX_DIALOG_LAYOUT
+BEGIN
+    0
+END
+
+IDD_ZOOMSCROLLTRACK AFX_DIALOG_LAYOUT
+BEGIN
+    0
+END
+
+IDD_SIMPLEZOOMSCROLL AFX_DIALOG_LAYOUT
+BEGIN
+    0
+END
+
+IDD_FINANCEDEMO AFX_DIALOG_LAYOUT
+BEGIN
+    0
+END
+
+IDD_TRACKCURSOR_DEMO AFX_DIALOG_LAYOUT
+BEGIN
+    0
+END
+
+IDD_THREEDCHARTROTATION AFX_DIALOG_LAYOUT
+BEGIN
+    0
+END
+
+IDD_ZOOMSCROLLPDF AFX_DIALOG_LAYOUT
+BEGIN
+    0
+END
+
+IDD_REALTIMEDEMO AFX_DIALOG_LAYOUT
+BEGIN
+    0
+END
+
+IDD_REALTIMETRACK AFX_DIALOG_LAYOUT
+BEGIN
+    0
+END
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Dialog Info
+//
+
+IDD_REALTIMEMULTICHART DLGINIT
+BEGIN
+    IDC_UpdatePeriod, 0x403, 4, 0
+0x3532, 0x0030, 
+    IDC_UpdatePeriod, 0x403, 4, 0
+0x3035, 0x0030, 
+    IDC_UpdatePeriod, 0x403, 4, 0
+0x3537, 0x0030, 
+    IDC_UpdatePeriod, 0x403, 5, 0
+0x3031, 0x3030, "\000" 
+    IDC_UpdatePeriod, 0x403, 5, 0
+0x3231, 0x3035, "\000" 
+    IDC_UpdatePeriod, 0x403, 5, 0
+0x3531, 0x3030, "\000" 
+    IDC_UpdatePeriod, 0x403, 5, 0
+0x3731, 0x3035, "\000" 
+    IDC_UpdatePeriod, 0x403, 5, 0
+0x3032, 0x3030, "\000" 
+    0
+END
+
+IDD_REALTIMEZOOMSCROLL DLGINIT
+BEGIN
+    IDC_UpdatePeriod, 0x403, 4, 0
+0x3532, 0x0030, 
+    IDC_UpdatePeriod, 0x403, 4, 0
+0x3035, 0x0030, 
+    IDC_UpdatePeriod, 0x403, 4, 0
+0x3537, 0x0030, 
+    IDC_UpdatePeriod, 0x403, 5, 0
+0x3031, 0x3030, "\000" 
+    IDC_UpdatePeriod, 0x403, 5, 0
+0x3231, 0x3035, "\000" 
+    IDC_UpdatePeriod, 0x403, 5, 0
+0x3531, 0x3030, "\000" 
+    IDC_UpdatePeriod, 0x403, 5, 0
+0x3731, 0x3035, "\000" 
+    IDC_UpdatePeriod, 0x403, 5, 0
+0x3032, 0x3030, "\000" 
+    0
+END
+
+IDD_REALTIMEDEMO DLGINIT
+BEGIN
+    IDC_UpdatePeriod, 0x403, 4, 0
+0x3532, 0x0030, 
+    IDC_UpdatePeriod, 0x403, 4, 0
+0x3035, 0x0030, 
+    IDC_UpdatePeriod, 0x403, 4, 0
+0x3537, 0x0030, 
+    IDC_UpdatePeriod, 0x403, 5, 0
+0x3031, 0x3030, "\000" 
+    IDC_UpdatePeriod, 0x403, 5, 0
+0x3231, 0x3035, "\000" 
+    IDC_UpdatePeriod, 0x403, 5, 0
+0x3531, 0x3030, "\000" 
+    IDC_UpdatePeriod, 0x403, 5, 0
+0x3731, 0x3035, "\000" 
+    IDC_UpdatePeriod, 0x403, 5, 0
+0x3032, 0x3030, "\000" 
+    0
+END
+
+IDD_REALTIMETRACK DLGINIT
+BEGIN
+    IDC_UpdatePeriod, 0x403, 4, 0
+0x3532, 0x0030, 
+    IDC_UpdatePeriod, 0x403, 4, 0
+0x3035, 0x0030, 
+    IDC_UpdatePeriod, 0x403, 4, 0
+0x3537, 0x0030, 
+    IDC_UpdatePeriod, 0x403, 5, 0
+0x3031, 0x3030, "\000" 
+    IDC_UpdatePeriod, 0x403, 5, 0
+0x3231, 0x3035, "\000" 
+    IDC_UpdatePeriod, 0x403, 5, 0
+0x3531, 0x3030, "\000" 
+    IDC_UpdatePeriod, 0x403, 5, 0
+0x3731, 0x3035, "\000" 
+    IDC_UpdatePeriod, 0x403, 5, 0
+0x3032, 0x3030, "\000" 
+    0
+END
+
+#endif    // English (United States) resources
+/////////////////////////////////////////////////////////////////////////////
+
+
+
+#ifndef APSTUDIO_INVOKED
+/////////////////////////////////////////////////////////////////////////////
+//
+// Generated from the TEXTINCLUDE 3 resource.
+//
+#define _AFX_NO_SPLITTER_RESOURCES
+#define _AFX_NO_OLE_RESOURCES
+#define _AFX_NO_TRACKER_RESOURCES
+#define _AFX_NO_PROPERTY_RESOURCES
+
+#if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_ENU)
+LANGUAGE 9, 1
+#pragma code_page(1252)
+#include "res\mfcdemo.rc2"  // non-Microsoft Visual C++ edited resources
+#include "afxres.rc"     // Standard components
+#endif
+
+/////////////////////////////////////////////////////////////////////////////
+#endif    // not APSTUDIO_INVOKED
+

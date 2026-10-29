@@ -5595,6 +5595,8 @@ INSERT [dbo].[OrderStatusCode] ([Code], [Status], [Desc]) VALUES (-21, N'IGNORED
 GO
 INSERT [dbo].[OrderStatusCode] ([Code], [Status], [Desc]) VALUES (-20, N'FAIL_OTHER', N'Failed: Unknown reason')
 GO
+INSERT [dbo].[OrderStatusCode] ([Code], [Status], [Desc]) VALUES (-16, N'FAIL_AUTOTRADE_STOPPED', N'Failed: Autotrade instance was stopped before completing the signal')
+GO
 INSERT [dbo].[OrderStatusCode] ([Code], [Status], [Desc]) VALUES (-15, N'IGNORED_SHORT_POS_LIMIT', N'Reached Short Position Limit')
 GO
 INSERT [dbo].[OrderStatusCode] ([Code], [Status], [Desc]) VALUES (-14, N'IGNORED_LONG_POS_LIMIT', N'Reached Long Position Limit')
@@ -5668,4 +5670,27 @@ GO
 INSERT [dbo].[SignalStatus] ([Status], [Description]) VALUES (N'START', N'Start Signal')
 GO
 INSERT [dbo].[SignalStatus] ([Status], [Description]) VALUES (N'STOP', N'Signal Completed')
+GO
+
+-- Run against the AutoTrader database before starting the updated monitor.
+CREATE OR ALTER PROCEDURE dbo.usp_systemalert_read_pending @MaxRec int
+AS
+BEGIN
+    SET NOCOUNT ON;
+    IF @MaxRec <= 0 RETURN;
+    SELECT TOP (@MaxRec) Id, RawTime, MSec, Source, Level, Message, DeliveryTime
+    FROM dbo.SystemAlert
+    WHERE DeliveryTime = 0
+    ORDER BY Id;
+END;
+GO
+CREATE OR ALTER PROCEDURE dbo.usp_systemalert_acknowledge @Id int
+AS
+BEGIN
+    SET NOCOUNT ON;
+    UPDATE dbo.SystemAlert
+    SET DeliveryTime = DATEDIFF(SECOND, '19700101', GETUTCDATE())
+    WHERE Id = @Id AND DeliveryTime = 0;
+    SELECT @@ROWCOUNT;
+END;
 GO

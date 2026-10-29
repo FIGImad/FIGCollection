@@ -24,7 +24,10 @@ public sealed class StudyCollectionContext
 
         try
         {
-            using var document = JsonDocument.Parse(configuration.ColParams);
+            using var document = JsonDocument.Parse(configuration.ColParams, new JsonDocumentOptions
+            {
+                CommentHandling = JsonCommentHandling.Skip
+            });
             Parameters = document.RootElement.Clone();
         }
         catch (JsonException ex)

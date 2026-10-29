@@ -63,8 +63,41 @@ public sealed class RandomCandidateGenerator : ICandidateGenerator
             }
             space *= values.Length;
         }
+        bool ValidThresholds(ParameterSet parameters)
+        {
+            if (!c.Collection.Equals("LADX", StringComparison.OrdinalIgnoreCase)) return true;
+            var values = parameters.Values;
+            if (!values.TryGetValue("marketTrendSettings", out var settings) &&
+                !values.TryGetValue("MarketTrendSettings", out settings)) return true;
+            var obj = settings.Json;
+            if (obj.ValueKind != System.Text.Json.JsonValueKind.Object) return false;
+            bool Read(string camel, string pascal, decimal fallback, out decimal value)
+            {
+                value = fallback;
+                if (!obj.TryGetProperty(camel, out var element) && !obj.TryGetProperty(pascal, out element)) return true;
+                return element.ValueKind == System.Text.Json.JsonValueKind.Number && element.TryGetDecimal(out value);
+            }
+            return Read("adxStrongThreshold", "AdxStrongThreshold", 25, out var strong) &&
+                Read("adxWeakThreshold", "AdxWeakThreshold", 20, out var weak) &&
+                weak >= 0 && weak <= strong && strong <= 100;
+        }
+        if (!ValidThresholds(baseline)) throw new ArgumentException("LADX baseline requires 0 <= adxWeakThreshold <= adxStrongThreshold <= 100.");
+        ParameterSet AtIndex(int index)
+        {
+            var changes = new Dictionary<string, ParameterValue>();
+            foreach (var key in keys)
+            {
+                var options = c.Ranges[key];
+                changes[key] = options[index % options.Length];
+                index /= options.Length;
+            }
+            return baseline.With(changes);
+        }
+        int[]? validIndices = null;
+        if (c.Collection.Equals("LADX", StringComparison.OrdinalIgnoreCase) && space <= 100000)
+            validIndices = Enumerable.Range(0, (int)space).Where(i => { cancellation.ThrowIfCancellationRequested(); return ValidThresholds(AtIndex(i)); }).ToArray();
         var inside = keys.All(k => c.Ranges[k].Contains(baseline.Get(k)));
-        var available = space - (inside ? 1 : 0);
+        var available = (validIndices is null ? space : validIndices.Length) - (inside ? 1 : 0);
         if (c.Samples > available) throw new ArgumentException($"Only {available} distinct samples available besides the baseline.");
         var seen = new HashSet<string>(StringComparer.Ordinal) { baseline.Identity };
         cancellation.ThrowIfCancellationRequested();
@@ -73,7 +106,7 @@ public sealed class RandomCandidateGenerator : ICandidateGenerator
         var emitted = 0;
         if (space <= 100000)
         {
-            var indices = Enumerable.Range(0, (int)space).ToArray();
+            var indices = validIndices ?? Enumerable.Range(0, (int)space).ToArray();
             for (var i = indices.Length - 1; i > 0; --i)
             {
                 var j = random.Next(i + 1);
@@ -83,25 +116,20 @@ public sealed class RandomCandidateGenerator : ICandidateGenerator
             {
                 cancellation.ThrowIfCancellationRequested();
                 if (emitted == c.Samples) yield break;
-                var remaining = index;
-                var changes = new Dictionary<string, ParameterValue>();
-                foreach (var key in keys)
-                {
-                    var options = c.Ranges[key];
-                    changes[key] = options[remaining % options.Length];
-                    remaining /= options.Length;
-                }
-                var candidate = baseline.With(changes);
-                if (seen.Add(candidate.Identity)) { ++emitted; yield return candidate; }
+                var candidate = AtIndex(index);
+                if (ValidThresholds(candidate) && seen.Add(candidate.Identity)) { ++emitted; yield return candidate; }
             }
         }
         else
         {
+            var attempts = 0L;
             while (emitted < c.Samples)
             {
                 cancellation.ThrowIfCancellationRequested();
+                if (++attempts > Math.Max(1000000L, (long)c.Samples * 1000))
+                    throw new ArgumentException("Unable to sample enough valid distinct candidates; narrow the parameter ranges.");
                 var candidate = baseline.With(keys.Select(k => KeyValuePair.Create(k, c.Ranges[k][random.Next(c.Ranges[k].Length)])));
-                if (seen.Add(candidate.Identity)) { ++emitted; yield return candidate; }
+                if (ValidThresholds(candidate) && seen.Add(candidate.Identity)) { ++emitted; yield return candidate; }
             }
         }
     }

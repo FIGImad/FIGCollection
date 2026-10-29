@@ -74,6 +74,7 @@ GO
 SET QUOTED_IDENTIFIER ON
 GO
 CREATE TABLE [dbo].[Alert](
+    [SystemAlertId] int NULL,
     [IsSystemAlert] bit NOT NULL CONSTRAINT DF_Alert_IsSystemAlert DEFAULT (0),
 	[Id] [int] IDENTITY(1,1) NOT NULL,
 	[RawTime] [int] NOT NULL,
@@ -737,11 +738,25 @@ CREATE OR ALTER PROCEDURE [dbo].[usp_alert_upsert]
     @Level          varchar(20),
     @Message        varchar(max),
     @ExceptionText  varchar(max) = NULL,
-    @IsSystemAlert bit = 0
+    @IsSystemAlert bit = 0,
+    @SystemAlertId int = NULL
 )
 AS
 BEGIN
     SET NOCOUNT ON;
+    SET XACT_ABORT ON;
+    SET @IdNew = NULL;
+    BEGIN TRANSACTION;
+    IF @SystemAlertId IS NOT NULL
+    BEGIN
+        SELECT @IdNew = Id FROM dbo.Alert WITH (UPDLOCK, HOLDLOCK)
+        WHERE ServiceId = @ServiceId AND SystemAlertId = @SystemAlertId;
+        IF @IdNew > 0
+        BEGIN
+            COMMIT;
+            RETURN @IdNew;
+        END;
+    END;
 
     SELECT @IdNew = [Id] FROM [dbo].[Alert] WHERE [Id] = @Id;
     IF (@@ROWCOUNT = 0)
@@ -759,6 +774,7 @@ BEGIN
             ,[Level]
             ,[Message]
             ,[ExceptionText]
+            ,[SystemAlertId]
             ,[IsSystemAlert]
         )
         VALUES (
@@ -773,6 +789,7 @@ BEGIN
             ,@Level
             ,@Message
             ,@ExceptionText
+            ,@SystemAlertId
             ,@IsSystemAlert
         )
         SET @IdNew = SCOPE_IDENTITY();
@@ -793,6 +810,7 @@ BEGIN
             ,[ExceptionText] = @ExceptionText
         WHERE [Id] = @IdNew;
     END
+    COMMIT;
     RETURN @IdNew;
 END
 
@@ -1361,4 +1379,6 @@ BEGIN
 END;
 GO
 ALTER TABLE [dbo].[Alert] ENABLE TRIGGER [trigAlertImmediateOnChange]
+GO
+CREATE UNIQUE INDEX UX_Alert_SystemAlertReceipt ON dbo.Alert(ServiceId, SystemAlertId) WHERE SystemAlertId IS NOT NULL;
 GO

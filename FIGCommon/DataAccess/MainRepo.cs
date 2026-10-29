@@ -5,7 +5,7 @@ using System.Data;
 
 namespace FIGCommon.DataAccess
 {
-    public class MainRepo
+    public partial class MainRepo
     {
         private static ILogger<MainRepo>? _logger;
         private static readonly Object lockPriceSrcAccess = new();
@@ -1396,7 +1396,12 @@ namespace FIGCommon.DataAccess
         #region SystemAlert
         public static List<SystemAlertRS> GetPendingSystemAlerts(int maxRec)
         {
-            return RBASE.SelectMulti<SystemAlertRS, int>(new SystemAlertRS(), "usp_systemalert_select_pending", "@MaxRec", maxRec);
+            return RBASE.SelectMulti<SystemAlertRS, int>(new SystemAlertRS(), "usp_systemalert_read_pending", "@MaxRec", maxRec);
+        }
+
+        public static void MarkSystemAlertDelivered(int id)
+        {
+            RBASE.ExecuteScalar<int>("usp_systemalert_acknowledge", "@Id", id);
         }
         #endregion SystemAlert
 

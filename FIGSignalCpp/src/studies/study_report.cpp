@@ -90,7 +90,7 @@ std::size_t write_study_report(const MainRepository& repository,
     {
         StudyRegistry registry;
         CollectionPlugin{options.collection_dll}.register_collections(registry);
-        selected = registry.create(*collection, Ticker{}, Interval{});
+        selected = registry.create(*collection, Ticker{}, Interval{.length_seconds = options.interval_minutes * 60});
     }
     else
         calculator = std::make_unique<StudyCalculator>(options);

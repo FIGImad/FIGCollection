@@ -97,7 +97,7 @@ namespace FIGAlertSvc.Services
             _serviceCts.Cancel();
         }
 
-        public async Task ProcessAlertAsync(LogAlertMessage alertRec)
+        public async Task<int> ProcessAlertAsync(LogAlertMessage alertRec)
         {
             bool isSystemAlert = AlertCategory.IsSystemAlert(alertRec.Source, alertRec.Level);
             if (!AlertProcessingPolicy.Accepts(_mode, isSystemAlert))
@@ -125,6 +125,7 @@ namespace FIGAlertSvc.Services
             var originalTime = AlertMessageFormatter.OriginalTime(alertRec.Source, alertRec.Message);
             var rec = new AlertRS()
             {
+                SystemAlertId = alertRec.SystemAlertId,
                 IsSystemAlert = isSystemAlert,
                 RawTime      = (int)(originalTime?.ToUnixTimeSeconds() ?? alertRec.RawTime),
                 MSec         = originalTime?.Millisecond ?? alertRec.Milliseconds,
@@ -175,6 +176,7 @@ namespace FIGAlertSvc.Services
 
                 AlertRepo.UpdateAlertMatch(rec.Id, topRule.Id, friendlyMessage);
             }
+            return rec.Id;
         }
 
         /// <summary>

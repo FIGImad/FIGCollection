@@ -51,6 +51,7 @@ namespace FIG.Studies
         }
 
         private readonly int MAXBUFFER = 10;
+        private readonly bool reuseParameters = !(AppContext.TryGetSwitch("FIG.Studies.DisableParameterReuse", out var disabled) && disabled);
         protected CircularBuffer<BaseParams> paramHist;
 
 
@@ -82,12 +83,18 @@ namespace FIG.Studies
             {
                 paramHist.RemoveAt(0);
             }
-            var cParam = paramHist.Items[0]?.Clone()?? GetParams();
-            paramHist.AddToFront(cParam);
-            if (cParam != null)
+            var previous = paramHist.Items[0];
+            var expired = paramHist.Count == MAXBUFFER ? paramHist.Items[MAXBUFFER - 1] : null;
+            // The oldest slot is evicted by AddToFront. Never recycle a retained
+            // slot after rollback, or a type that has not explicitly opted in.
+            bool reused = reuseParameters && previous != null && expired != null
+                && expired.TryCopyForNextBar(previous, price);
+            var cParam = reused ? expired : previous?.Clone() ?? GetParams();
+            if (cParam != null && !reused)
             {
                 cParam.Price = new PriceDataRS(price);
             }
+            paramHist.AddToFront(cParam);
             Calc(studies, priceList);
         }
 

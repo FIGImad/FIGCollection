@@ -52,13 +52,14 @@ namespace FIGAutoTradeExSvc.Services
                 var autoTrades = MainRepo.GetAutoTrades();
                 if (autoTrades != null && autoTrades.Count > 0)
                 {
+                    ReconcileStoppedAutoTrades();
                     autoTrades.ForEach(autoTrade =>
                     {
                         if (autoTrade.Status == (int)EAutoTradeStatus.Started)
                         {
                             Start(autoTrade);
                         }
-                        else
+                        else if (autoTrade.Status != (int)EAutoTradeStatus.Stopped)
                         {
                             autoTrade.Status = (int)EAutoTradeStatus.Idle;
                             MainRepo.UpsertAutoTrade(autoTrade);
@@ -89,11 +90,47 @@ namespace FIGAutoTradeExSvc.Services
         {
             lock (_lockObj)
             {
+                ReconcileStoppedAutoTrades();
                 // iterate through all autoTrade instances and wake them up
                 foreach (var autoTradeInstance in _mapAutoTrades.Values)
                 {
                     autoTradeInstance.WakeUp();
                 }
+            }
+        }
+
+        // Called under _lockObj so starting/stopping an instance cannot race this pass.
+        // Read persisted records: stopped AutoTrades need no live service instance.
+        private void ReconcileStoppedAutoTrades()
+        {
+            foreach (var autoTrade in MainRepo.GetAutoTrades())
+            {
+                if (autoTrade.Status != (int)EAutoTradeStatus.Stopped)
+                    continue;
+                try
+                {
+                    ReconcileStoppedAutoTrade(autoTrade.Id);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "AutoTrade({AutoTradeId}) - Failed reconciling stopped signals; the next signal notification will retry", autoTrade.Id);
+                }
+            }
+        }
+
+        private static void ReconcileStoppedAutoTrade(int autoTradeId)
+        {
+            AutoTradeProcessLock.AcquireGlobalSlot();
+            var gate = AutoTradeProcessLock.GetLock(autoTradeId);
+            gate.WaitHighPriority();
+            try
+            {
+                MainRepo.FailStoppedAutoTradeSignals(autoTradeId);
+            }
+            finally
+            {
+                gate.Release();
+                AutoTradeProcessLock.ReleaseGlobalSlot();
             }
         }
 
@@ -116,6 +153,9 @@ namespace FIGAutoTradeExSvc.Services
             }
             try
             {
+                // Catch a STOP notification missed while this instance was stopped.
+                // Complete this before Start changes the persisted status.
+                ReconcileStoppedAutoTrade(autoTrade.Id);
                 IAutoTradeService? autoTradeService = null;
                 autoTradeService = _serviceProvider.GetRequiredService<AutoTradeLiveService>();
                 if (autoTradeService == null)
@@ -165,7 +205,10 @@ namespace FIGAutoTradeExSvc.Services
                 if (_mapAutoTrades.ContainsKey(autoTradeId))
                 {
                     var autoTradeInstance = _mapAutoTrades[autoTradeId];
-                    return autoTradeInstance.Stop();
+                    var status = autoTradeInstance.Stop();
+                    // Stop waits for its callbacks to finish before reconciling.
+                    ReconcileStoppedAutoTrade(autoTradeId);
+                    return status;
                 }
             }
             return EAutoTradeStatus.NotAvailable;

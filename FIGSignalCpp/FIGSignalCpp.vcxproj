@@ -51,6 +51,7 @@
     <ClInclude Include="include\fig\prices\price_aggregator.hpp" />
     <ClInclude Include="include\fig\studies\study_report.hpp" />
     <ClInclude Include="include\fig\studies\backtest.hpp" />
+    <ClInclude Include="include\fig\studies\figdata.hpp" />
     <ClInclude Include="include\fig\studies\collection_plugin.hpp" />
     <ClInclude Include="include\fig\prices\price_cache.hpp" />
     <None Include=".clang-format" />

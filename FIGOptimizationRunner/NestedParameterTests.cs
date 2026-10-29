@@ -33,7 +33,18 @@ internal static class NestedParameterTests
               "a/b":{"~key":{"":2}},"emptyObject":{},"emptyArray":[],"nullable":null
             }
             """;
+        var adxBase = ParameterSet.Parse("{\"marketTrendSettings\":{\"adxStrongThreshold\":25,\"adxWeakThreshold\":20}}");
+        var adxConfig = new SearchConfiguration { Collection = "LADX", PricesCsv = "unused.csv", Samples = 2,
+            Ranges = new() { ["marketTrendSettings.adxStrongThreshold"] = [14,25], ["marketTrendSettings.adxWeakThreshold"] = [8,20] } };
+        var adxCandidates = new RandomCandidateGenerator().Generate(adxConfig, adxBase, default).ToArray();
+        Check(adxCandidates.Length == 3 && adxCandidates.All(p => p.Get("marketTrendSettings.adxWeakThreshold").TryDecimal(out var weak) && p.Get("marketTrendSettings.adxStrongThreshold").TryDecimal(out var strong) && weak <= strong), "LADX skips invalid threshold pairs");
+        Reject(() => new RandomCandidateGenerator().Generate(adxConfig with { Samples = 3 }, adxBase, default).ToArray(), "LADX counts only valid samples");
         var baseline = ParameterSet.Parse(json);
+        var commented = ParameterSet.Parse("// Before\n" + json.Replace("\"indicators\":", "/* Indicators */ \"indicators\":") + "\n// After");
+        Check(commented.Identity == baseline.Identity, "line and block comments preserve parameter identity");
+        using (var clean = JsonDocument.Parse(commented.ToJson()))
+            Check(clean.RootElement.GetProperty("indicators").GetProperty("adxLength").GetInt32() == 40, "generated parameters remain strict JSON");
+        Reject(() => ParameterSet.Parse("{/* comment */ \"x\":1,\"x\":2}"), "comments do not bypass duplicate rejection");
         Check(ParameterSet.Parse(baseline.ToJson()).Identity == baseline.Identity, "round trip preserves all JSON types");
         Check(baseline.Get("entry.rules.bias") == 1 && baseline.Get("/entry/rules/bias") == 1, "nested object paths");
         Check(baseline.Get("/strategies/0/weights/0") == Value("0.50"), "array traversal");
@@ -66,6 +77,7 @@ internal static class NestedParameterTests
         var generator = new RandomCandidateGenerator();
         var config = new SearchConfiguration
         {
+            DataSetId = 3, ConnectionStrings = "Data Source=localhost;Initial Catalog=Test;Integrated Security=True",
             Collection = "Custom", Samples = 7,
             Ranges = new() { ["entry.rules.bias"] = [1, 2], ["exit.enabled"] = [true, false], ["market.timeframe"] = ["hourly", "daily"] }
         };

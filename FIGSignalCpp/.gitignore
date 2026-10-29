@@ -4,5 +4,7 @@
 /optimizer-output/
 /optimizer-candidates/
 /price-cache/
+/chart-exports/
 /FIGOptimizationRunner/bin/
 /FIGOptimizationRunner/obj/
+/.dotnet-cli/

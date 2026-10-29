@@ -1,0 +1,49 @@
+{
+  "ExecParams": {
+    "Executable": "C:\\Roots\\OptimizationV3\\FIGSignalBacktest.exe",
+    "CollectionDll": "C:\\Roots\\OptimizationV3\\FIG.StudyCollections.L2.dll",
+    "Collection": "L2",
+    "Signal": "L2_SIDE",
+    "Jobs": 4 // Maximum parallel candidate workers.
+  },
+  "PriceParams": {
+    "PricesCsv": "C:\\Roots\\OptimizationV3\\prices_since_2016.csv",
+    "IntervalMinutes": 5, // Aggregate source prices into 5-minute bars.
+    "MaxSourceBars": 0, // 0 reads all available source rows.
+
+    // Used only for database input; ignored while PricesCsv is set.
+    // Clear PricesCsv above to use SQL Server. Replace server/database placeholders.
+    "ConnectionStrings": "Data Source=YOUR_SERVER;Initial Catalog=YOUR_DATABASE;Integrated Security=True",
+    "DataSetId": 3,
+    "PriceCacheDirectory": "price-cache",
+    "PriceCacheMode": "use"
+  },
+  "Output": {
+    "OutputRoot": "C:\\Roots\\OptimizationV3\\L2_Backtest\\output",
+    "FixedOutputDirectory": true // Clears previous contents when preparing a batch.
+  },
+  "SearchParams": {
+    "BaseParameters": "C:\\Roots\\OptimizationV3\\L2_Backtest\\l2_params.json",
+    "Samples": 0, // Baseline only; no additional sampled candidates.
+    "Seed": 12345, // Reproducible sampling when Samples is greater than 0.
+    "Ranges": {
+      "StdDev1": [1.0] // Sampling choices; does not override the baseline with Samples = 0.
+    }
+  },
+  "TradeParams": {
+    "InitialCapital": 1200000,
+    "Quantity": 0, // 0 enables initial-capital/HLC3 sizing; positive values fix contract count.
+    "QuantityPct": 1, // Capital allocation fraction for dynamic sizing (1 = 100%).
+    "Multiplier": 20, // Contract value multiplier.
+    "CommissionPerContractPerSide": 1.6,
+    "SlippagePointsPerSide": 0,
+    "ForceCloseAtEnd": false // Leave an open position open at the final bar.
+  },
+  "DateParams": {
+    // UTC boundaries; earlier prices remain available for study warmup.
+    "StartDate": "2016-01-01",
+    "EndDateExclusive": "", // Empty means no explicit end-date cutoff.
+    "TrainEndExclusive": "2020-01-01", // Training ends before this date.
+    "ValidationEndExclusive": "2025-01-01" // Test period starts here.
+  }
+}

@@ -18,7 +18,8 @@ public static class Program
             {
                 Console.WriteLine("""
                     FIGOptimizationRunner run [--config optimizer-search.json] [--samples N] [--max-source-bars N]
-                      [--output-dir NEW_DIRECTORY] [--executable PATH] [--jobs N] [--dataset N]
+                      [--output-dir DIRECTORY] [--fixed-output-dir] [--executable PATH] [--jobs N]
+                      [--dataset N | --prices-csv FILE]
                     FIGOptimizationRunner prepare [same options]     Generate candidates without a database run.
                     FIGOptimizationRunner execute BATCH_DIRECTORY    Execute a previously prepared batch.
                     FIGOptimizationRunner self-test                  Run local tests; no database needed.
@@ -38,9 +39,10 @@ public static class Program
             }
             if (command is not ("run" or "prepare")) throw new ArgumentException("Unknown command; use help.");
             var flags = new Dictionary<string, string>(StringComparer.Ordinal);
-            var valid = new HashSet<string> { "--config", "--samples", "--max-source-bars", "--output-dir", "--executable", "--jobs", "--dataset" };
+            var valid = new HashSet<string> { "--config", "--samples", "--max-source-bars", "--output-dir", "--executable", "--jobs", "--dataset", "--prices-csv" };
             for (var i = 1; i < args.Length; i += 2)
             {
+                if (args[i] == "--fixed-output-dir" && flags.TryAdd(args[i], "true")) { i--; continue; }
                 if (!valid.Contains(args[i]) || i + 1 == args.Length || !flags.TryAdd(args[i], args[i + 1]))
                     throw new ArgumentException("Unknown, duplicate, or incomplete option; use help.");
             }
@@ -48,13 +50,17 @@ public static class Program
             int Number(string key, int fallback) => flags.TryGetValue(key, out var s) ? int.Parse(s, System.Globalization.CultureInfo.InvariantCulture) : fallback;
             config = config with
             {
+                FixedOutputDirectory = flags.ContainsKey("--fixed-output-dir") || config.FixedOutputDirectory,
+                PricesCsv = flags.TryGetValue("--prices-csv", out var csv) ? Path.GetFullPath(csv) : config.PricesCsv,
                 Samples = Number("--samples", config.Samples), MaxSourceBars = Number("--max-source-bars", config.MaxSourceBars),
                 Jobs = Number("--jobs", config.Jobs), DataSetId = Number("--dataset", config.DataSetId),
                 Executable = flags.TryGetValue("--executable", out var exe) ? Path.GetFullPath(exe) : config.Executable
             };
             config.Validate();
-            if (command == "run" && (!File.Exists(config.Executable) || !File.Exists(config.Settings)))
-                throw new FileNotFoundException("Native executable or database settings missing; build Release, specify --executable, or use prepare.");
+            if (command == "run" && !File.Exists(config.Executable))
+                throw new FileNotFoundException("Backtest executable missing; build it, specify --executable, or use prepare.");
+            if (command == "run" && !string.IsNullOrWhiteSpace(config.PricesCsv) && !File.Exists(config.PricesCsv))
+                throw new FileNotFoundException("Prices CSV not found.", config.PricesCsv);
             if (command == "run" && !string.IsNullOrEmpty(config.CollectionDll) && !File.Exists(config.CollectionDll))
                 throw new FileNotFoundException("Collection DLL missing; build the matching native configuration or use prepare.", config.CollectionDll);
             var directory = runner.Prepare(config, flags.GetValueOrDefault("--output-dir"), cancellation.Token);

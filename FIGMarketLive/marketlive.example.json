@@ -1,0 +1,6 @@
+{
+  "ConnectionString": "Server=localhost;Database=FIGMarketLive;Integrated Security=true;Encrypt=true",
+  "PluginPath": "Plugins",
+  "PollSeconds": 5,
+  "Adapter": { "ProviderId": "IBKR", "Parameters": { "Host": "127.0.0.1", "Port": "7497", "ClientId": "31", "ConnectionTimeoutSeconds": "15", "RequestTimeoutSeconds": "30" } }
+}

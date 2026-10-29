@@ -3,11 +3,13 @@
     public class CircularBuffer<T>
     {
         private readonly T?[] _buffer;
+        private readonly IReadOnlyList<T?> _items;
         private int _count;
 
         public CircularBuffer(int capacity)
         {
             _buffer = new T[capacity];
+            _items = Array.AsReadOnly(_buffer);
             _count = 0;
         }
 
@@ -15,6 +17,7 @@
         {
             _count = rec._count;
             _buffer = new T[rec._buffer.Length];
+            _items = Array.AsReadOnly(_buffer);
             Array.Copy(rec._buffer, 0, _buffer, 0, _buffer.Length);
         }
 
@@ -96,7 +99,7 @@
             return true;
         }
 
-        public IReadOnlyList<T?> Items => Array.AsReadOnly(_buffer);
+        public IReadOnlyList<T?> Items => _items;
         public int Count => _count;
     }
 }

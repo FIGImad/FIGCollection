@@ -82,10 +82,10 @@ namespace FIG.Studies
         }
     }
 
-    public class StudyADX : BaseStudy
+    public partial class StudyADX : BaseStudy
     {
         protected override string? CheckpointConfiguration => GetType() == typeof(StudyADX)
-            ? System.Text.Json.JsonSerializer.Serialize(new { length, smoothing, label }) : null;
+            ? System.Text.Json.JsonSerializer.Serialize(new { Publication = publication?.Signature, length, smoothing, label }) : null;
         protected override System.Text.Json.JsonElement CaptureRuntimeState()
             => System.Text.Json.JsonSerializer.SerializeToElement(new { ADX, PDI, NDI });
         protected override void RestoreRuntimeState(System.Text.Json.JsonElement state)
@@ -132,6 +132,7 @@ namespace FIG.Studies
             }
 
             var study = (StudyADX)obj;
+            publication = study.publication;
 
             length = study.length;
             smoothing = study.smoothing;
@@ -274,9 +275,9 @@ namespace FIG.Studies
 
             if (cStudy != null)
             {
-                cStudy[Tag("ADX")] = ADX;
-                cStudy[Tag("PDI")] = PDI;
-                cStudy[Tag("NDI")] = NDI;
+                if (publication?.IsEnabled(0) != false) cStudy[publication?.Key(0) ?? (Tag("ADX"))] = ADX;
+                if (publication?.IsEnabled(1) != false) cStudy[publication?.Key(1) ?? (Tag("PDI"))] = PDI;
+                if (publication?.IsEnabled(2) != false) cStudy[publication?.Key(2) ?? (Tag("NDI"))] = NDI;
             }
         }
 

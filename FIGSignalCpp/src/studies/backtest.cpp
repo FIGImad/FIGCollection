@@ -1,4 +1,5 @@
 #include "fig/studies/backtest.hpp"
+#include "fig/studies/figdata.hpp"
 #include "fig/prices/price_aggregator.hpp"
 #include "fig/prices/price_cache.hpp"
 #include "fig/studies/collection_plugin.hpp"
@@ -86,6 +87,7 @@ struct Trade
     Decimal entry{}, exit{}, gross{}, fees{};
     std::string reason;
     int quantity{}, side{};
+    Decimal entry_signal{};
 };
 struct Month
 {
@@ -119,10 +121,9 @@ class Ledger
           validation_end(date_time(options.validation_end))
     {
     }
-    void process(const PriceBar& bar, int side, bool final = false)
+    void process(const PriceBar& bar, std::optional<Decimal> signal, bool final = false)
     {
-        if (side < -1 || side > 1)
-            throw std::runtime_error("Backtest expects normalized Side -1, 0 or 1");
+        const int side = signal_position(signal, o.signal);
         if (last_time && bar.raw_time <= *last_time)
             throw std::runtime_error("Backtest prices must increase");
         const Decimal before = equity;
@@ -152,7 +153,7 @@ class Ledger
             realized += gross;
             fees += position_quantity * o.commission;
             trades.push_back({entry_time, bar.raw_time, entry, exit, gross, trade_fees,
-                              reason, position_quantity, position_side});
+                              reason, position_quantity, position_side, entry_signal});
             open = false;
             ++closed;
         };
@@ -173,6 +174,7 @@ class Ledger
                 position_quantity = static_cast<int>(sized);
             }
             position_side = side;
+            entry_signal = *signal;
             entry = bar.close + position_side * o.slippage_points;
             entry_time = bar.raw_time;
             fees += position_quantity * o.commission;
@@ -204,6 +206,7 @@ class Ledger
     Decimal equity{}, peak{}, realized{}, unrealized{}, fees{}, max_drawdown{}, max_drawdown_points{};
     bool open{};
     Decimal entry{};
+    Decimal entry_signal{};
     std::int64_t entry_time{};
     int position_side{};
     int position_quantity{};
@@ -257,8 +260,11 @@ Result save(const Candidate& candidate, const Ledger& ledger, const std::filesys
         }
         else
             losses -= net;
+        std::ostringstream side_text;
+        side_text.imbue(std::locale::classic());
+        side_text << std::fixed << std::setprecision(4) << t.entry_signal;
         trades << t.entry_time << ',' << t.exit_time << ',' << t.entry << ',' << t.exit << ',' << t.quantity << ','
-               << ledger.o.multiplier << ',' << t.gross << ',' << t.fees << ',' << net << ',' << t.reason << ',' << t.side << '\n';
+               << ledger.o.multiplier << ',' << t.gross << ',' << t.fees << ',' << net << ',' << t.reason << ',' << side_text.str() << '\n';
     }
     auto params = file(dir / (candidate.id + "-parameters.json"));
     params << candidate.json << '\n';
@@ -321,7 +327,7 @@ void run_backtest_batch(const MainRepository& repository, const BacktestOptions&
         std::ostringstream id;
         id << "run-" << std::setw(4) << std::setfill('0') << n + 1;
         auto json = read(paths[n]);
-        (void)registry.create(StudyCollectionConfig{.type = o.collection, .parameters = json}, Ticker{}, Interval{});
+        (void)registry.create(StudyCollectionConfig{.type = o.collection, .parameters = json}, Ticker{}, Interval{.length_seconds = o.interval_minutes * 60});
         candidates.push_back({id.str(), std::move(json)});
     }
     // Never mix reports from different batches or overwrite an earlier optimization.
@@ -476,12 +482,17 @@ void run_backtest_batch(const MainRepository& repository, const BacktestOptions&
                         const auto index = next.fetch_add(1);
                         if (index >= candidates.size())
                             break;
+                        const auto run_start = steady_clock::now();
                         const auto& candidate = candidates[index];
                         auto collection =
                             registry.create(StudyCollectionConfig{.type = o.collection, .parameters = candidate.json},
                                             Ticker{},
-                                            Interval{});
+                                            Interval{.length_seconds = o.interval_minutes * 60});
                         Ledger ledger(o);
+                        std::ofstream chart_file(o.output_directory / (candidate.id + "-chart.figdata"), std::ios::binary);
+                        chart_file.exceptions(std::ios::failbit | std::ios::badbit);
+                        figdata::Writer chart(chart_file, bars.size() - first_index,
+                                              static_cast<uint32_t>(o.interval_minutes * 60), o.collection);
                         for (std::size_t n = 0; n < bars.size(); ++n)
                         {
                             if (failed)
@@ -489,17 +500,23 @@ void run_backtest_batch(const MainRepository& repository, const BacktestOptions&
                             const auto study = collection->process(bars[n]);
                             if (n < first_index)
                                 continue;
+                            chart.write(study);
                             const auto signal = study.studies.find(o.signal);
                             if (signal == study.studies.end())
                                 throw std::runtime_error("Collection does not provide the selected position signal: " +
                                                          o.signal);
-                            ledger.process(bars[n], signal_position(signal->second, o.signal),
+                            ledger.process(bars[n], signal->second,
                                            n + 1 == bars.size());
                         }
+                        chart.finish();
+                        chart_file.close(); // Surface disk/write failures before marking the run complete.
                         results[index] = save(candidate, ledger, o.output_directory);
+                        std::ostringstream elapsed;
+                        elapsed << std::fixed << std::setprecision(3)
+                                << duration<double>(steady_clock::now() - run_start).count();
                         std::lock_guard lock(output_mutex);
                         std::cout << "Completed " << ++done << '/' << candidates.size() << ": " << candidate.id
-                                  << " NAV=" << results[index].nav << std::endl;
+                                  << " NAV=" << results[index].nav << " Duration=" << elapsed.str() << "s" << std::endl;
                     }
                 }
                 catch (...)
@@ -580,6 +597,32 @@ void backtest_self_test()
         check(invalid);
     }
     BacktestOptions o;
+    {
+        // Unlike a file, a string stream cannot seek beyond its existing extent.
+        std::ostringstream binary(std::string(16384, '\0'), std::ios::binary | std::ios::out);
+        figdata::Writer writer(binary, 2, 300, "Test");
+        StudyBar bar{PriceBar{.raw_time = 100, .close = 12.5}, {}};
+        bar.studies["Missing"] = std::nullopt;
+        bar.text_studies["Text"] = "comma, quote\"";
+        writer.write(bar);
+        bar.price.raw_time = 400;
+        bar.studies["Missing"] = 0;
+        bar.text_studies["Text"] = "";
+        writer.write(bar);
+        writer.finish();
+        const auto data = binary.str();
+        figdata::FileHeader h{};
+        std::memcpy(&h, data.data(), sizeof(h));
+        check(h.rowCount == 2 && h.columnCount == 13 && h.fileBytes <= data.size());
+        check(h.firstTimestamp == 100 && h.lastTimestamp == 400 && h.intervalSeconds == 300);
+        figdata::ColumnDescriptor d{};
+        std::memcpy(&d, data.data() + h.columnsOffset + 11 * sizeof(d), sizeof(d));
+        check(d.validityBytes == 1 && data.at(static_cast<size_t>(d.validityOffset)) == 2);
+        std::memcpy(&d, data.data() + h.columnsOffset + 12 * sizeof(d), sizeof(d));
+        uint32_t entries{};
+        std::memcpy(&entries, data.data() + d.dictionaryOffset, sizeof(entries));
+        check(entries == 2 && d.type == figdata::ColumnType::DictionaryText);
+    }
     Ledger l(o);
     const auto jan = date_time("2022-01-31"), feb = date_time("2022-02-01"), april = date_time("2022-04-01");
     Ledger subtype_ledger(o), binary_ledger(o);
@@ -588,10 +631,11 @@ void backtest_self_test()
     {
         const PriceBar bar{.raw_time = jan + static_cast<std::int64_t>(n) * 300,
                            .close = 100 + static_cast<Decimal>(n)};
-        subtype_ledger.process(bar, signal_position(subtypes[n], "LADX_SIDE"));
+        subtype_ledger.process(bar, subtypes[n]);
         binary_ledger.process(bar, subtypes[n] == 0 ? 0 : 1);
     }
     check(subtype_ledger.trades.size() == 1 && !subtype_ledger.open && subtype_ledger.fees == 48);
+    check(subtype_ledger.trades[0].entry_signal == 1.1L);
     check(subtype_ledger.realized == binary_ledger.realized && subtype_ledger.equity == binary_ledger.equity &&
           subtype_ledger.trades[0].entry_time == binary_ledger.trades[0].entry_time &&
           subtype_ledger.trades[0].exit_time == binary_ledger.trades[0].exit_time);
@@ -608,13 +652,14 @@ void backtest_self_test()
         monthly_profit += m.equity - m.start;
     check(monthly_profit == l.equity - o.capital);
     Ledger shorts(o);
-    shorts.process(PriceBar{.raw_time = jan, .close = 100}, signal_position(-1.1L, "LADX_SIDE"));
-    shorts.process(PriceBar{.raw_time = feb, .close = 98}, signal_position(-1.2L, "LADX_SIDE"));
+    shorts.process(PriceBar{.raw_time = jan, .close = 100}, -1.1L);
+    shorts.process(PriceBar{.raw_time = feb, .close = 98}, -1.2L);
     check(shorts.trades.empty() && shorts.fees == 24 && shorts.unrealized == 600);
     check(shorts.months.back().position == -o.quantity);
     shorts.process(PriceBar{.raw_time = april, .close = 97}, 0);
     check(shorts.realized == 900 && shorts.fees == 48 && shorts.equity == o.capital + 852);
     check(shorts.trades[0].side == -1 && shorts.months[2].position == -o.quantity);
+    check(shorts.trades[0].entry_signal == -1.1L);
     Ledger reversals(o);
     reversals.process(PriceBar{.raw_time = jan, .close = 100}, 1);
     reversals.process(PriceBar{.raw_time = jan + 300, .close = 102}, -1);

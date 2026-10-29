@@ -38,3 +38,25 @@ The regression harness uses real dispatch, formatting, and Pushover code with in
 ## Split instances
 
 See [README-split-services.md](README-split-services.md) for Combined, SystemOnly, and OtherOnly modes, migration, routing, and installation. Apply the split migration after older delivery/recipient migrations so pending queries retain category filtering.
+
+## Acknowledged system-alert ingestion
+
+SystemAlertMonitorService now reads pending source rows without changing DeliveryTime. It sends them directly through the controller to the SystemAlert role at POST /api/alert/systemrec, bypassing the LogAnalyzerSink queue. The endpoint returns the source SystemAlertId and stored AlertId only after persistence and rule processing succeed. Only a matching positive receipt allows the source DeliveryTime to be updated.
+
+The monitor drains batches of 100 on startup and on SYSTEMALERT events, and retries pending rows every 30 seconds without requiring another event. Each forwarding attempt has a 30-second cancellation deadline. Controller, authentication, receiver, and database failures leave the row pending. A failure pauses the current batch until another wakeup. There is no pending-age cutoff at ingestion.
+
+Retries are idempotent in the receiver database using a unique (ServiceId, SystemAlertId) key and a transactional lookup/insert. A lost response or a failed source acknowledgement reuses the existing Alert row without resetting SentAt. Keep the producer ControllerConfig.Id stable and do not reuse source record IDs. Deduplication lasts while the receiver Alert row is retained.
+
+Deployment order:
+
+1. Stop all old AutoTrader monitor instances: the old select procedure marks rows delivered before reception and skips unselected rows.
+2. Apply ../FIGCommon/DataSchema/system_alert_delivery_receiver.sql to the Alert database, after the existing alert migrations.
+3. Apply ../FIGCommon/DataSchema/system_alert_delivery_source.sql to the AutoTrader database.
+4. Deploy FIGAlertSvc with FIGCommon, and ensure an instance accepting system alerts is registered with the controller under the SystemAlert role.
+5. Deploy and start FIGAutoTraderSvc with FIGCommon. Pending DeliveryTime = 0 rows recover automatically.
+
+The new reader uses a new procedure name so an unmigrated source database fails safely instead of invoking the old destructive selector. Existing nonzero DeliveryTime rows are not automatically replayed because their prior reception cannot be inferred. Do not run the full schema snapshots against existing databases.
+
+This acknowledgement confirms durable ingestion by FIGAlertSvc. Recipient delivery remains subject to classification, subscriptions, and the existing age limit: a long outage can result in an alert being recorded but too old for email/Pushover dispatch.
+
+Verification: the LogAlertRouter.Regression harness covers missing/malformed/mismatched receipts, receiver outages, authentication renewal, startup recovery, failed source acknowledgements, timer-based recovery without new events, and shutdown. Live SQL migrations and concurrent SQL deduplication must also be validated in the deployment environment.

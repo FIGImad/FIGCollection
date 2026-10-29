@@ -1,0 +1,30 @@
+{
+  "batch": "C:\\Roots\\OptimizationV2\\LADX2_Backtest\\output\\20261016-163320-cs-248f00a2",
+  "intervalMinutes": 5,
+  "warmup": "All saved bars are replayed before filtering to the backtest date range.",
+  "colors": {
+    "1.1": "#228B22",
+    "1.2": "#BEBE00",
+    "other": "#FFFFFF"
+  },
+  "runs": [
+    {
+      "id": "run-0001",
+      "output": "C:\\Users\\Imad\\source\\FIGCollection\\FIGSignalCpp\\chart-exports\\20261016-163320-cs-248f00a2\\run-0001-chart.csv",
+      "bars": 757174,
+      "columns": 85,
+      "firstTime": "2016-01-03T23:00:00.000Z",
+      "lastTime": "2026-09-25T20:55:00.000Z",
+      "replayedBars": 1174980
+    },
+    {
+      "id": "run-0002",
+      "output": "C:\\Users\\Imad\\source\\FIGCollection\\FIGSignalCpp\\chart-exports\\20261016-163320-cs-248f00a2\\run-0002-chart.csv",
+      "bars": 757174,
+      "columns": 85,
+      "firstTime": "2016-01-03T23:00:00.000Z",
+      "lastTime": "2026-09-25T20:55:00.000Z",
+      "replayedBars": 1174980
+    }
+  ]
+}

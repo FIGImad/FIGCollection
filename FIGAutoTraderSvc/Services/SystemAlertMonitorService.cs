@@ -1,77 +1,99 @@
 using FIGCommon.DataAccess;
 using FIGCommon.Models;
+using FIGCommon.Models.Alert;
+using FIGCommon.Models.FIGController;
+using FIGCommon.Models.LogMonitor;
 using FIGCommon.Services;
-using FIGCommon.Extensions;
-using FIGCommon.Utilities;
+using FIGCommon.Services.LogMonitor;
+using System.Globalization;
+using System.Threading.Channels;
 
-namespace FIGAutoTradeExSvc.Services
+namespace FIGAutoTradeExSvc.Services;
+
+public sealed class SystemAlertMonitorService : BackgroundService
 {
-    public class SystemAlertMonitorService : IHostedService, IDisposable
+    private readonly ILogger<SystemAlertMonitorService> _logger;
+    private readonly EventMonitorService _events;
+    private readonly LogAlertRouter _router;
+    private readonly ControllerConfig _controller = new();
+    private readonly Channel<bool> _wakeups = Channel.CreateBounded<bool>(new BoundedChannelOptions(1)
+    { SingleReader = true, FullMode = BoundedChannelFullMode.DropWrite });
+
+    public SystemAlertMonitorService(ILogger<SystemAlertMonitorService> logger,
+        EventMonitorService eventMonitor, LogAlertRouter router, IConfiguration configuration)
     {
-        private const string SRC_NAME = "SystemAlertMonitorService";
+        _logger = logger;
+        _events = eventMonitor;
+        _router = router;
+        configuration.GetSection("ControllerConfig").Bind(_controller);
+    }
 
-        private readonly ILogger<SystemAlertMonitorService> _logger;
-        private readonly EventMonitorService _eventMonitor;
-        private readonly ITaskSchedulerService _taskScheduler;
-
-        private static string QUEUENAME = "SYSTEMALERT";
-
-
-        public SystemAlertMonitorService(
-            ILogger<SystemAlertMonitorService> logger,
-            EventMonitorService eventMonitor,
-            ITaskSchedulerService taskScheduler)
+    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+    {
+        _events.Subscribe("SYSTEMALERT", OnChange);
+        var polling = PollAsync(stoppingToken);
+        _wakeups.Writer.TryWrite(true); // Recover pending rows after restart.
+        try
         {
-            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-            _eventMonitor = eventMonitor ?? throw new ArgumentNullException(nameof(eventMonitor));
-            _taskScheduler = taskScheduler ?? throw new ArgumentNullException(nameof(taskScheduler));
-        }
-
-        public Task StartAsync(CancellationToken cancellationToken)
-        {
-            _eventMonitor.Subscribe(QUEUENAME, OnChange);
-            _logger.LogInformation($"Subscribed to {QUEUENAME} changes");
-
-            return Task.CompletedTask;
-        }
-        public Task StopAsync(CancellationToken cancellationToken)
-        {
-            _eventMonitor.Unsubscribe(QUEUENAME, OnChange);
-            _logger.LogInformation($"Unsubscribed from {QUEUENAME} changes");
-
-            return Task.CompletedTask;
-        }
-
-        private void OnChange(EventRS? eventData)
-        {
-            try
+            await foreach (var wakeup in _wakeups.Reader.ReadAllAsync(stoppingToken))
             {
-                _logger.LogInformation("Received change event from SYSTEMALERT");
-
-                // convert eventData EventId to int
-                if (eventData != null && eventData.EventType == QUEUENAME)
+                try
                 {
-                    List<SystemAlertRS> alerts = MainRepo.GetPendingSystemAlerts(100);
-                    alerts.ForEach(alert =>
+                    while (!stoppingToken.IsCancellationRequested)
                     {
-                        // alert time in UTC
-                        DateTime timeUTC = DateTimeUtil.ConvertUnixTimeToDateTime(alert.RawTime);
-                        string timeStr = timeUTC.ToString("yyyy-MM-dd HH:mm:ss.fff", System.Globalization.CultureInfo.InvariantCulture);
-                        _logger.Alert($"Source: {alert.Source}, Time: {timeStr}\n{alert.Message}");
-                    } );
+                        var alerts = MainRepo.GetPendingSystemAlerts(100);
+                        if (alerts.Count == 0) break;
+                        bool failed = false;
+                        foreach (var alert in alerts)
+                        {
+                            using var timeout = CancellationTokenSource.CreateLinkedTokenSource(stoppingToken);
+                            timeout.CancelAfter(TimeSpan.FromSeconds(30));
+                            var timestamp = DateTimeOffset.FromUnixTimeSeconds(alert.RawTime).AddMilliseconds(alert.MSec);
+                            var message = new LogAlertMessage
+                            {
+                                SystemAlertId = alert.Id, ServiceId = _controller.Id, LogName = _controller.Name,
+                                Source = AlertCategory.SystemAlertProducer, Level = "ALT",
+                                RawTime = alert.RawTime, Milliseconds = alert.MSec,
+                                Message = $"Source: {alert.Source}, Time: {timestamp.UtcDateTime.ToString("yyyy-MM-dd HH:mm:ss.fff", CultureInfo.InvariantCulture)}\n{alert.Message}"
+                            };
+                            if (!await _router.ForwardSystemAlertAsync(message, timeout.Token))
+                            {
+                                failed = true;
+                                _logger.LogWarning("System alert {Id} remains pending; delivery will be retried.", alert.Id);
+                                break;
+                            }
+                            MainRepo.MarkSystemAlertDelivered(alert.Id);
+                        }
+                        if (failed) break;
+                    }
+                }
+                catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested) { break; }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "System alert delivery failed; pending rows will be retried.");
                 }
             }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error processing SYSTEMALERT change");
-            }
         }
-
-
-        public void Dispose()
+        catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested) { }
+        finally
         {
-            _logger.LogInformation($"Unsubscribed from {QUEUENAME} changes");
+            _events.Unsubscribe("SYSTEMALERT", OnChange);
+            await polling;
         }
+    }
 
+    private void OnChange(EventRS? data)
+    {
+        if (data?.EventType == "SYSTEMALERT") _wakeups.Writer.TryWrite(true);
+    }
+
+    private async Task PollAsync(CancellationToken ct)
+    {
+        try
+        {
+            using var timer = new PeriodicTimer(TimeSpan.FromSeconds(30));
+            while (await timer.WaitForNextTickAsync(ct)) _wakeups.Writer.TryWrite(true);
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested) { }
     }
 }

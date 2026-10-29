@@ -24,6 +24,7 @@
     <ClInclude Include="include\fig\prices\price_aggregator.hpp"><Filter>Prices</Filter></ClInclude>
     <ClInclude Include="include\fig\studies\study_report.hpp"><Filter>Studies</Filter></ClInclude>
     <ClInclude Include="include\fig\studies\backtest.hpp"><Filter>Studies</Filter></ClInclude>
+    <ClInclude Include="include\fig\studies\figdata.hpp"><Filter>Studies</Filter></ClInclude>
     <ClInclude Include="include\fig\studies\collection_plugin.hpp"><Filter>Studies</Filter></ClInclude>
     <ClInclude Include="include\fig\prices\price_cache.hpp"><Filter>Prices</Filter></ClInclude>
     <None Include=".clang-format"><Filter>Project Files</Filter></None>

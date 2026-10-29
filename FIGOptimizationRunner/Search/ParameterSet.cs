@@ -80,10 +80,10 @@ public sealed class ParameterSet
     }
     public static ParameterSet Parse(string json)
     {
-        using var document = JsonDocument.Parse(json, new() { MaxDepth = 1024 });
+        using var document = JsonDocument.Parse(json, new() { MaxDepth = 1024, CommentHandling = JsonCommentHandling.Skip });
         if (document.RootElement.ValueKind != JsonValueKind.Object) throw new ArgumentException("Parameters must be a JSON object.");
         CheckDuplicates(document.RootElement);
-        return new((JsonObject)JsonNode.Parse(json, documentOptions: new() { MaxDepth = 1024 })!);
+        return new((JsonObject)JsonNode.Parse(json, documentOptions: new() { MaxDepth = 1024, CommentHandling = JsonCommentHandling.Skip })!);
     }
     public static ParameterSet Load(string path) => Parse(File.ReadAllText(path));
     internal static void CheckDuplicates(JsonElement node)

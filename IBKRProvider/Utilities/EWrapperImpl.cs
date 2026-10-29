@@ -33,6 +33,8 @@ namespace IBKRProvider.Utilities
         private static int _nextTickerIdBase = 89000000;
         private int _nextTickerId = _nextTickerIdBase;
         private int _lastErrorCode = 0;
+        private string? _lastErrorMessage;
+        public string? LastErrorMessage => Volatile.Read(ref _lastErrorMessage);
         private int _lastOrderId = -1;
 
 
@@ -207,6 +209,7 @@ namespace IBKRProvider.Utilities
 
         public virtual void error(Exception e)
         {
+            Volatile.Write(ref _lastErrorMessage,$"{e.GetType().Name}: {e.Message}");
             _logger?.LogDebug("Exception thrown: " + e.Message);
             foreach (var kvp in _responseHandlerMap)
             {
@@ -216,11 +219,13 @@ namespace IBKRProvider.Utilities
 
         public virtual void error(string str)
         {
+            Volatile.Write(ref _lastErrorMessage,str);
             _logger?.LogDebug("IBKR Error: " + str);
         }
 
         public virtual void error(int id, long errorTime, int errorCode, string errorMsg, string advancedOrderRejectJson)
         {
+            Volatile.Write(ref _lastErrorMessage,$"IBKR error {errorCode}: {errorMsg}");
             string errMsg = "";
             if (!Util.StringIsEmpty(advancedOrderRejectJson))
             {

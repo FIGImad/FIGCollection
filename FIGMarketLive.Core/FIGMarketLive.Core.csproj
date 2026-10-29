@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../FIG.Studies.Common/FIG.Studies.Common.csproj" />
+    <!-- Compile the exact service loader, without referencing the trading service host. -->
+    <Compile Include="../FIGSignalSvc/Plugins/*.cs" Link="Plugins/%(Filename)%(Extension)" />
+    <Using Include="Microsoft.Extensions.Configuration" />
+    <Using Include="Microsoft.Extensions.Logging" />
+  </ItemGroup>
+</Project>

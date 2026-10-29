@@ -5321,6 +5321,8 @@ INSERT [dbo].[OrderStatusCode] ([Code], [Status], [Desc]) VALUES (-21, N'IGNORED
 GO
 INSERT [dbo].[OrderStatusCode] ([Code], [Status], [Desc]) VALUES (-20, N'FAIL_OTHER', N'Failed: Unknown reason')
 GO
+INSERT [dbo].[OrderStatusCode] ([Code], [Status], [Desc]) VALUES (-16, N'FAIL_AUTOTRADE_STOPPED', N'Failed: Autotrade instance was stopped before completing the signal')
+GO
 INSERT [dbo].[OrderStatusCode] ([Code], [Status], [Desc]) VALUES (-15, N'IGNORED_SHORT_POS_LIMIT', N'Reached Short Position Limit')
 GO
 INSERT [dbo].[OrderStatusCode] ([Code], [Status], [Desc]) VALUES (-14, N'IGNORED_LONG_POS_LIMIT', N'Reached Long Position Limit')

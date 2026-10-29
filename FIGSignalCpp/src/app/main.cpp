@@ -243,7 +243,7 @@ int calculate_studies(int argc, wchar_t** argv)
     {
         fig::StudyRegistry registry;
         fig::CollectionPlugin{options.collection_dll}.register_collections(registry);
-        (void)registry.create(collection, fig::Ticker{}, fig::Interval{});
+        (void)registry.create(collection, fig::Ticker{}, fig::Interval{.length_seconds = options.interval_minutes * 60});
     }
     const auto connection_string = database_connection(settings_path);
     std::ofstream output(output_path, std::ios::out | std::ios::trunc);

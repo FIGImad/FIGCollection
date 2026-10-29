@@ -27,8 +27,17 @@ int wmain(int argc, wchar_t** argv)
 {
     try
     {
-        if (argc != 6)
-            throw std::invalid_argument("Usage: FIGCollectionProbe.exe DLL TYPE PARAMETERS.json PRICES.csv OUTPUT.csv");
+        if (argc != 6 && argc != 7)
+            throw std::invalid_argument("Usage: FIGCollectionProbe.exe DLL TYPE PARAMETERS.json PRICES.csv OUTPUT.csv [INTERVAL_SECONDS]");
+        int interval_seconds = 0;
+        if (argc == 7)
+        {
+            std::size_t consumed{};
+            const std::wstring text(argv[6]);
+            interval_seconds = std::stoi(text, &consumed);
+            if (consumed != text.size() || interval_seconds <= 0)
+                throw std::invalid_argument("INTERVAL_SECONDS must be a positive integer");
+        }
         const fig::CollectionPlugin plugin(argv[1]);
         fig::StudyRegistry registry;
         plugin.register_collections(registry);
@@ -39,7 +48,7 @@ int wmain(int argc, wchar_t** argv)
             fig::StudyCollectionConfig{.type = std::filesystem::path(argv[2]).string(),
                                        .parameters = std::string(std::istreambuf_iterator<char>(parameters), {})},
             fig::Ticker{},
-            fig::Interval{});
+            fig::Interval{.length_seconds = interval_seconds});
         std::ifstream input{std::filesystem::path(argv[4])};
         if (!input)
             throw std::invalid_argument("Cannot open input prices");

@@ -1,0 +1,5 @@
+/bin/
+/obj/
+/test-output/
+/optimizer-output/
+/price-cache/

@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <GenerateRuntimeConfigurationFiles>true</GenerateRuntimeConfigurationFiles>
+    <LadxProject Condition="'$(LadxProject)' == ''">$(MSBuildThisFileDirectory)..\..\..\..\FIGSignalCollection\FIG.StudyCollections.LADX\FIG.StudyCollections.LADX.csproj</LadxProject>
+  </PropertyGroup>
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <ProjectReference Include="$(LadxProject)" />
+    <ProjectReference Include="..\..\..\..\FIGCollection\FIG.Studies.Core\FIG.Studies.Core.csproj" />
+    <ProjectReference Include="..\..\..\..\FIGCollection\FIGCommon\FIGCommon.csproj" />
+  </ItemGroup>
+</Project>
