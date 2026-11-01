@@ -37,6 +37,34 @@ public abstract class StudyColBase
     }
 
     public StudyCollectionContext Context { get; }
+    public IReadOnlyList<BaseStudy> ConfiguredStudies => studyList ??= CreateStudies();
+    private BaseStudy? overrideStudy;
+    private HashSet<string>? overrideKeys;
+    private Func<PriceDataRS, Dictionary<string, object?>>? storedInputs;
+
+    // Only a final study can be separated: later studies could otherwise depend on its state.
+    public void ConfigureStudyLayers(BaseStudy selected,IEnumerable<string> keys,Func<PriceDataRS,Dictionary<string,object?>>? readStored=null)
+    {
+        if(priceList.Count!=0||overrideStudy is not null)throw new InvalidOperationException("Configure layers before calculating or restoring state.");
+        if(ConfiguredStudies.Last()!=selected)throw new InvalidOperationException("The override study must be the final study in the collection.");
+        overrideStudy=selected;overrideKeys=keys.ToHashSet(StringComparer.Ordinal);storedInputs=readStored;
+        if(overrideKeys.Count==0)throw new InvalidDataException("Override study declares no output fields.");
+        if(readStored is not null)studyList=[selected];
+    }
+
+    // The base studies have been restored/warmed to the same boundary. Transfer
+    // the newly replayed strategy and merged history without recalculating it.
+    public void AdoptOverrideState(StudyColBase source)
+    {
+        if(overrideStudy is null||storedInputs is not null||source.overrideStudy is null||source.storedInputs is null||
+            overrideStudy.GetType()!=source.overrideStudy.GetType()||!overrideKeys!.SetEquals(source.overrideKeys!)||
+            Context.Configuration.ColParams!=source.Context.Configuration.ColParams||
+            studies.Count!=source.studies.Count||studies.Count==0||studies.Items[0]!.Price.RawTime!=source.studies.Items[0]!.Price.RawTime)
+            throw new InvalidOperationException("Full and override states must describe the same collection and boundary.");
+        overrideStudy=source.overrideStudy;studyList![^1]=overrideStudy;
+        studies.Clear();
+        foreach(var bar in source.studies.Items.Take(source.studies.Count).Reverse())studies.AddToFront(new BarStudy(bar!));
+    }
 
     // Override only after auditing collection-specific state and implementing the hooks below.
     protected virtual string? CheckpointSchema => null;
@@ -65,7 +93,9 @@ public abstract class StudyColBase
         CheckpointSchema, Context.Configuration.ColType, Context.Configuration.ColParams,
         Context.Configuration.TickerId, Context.Configuration.IntervalId,
         studyInterval.IntervalLen, maxNumPrices, maxNumStudies,
-        CheckpointNeedsHistoricalOutputs, CheckpointPriceHistoryLimit, CheckpointPricesFromHistory
+        CheckpointNeedsHistoricalOutputs, CheckpointPriceHistoryLimit, CheckpointPricesFromHistory,
+        LayerMode=overrideStudy is null?"none":storedInputs is null?"full":"stored-inputs",
+        OverrideType=overrideStudy?.GetType().FullName,OverrideKeys=overrideKeys?.Order(StringComparer.Ordinal).ToArray()
     });
 
     public CollectionCheckpoint CaptureCheckpoint()
@@ -221,7 +251,17 @@ public abstract class StudyColBase
             var newStudy = new BarStudy(input[i]);
             studies.AddToFront(newStudy);
 
-            ProcessStudies(input[i]);
+            if(overrideStudy is null)ProcessStudies(input[i]);
+            else
+            {
+                if(storedInputs is not null)newStudy.Studies=storedInputs(input[i]);
+                else foreach(var study in studyList!)
+                {if(study==overrideStudy)break;study.Process(input[i],studies,priceList);}
+                newStudy.BaseStudies=new(newStudy.Studies);
+                overrideStudy.Process(input[i],studies,priceList);
+                newStudy.OverrideStudies=new(StringComparer.Ordinal);
+                foreach(string key in overrideKeys!)if(newStudy.Studies.TryGetValue(key,out var value))newStudy.OverrideStudies.Add(key,value);
+            }
 
             barStudyList.Add(new BarStudy(newStudy));
             onBarProcessed?.Invoke(newStudy);

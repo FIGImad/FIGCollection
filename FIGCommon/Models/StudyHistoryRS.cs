@@ -78,14 +78,33 @@ namespace FIGCommon.Models
             {
                 Id = SqlReaderUtil.GetInt32(reader, nSeq++),
                 StudyColId = SqlReaderUtil.GetInt32(reader, nSeq++),
-                RawTime = (long) SqlReaderUtil.GetInt32(reader, nSeq++),
+                RawTime = Convert.ToInt64(reader.GetValue(nSeq++)),
                 Open = SqlReaderUtil.GetDecimal(reader, nSeq++),
                 High = SqlReaderUtil.GetDecimal(reader, nSeq++),
                 Low = SqlReaderUtil.GetDecimal(reader, nSeq++),
                 Close = SqlReaderUtil.GetDecimal(reader, nSeq++),
                 Volume = SqlReaderUtil.GetInt32(reader, nSeq++),
-                Studies = SqlReaderUtil.GetString(reader, nSeq++)
+                Studies = ""
             };
+            var stored=reader.GetValue(nSeq);
+            byte[]? overlay=null;
+            for(int i=nSeq+1;i<reader.FieldCount;i++)
+                if(reader.GetName(i).Equals("StudiesOverride",StringComparison.OrdinalIgnoreCase)&&!reader.IsDBNull(i))overlay=(byte[])reader[i];
+            if(stored is byte[] binary)
+            {
+                rec.rawStudies=StudyValueCodec.Merge(binary,overlay);
+                rec.Studies=Newtonsoft.Json.JsonConvert.SerializeObject(rec.rawStudies);
+            }
+            else
+            {
+                rec.Studies=stored is string json?json:"";
+                if(overlay is not null)
+                {
+                    rec.rawStudies=Newtonsoft.Json.JsonConvert.DeserializeObject<Dictionary<string,object?>>(rec.Studies)??new();
+                    foreach(var value in StudyValueCodec.Decode(overlay))rec.rawStudies[value.Key]=value.Value;
+                    rec.Studies=Newtonsoft.Json.JsonConvert.SerializeObject(rec.rawStudies);
+                }
+            }
             return rec;
         }
 

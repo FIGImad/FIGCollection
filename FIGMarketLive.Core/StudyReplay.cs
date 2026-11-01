@@ -3,7 +3,7 @@ using FIGCommon.Models;
 
 namespace FIGMarketLive;
 
-public sealed record EncodedStudyBar(PriceDataRS Price, byte[] Studies);
+public sealed record EncodedStudyBar(PriceDataRS Price, byte[] Studies,byte[]? StudiesOverride=null);
 
 /// <summary>Reconstructs plugin state from the complete supplied source history; no checkpoints.</summary>
 public static class StudyReplay
@@ -11,8 +11,9 @@ public static class StudyReplay
     public static IReadOnlyList<EncodedStudyBar> Calculate(Func<StudyColBase> create,
         IReadOnlyList<PriceDataRS> prices, CancellationToken cancellation = default)
     {
-        var collection = create(); // Never reuse state advanced by a failed/cancelled publication.
+        var collection = StudyLayers.Configure(create()); // Never reuse state advanced by a failed/cancelled publication.
         var results = new List<EncodedStudyBar>(prices.Count);
+        using var encoder=new StudyLayers.Encoder();
         long? previous = null;
         foreach (var price in prices)
         {
@@ -24,7 +25,7 @@ public static class StudyReplay
                 throw new InvalidDataException("Invalid replay OHLCV.");
             previous = price.RawTime;
             var bar = collection.Calc([new PriceDataRS(price)], 0).Single();
-            results.Add(new(new PriceDataRS(bar.Price), StudyBinaryCodec.Encode(bar.Studies)));
+            results.Add(encoder.Encode(bar));
         }
         return results;
     }

@@ -1,4 +1,4 @@
-﻿using FIGCommon.DataAccess;
+using FIGCommon.DataAccess;
 using FIGCommon.Models;
 using Microsoft.Data.SqlClient;
 
@@ -12,6 +12,9 @@ namespace FIGCommon.Services
         protected readonly object _operationLock = new();
         protected bool _isDisposed;
         protected readonly CancellationTokenSource _cts = new();
+        // Background callbacks may finish after Dispose; the cached token remains
+        // safe to read after its source has been cancelled and disposed.
+        protected readonly CancellationToken MonitoringToken;
         protected readonly SemaphoreSlim _listenerSetupSemaphore = new(1, 1);
         protected readonly SemaphoreSlim _changeProcessingSemaphore = new(1, 1);
         protected readonly Dictionary<string, List<Action<EventRS?>>> _subscriptions = new();
@@ -29,6 +32,7 @@ namespace FIGCommon.Services
         protected readonly RepositoryBase RBASE = new RepositoryBase();
 
         public EventMonitorService() {
+            MonitoringToken = _cts.Token;
         }
 
         // protected constructor
@@ -39,6 +43,7 @@ namespace FIGCommon.Services
         protected EventMonitorService(IConfiguration config,
                                    ILogger<EventMonitorService> logger, bool startMonitoring)
         {
+            MonitoringToken = _cts.Token;
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _config = config;
             var mode = config["EventMonitor:Mode"] ?? "SqlDependency";
@@ -144,7 +149,7 @@ namespace FIGCommon.Services
                 lock (_operationLock)
                 {
                     if (_isDisposed || _pollingTask != null) return;
-                    var token = _cts.Token;
+                    var token = MonitoringToken;
                     _pollingTask = Task.Run(() => PollEventsAsync(token), token);
                 }
                 _logger?.LogInformation("Event monitoring uses polling every {Interval} ms", _pollIntervalMilliseconds);
@@ -168,7 +173,7 @@ namespace FIGCommon.Services
                     // entered again by retry logic after a transient database error.
                     if (_periodicRefreshTask == null)
                     {
-                        _periodicRefreshTask = Task.Run(StartPeriodicRefresh, _cts.Token);
+                        _periodicRefreshTask = Task.Run(StartPeriodicRefresh, MonitoringToken);
                     }
                 }
 
@@ -176,7 +181,7 @@ namespace FIGCommon.Services
             catch(Exception exDBAccess)
             {
                 _logger?.LogError("Error accessing database will try again in 1 minute- {0}", exDBAccess.Message);
-                _ = Task.Run(() => RetryStartMonitoringAsync(20), _cts.Token);
+                _ = Task.Run(() => RetryStartMonitoringAsync(20), MonitoringToken);
                 return;
             }
 
@@ -195,7 +200,7 @@ namespace FIGCommon.Services
             catch (Exception ex)
             {
                 _logger?.LogError(ex, "Failed to start SQL Dependency");
-                _ = Task.Run(() => RetryStartMonitoringAsync(20), _cts.Token);
+                _ = Task.Run(() => RetryStartMonitoringAsync(20), MonitoringToken);
             }
         }
 
@@ -207,7 +212,7 @@ namespace FIGCommon.Services
                 // while another registration is being created, wait and create the
                 // next registration instead of dropping the request and potentially
                 // leaving the service with no active listener.
-                await _listenerSetupSemaphore.WaitAsync(_cts.Token);
+                await _listenerSetupSemaphore.WaitAsync(MonitoringToken);
             }
             catch (OperationCanceledException)
             {
@@ -217,7 +222,12 @@ namespace FIGCommon.Services
             try
             {
                 using var connection = new SqlConnection(ConnectionString);
-                await connection.OpenAsync(_cts.Token);
+                await connection.OpenAsync(MonitoringToken);
+
+                // Query notifications require these options on the subscribing session.
+                // Do not depend on the login/server's default user_options.
+                using (var options = new SqlCommand("SET ANSI_NULLS ON; SET ANSI_PADDING ON; SET ANSI_WARNINGS ON; SET CONCAT_NULL_YIELDS_NULL ON; SET QUOTED_IDENTIFIER ON; SET ARITHABORT ON; SET NUMERIC_ROUNDABORT OFF;", connection))
+                    await options.ExecuteNonQueryAsync(MonitoringToken);
 
                 using var command = new SqlCommand(
                     "SELECT [Id], [EventType], [EventId], [Message], [TimeStamp] FROM dbo.[Event]",
@@ -235,7 +245,7 @@ namespace FIGCommon.Services
                     _dependency.OnChange += OnDatabaseChange;
                 }
 
-                using (var reader = await command.ExecuteReaderAsync(_cts.Token))
+                using (var reader = await command.ExecuteReaderAsync(MonitoringToken))
                 {
                     // reader is disposed immediately; SqlDependency is already attached to the command
                 }
@@ -260,7 +270,7 @@ namespace FIGCommon.Services
         {
             try
             {
-                await Task.Delay(TimeSpan.FromSeconds(secs), _cts.Token);
+                await Task.Delay(TimeSpan.FromSeconds(secs), MonitoringToken);
                 lock (_retryLock)
                 {
                     if (retryTask != null && !retryTask.IsCompleted)
@@ -272,7 +282,7 @@ namespace FIGCommon.Services
                         //retryTask = null;
                     }
                     Destroy();
-                    //retryTask = Task.Run(() => StartMonitoringAsync(), _cts.Token);
+                    //retryTask = Task.Run(() => StartMonitoringAsync(), MonitoringToken);
                     retryTask = Task.Run(async () =>
                     {
                         try
@@ -286,7 +296,7 @@ namespace FIGCommon.Services
                             var nextDelay = Math.Min(secs * 2, 300); // Cap at 5 minutes
                             await RetryStartMonitoringAsync(nextDelay);
                         }
-                    }, _cts.Token);
+                    }, MonitoringToken);
                 }
             }
             catch (OperationCanceledException)
@@ -297,6 +307,7 @@ namespace FIGCommon.Services
 
         protected async void OnDatabaseChange(object sender, SqlNotificationEventArgs e)
         {
+            if (_isDisposed) return;
             _logger?.LogInformation("Database change detected. Type: {Type}, Source: {Source}, Info: {Info}",
                 e.Type, e.Source, e.Info);
 
@@ -321,7 +332,7 @@ namespace FIGCommon.Services
                     // callback is still reading Event rows. Serialize the scan and
                     // eventList update so the same row version cannot be published
                     // twice by racing callbacks.
-                    await _changeProcessingSemaphore.WaitAsync(_cts.Token);
+                    await _changeProcessingSemaphore.WaitAsync(MonitoringToken);
                     processingLockTaken = true;
 
                     if (e.Info == SqlNotificationInfo.Insert
@@ -587,7 +598,7 @@ namespace FIGCommon.Services
             {
                 try
                 {
-                    await Task.Delay(TimeSpan.FromMinutes(5), _cts.Token); // Refresh every 5 minutes
+                    await Task.Delay(TimeSpan.FromMinutes(5), MonitoringToken); // Refresh every 5 minutes
                     _logger?.LogDebug("Performing periodic refresh of SQL Dependency");
                     await SetupDatabaseListener();
                 }

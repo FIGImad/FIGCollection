@@ -542,11 +542,19 @@ namespace FIGCommon.DataAccess
             if (dataSetId > 0 && data.Count > 0)
             {
                 string tableName = "PriceData";
+                // Support both the legacy stored date and RawTime-only MarketLive schemas.
+                bool storesPriceDate;
+                using(var schemaConnection=new SqlConnection(RBASE.ConnectionString))
+                {
+                    schemaConnection.Open();
+                    using var schemaCommand=new SqlCommand("SELECT COUNT(*) FROM sys.columns WHERE object_id=OBJECT_ID('dbo.PriceData') AND name='PriceDate' AND is_computed=0",schemaConnection);
+                    storesPriceDate=Convert.ToInt32(schemaCommand.ExecuteScalar())>0;
+                }
                 DataTable table = new(tableName);
                 table.Columns.Add(new DataColumn("Id", typeof(int)));
                 table.Columns.Add(new DataColumn("DataSetId", typeof(int)));
                 table.Columns.Add(new DataColumn("RawTime", typeof(long)));
-                table.Columns.Add(new DataColumn("PriceDate", typeof(DateTime)));
+                if(storesPriceDate)table.Columns.Add(new DataColumn("PriceDate", typeof(DateTime)));
                 table.Columns.Add(new DataColumn("Open", typeof(decimal)));
                 table.Columns.Add(new DataColumn("High", typeof(decimal)));
                 table.Columns.Add(new DataColumn("Low", typeof(decimal)));
@@ -559,7 +567,7 @@ namespace FIGCommon.DataAccess
                     row["Id"] = -1;
                     row["DataSetId"] = rec.DataSetId;
                     row["RawTime"] = rec.RawTime;
-                    row["PriceDate"] = rec.PriceDate;
+                    if(storesPriceDate)row["PriceDate"] = DateTimeOffset.FromUnixTimeSeconds(rec.RawTime).UtcDateTime;
                     row["Open"] = rec.Open;
                     row["High"] = rec.High;
                     row["Low"] = rec.Low;
@@ -709,10 +717,11 @@ namespace FIGCommon.DataAccess
             // Select the newest timestamps before returning the correction window in ascending order.
             using var connection = tx == null ? new SqlConnection(ConnectionString) : null;
             connection?.Open();
+            string overlay=StudyOverrideProjection(tx?.Connection??connection!,tx);
             using var command = new SqlCommand($"""
-                SELECT Id,StudyColId,RawTime,[Open],High,Low,[Close],Volume,Studies
+                SELECT Id,StudyColId,RawTime,[Open],High,Low,[Close],Volume,Studies,StudiesOverride
                 FROM (
-                    SELECT TOP (@MaxRec) Id,StudyColId,RawTime,[Open],High,Low,[Close],Volume,Studies
+                    SELECT TOP (@MaxRec) Id,StudyColId,RawTime,[Open],High,Low,[Close],Volume,Studies,{overlay}
                     FROM dbo.StudyHistory {(id == -1 ? "" : "WHERE StudyColId=@StudyColId")}
                     ORDER BY RawTime DESC,Id DESC
                 ) h ORDER BY RawTime,Id;
@@ -733,7 +742,16 @@ namespace FIGCommon.DataAccess
 
         public static List<StudyHistoryRS> GetStudyHistory(int id, long startTime, int maxRec)
         {
-            return RBASE.SelectMulti<StudyHistoryRS, int, long, int>(new StudyHistoryRS(), "usp_study_history_select", "@StudyColId", id, "@StartTime", startTime, "@MaxRec", maxRec);
+            using var c=new SqlConnection(ConnectionString);c.Open();string overlay=StudyOverrideProjection(c,null);
+            using var cmd=new SqlCommand($"SELECT TOP(@MaxRec) Id,StudyColId,RawTime,[Open],High,Low,[Close],Volume,Studies,{overlay} FROM dbo.StudyHistory WHERE StudyColId=@Id AND RawTime>=@Start ORDER BY RawTime,Id",c);
+            cmd.Parameters.AddWithValue("@MaxRec",Math.Max(1,maxRec));cmd.Parameters.AddWithValue("@Id",id);cmd.Parameters.AddWithValue("@Start",startTime);
+            using var r=cmd.ExecuteReader();var result=new List<StudyHistoryRS>();var prototype=new StudyHistoryRS();while(r.Read())result.Add(prototype.CreateFromSqlDataReader(r));return result;
+        }
+
+        private static string StudyOverrideProjection(SqlConnection c,SqlTransaction? tx)
+        {
+            using var cmd=new SqlCommand("SELECT COL_LENGTH('dbo.StudyHistory','StudiesOverride')",c,tx);
+            return cmd.ExecuteScalar() is DBNull or null?"CAST(NULL AS varbinary(max)) AS StudiesOverride":"StudiesOverride";
         }
 
         public static int GetStudyHistoryRecordCount(int id, long startTime)

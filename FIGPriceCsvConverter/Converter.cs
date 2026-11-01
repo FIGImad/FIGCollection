@@ -33,7 +33,31 @@ public static class Converter
         if (!File.Exists(source)) throw new FileNotFoundException("Source CSV not found.", source);
         if (File.Exists(target) && !overwrite) throw new IOException("Target already exists. Choose another file or allow replacement.");
         if (!Directory.Exists(Path.GetDirectoryName(target))) throw new DirectoryNotFoundException("Choose an existing target folder.");
+        var rows=ReadFile(source,zone,policy,false,progress,cancellation).Rows;
+        var temporary = Path.Combine(Path.GetDirectoryName(target)!, ".fig-convert-" + Guid.NewGuid().ToString("N") + ".tmp");
+        try
+        {
+            progress?.Report("Writing converted prices…");
+            using (var writer = new StreamWriter(new FileStream(temporary, FileMode.CreateNew, FileAccess.Write, FileShare.None), new UTF8Encoding(false)))
+            {
+                writer.WriteLine("RawTime,Open,High,Low,Close,Volume");
+                foreach (var row in rows)
+                {
+                    cancellation.ThrowIfCancellationRequested();
+                    writer.WriteLine(FormattableString.Invariant($"{row.RawTime},{row.Open},{row.High},{row.Low},{row.Close},{row.Volume}"));
+                }
+            }
+            cancellation.ThrowIfCancellationRequested();
+            File.Move(temporary, target, overwrite);
+        }
+        finally { if (File.Exists(temporary)) File.Delete(temporary); }
+        return new(rows.Count, DateTimeOffset.FromUnixTimeSeconds(rows[0].RawTime), DateTimeOffset.FromUnixTimeSeconds(rows[^1].RawTime), rows.Take(8).ToArray());
+    }
+    public static (IReadOnlyList<PriceRow> Rows, bool HasVolume) ReadFile(string source, TimeZoneInfo zone, AmbiguousTimePolicy policy,
+        bool allowMissingVolume=false, IProgress<string>? progress=null, CancellationToken cancellation=default)
+    {
         var rows = new List<PriceRow>();
+        bool hasVolume=false;
         progress?.Report("Reading source prices…");
         using (var csv = new TextFieldParser(source) { TextFieldType = FieldType.Delimited, HasFieldsEnclosedInQuotes = true })
         {
@@ -45,7 +69,8 @@ public static class Converter
             foreach (var name in new[] { "Date", "Time", "Open", "High", "Low", "Close" })
                 if (!columns.ContainsKey(name)) throw new InvalidDataException("Missing CSV column: " + name);
             var volumeColumn = columns.ContainsKey("Vol") ? "Vol" : "Volume";
-            if (!columns.ContainsKey(volumeColumn)) throw new InvalidDataException("Missing CSV column: Vol (or Volume).");
+            hasVolume=columns.ContainsKey(volumeColumn);
+            if (!hasVolume && !allowMissingVolume) throw new InvalidDataException("Missing CSV column: Vol (or Volume).");
             while (!csv.EndOfData)
             {
                 cancellation.ThrowIfCancellationRequested();
@@ -61,7 +86,7 @@ public static class Converter
                         CultureInfo.InvariantCulture, DateTimeStyles.AllowWhiteSpaces);
                     decimal Price(string name) => decimal.Parse(Value(name), NumberStyles.AllowLeadingSign | NumberStyles.AllowDecimalPoint, CultureInfo.InvariantCulture);
                     var row = new PriceRow(ToUnixTime(local, zone, policy), Price("Open"), Price("High"), Price("Low"), Price("Close"),
-                        long.Parse(Value(volumeColumn), NumberStyles.Integer, CultureInfo.InvariantCulture));
+                        hasVolume ? long.Parse(Value(volumeColumn), NumberStyles.Integer, CultureInfo.InvariantCulture) : 0);
                     if (row.High < row.Low || row.Open < row.Low || row.Open > row.High || row.Close < row.Low || row.Close > row.High || row.Volume < 0)
                         throw new InvalidDataException("Invalid OHLC range or negative volume.");
                     rows.Add(row);
@@ -83,23 +108,6 @@ public static class Converter
             if (rows[i].RawTime == rows[i - 1].RawTime)
                 throw new InvalidDataException($"Duplicate UTC timestamp: {DateTimeOffset.FromUnixTimeSeconds(rows[i].RawTime):u}. FIGSignalBacktest requires unique timestamps. If the source includes both fall-back occurrences, export UTC from eSignal.");
         }
-        var temporary = Path.Combine(Path.GetDirectoryName(target)!, ".fig-convert-" + Guid.NewGuid().ToString("N") + ".tmp");
-        try
-        {
-            progress?.Report("Writing converted prices…");
-            using (var writer = new StreamWriter(new FileStream(temporary, FileMode.CreateNew, FileAccess.Write, FileShare.None), new UTF8Encoding(false)))
-            {
-                writer.WriteLine("RawTime,Open,High,Low,Close,Volume");
-                foreach (var row in rows)
-                {
-                    cancellation.ThrowIfCancellationRequested();
-                    writer.WriteLine(FormattableString.Invariant($"{row.RawTime},{row.Open},{row.High},{row.Low},{row.Close},{row.Volume}"));
-                }
-            }
-            cancellation.ThrowIfCancellationRequested();
-            File.Move(temporary, target, overwrite);
-        }
-        finally { if (File.Exists(temporary)) File.Delete(temporary); }
-        return new(rows.Count, DateTimeOffset.FromUnixTimeSeconds(rows[0].RawTime), DateTimeOffset.FromUnixTimeSeconds(rows[^1].RawTime), rows.Take(8).ToArray());
+        return (rows,hasVolume);
     }
 }

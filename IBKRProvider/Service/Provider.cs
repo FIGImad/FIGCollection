@@ -15,7 +15,7 @@ using System.Diagnostics;
 
 namespace IBKRProvider.Service
 {
-    public class Provider : IProviderService
+    public class Provider : IProviderService, IContractChainProvider
     {
         private readonly IServiceProvider _serviceProvider;
         private readonly ProviderOptions _options;
@@ -376,7 +376,7 @@ namespace IBKRProvider.Service
                 SecType = request.Ticker.SecType,
                 Currency = request.Ticker.Currency,
                 Exchange = request.Ticker.Exchange,
-                LastTradeDateOrContractMonth = request.Ticker.SecType == "CONTFUT" ? null : TypeConvertUtil.GetStringValue(request.Ticker.ContractMonth)
+                LastTradeDateOrContractMonth = request.Ticker.SecType is "FUT" or "FOP" ? TypeConvertUtil.GetStringValue(request.Ticker.ContractMonth) : null
             };
             int reqId = _wrapper?.NextReqId??-1;
             string eventId = $"REQ-{reqId}";
@@ -679,7 +679,9 @@ namespace IBKRProvider.Service
             {
                 Symbol = contrReq.Symbol,
                 SecType = contrReq.SecType,
-                LastTradeDateOrContractMonth = contrReq.LastTradeDateOrContractMonth == "" ? curMonth : contrReq.LastTradeDateOrContractMonth,
+                ConId = contrReq.ConId,
+                PrimaryExch = contrReq.PrimaryExchange,
+                LastTradeDateOrContractMonth = contrReq.SecType=="FUT"&&string.IsNullOrWhiteSpace(contrReq.LastTradeDateOrContractMonth)&&contrReq.ConId==0 ? curMonth : contrReq.LastTradeDateOrContractMonth,
                 Exchange = contrReq.Exchange,
                 Currency = contrReq.Currency,
             };
@@ -710,6 +712,7 @@ namespace IBKRProvider.Service
                             Name = contrDet.LongName,
                             SecType = contrDet.Contract.SecType,
                             LastTradeDateOrContractMonth = contrDet.Contract.LastTradeDateOrContractMonth,
+                            RealExpirationDate = contrDet.RealExpirationDate??"",
                             Strike = contrDet.Contract.Strike,
                             Right = contrDet.Contract.Right,
                             Multiplier = contrDet.Contract.Multiplier,
@@ -759,6 +762,28 @@ namespace IBKRProvider.Service
                 _wrapper?.UnRegisterResponseHandle(eventId);
             }
 
+        }
+
+        public IReadOnlyList<ContractInfo> ContractChain(InstrumentLookupRequest request,int timeoutInMsec=30000)
+        {
+            CheckConnected();
+            if(request.SecType!="FUT"||string.IsNullOrWhiteSpace(request.Symbol)||string.IsNullOrWhiteSpace(request.Exchange))
+                throw new ArgumentException("Futures chain discovery requires a root symbol and exchange.");
+            int reqId=_wrapper?.NextReqId??throw new InvalidOperationException("Provider is not connected.");
+            string eventId=$"REQ-{reqId}";
+            _wrapper.RegisterResponseHandle(eventId);_wrapper.BeginContractChain(reqId);
+            try
+            {
+                _clientSocket!.reqContractDetails(reqId,new Contract{Symbol=request.Symbol,SecType="FUT",Exchange=request.Exchange,Currency=request.Currency,
+                    LastTradeDateOrContractMonth="",IncludeExpired=false});
+                var response=WaitForResponse(eventId,timeoutInMsec);
+                if(response is not JArray array)throw new InvalidOperationException("IBKR did not return a completed futures contract list.");
+                return (array.ToObject<List<ContractDetails>>()??[]).Select(d=>new ContractInfo{ConId=d.Contract.ConId,Symbol=d.Contract.Symbol,
+                    LocalSymbol=d.Contract.LocalSymbol,Name=d.LongName,SecType=d.Contract.SecType,Exchange=d.Contract.Exchange,PrimaryExch=d.Contract.PrimaryExch,
+                    Currency=d.Contract.Currency,LastTradeDateOrContractMonth=d.Contract.LastTradeDateOrContractMonth,RealExpirationDate=d.RealExpirationDate??"",
+                    Multiplier=d.Contract.Multiplier,MinTick=(decimal)d.MinTick,TradingClass=d.Contract.TradingClass}).ToArray();
+            }
+            finally{_wrapper.RemoveContractChain(reqId);_wrapper.UnRegisterResponseHandle(eventId);}
         }
 
         public OrderStatusDto PlaceOrder(BrokerOrderRequestDto orderReq, int timeoutInMsec = 30000)

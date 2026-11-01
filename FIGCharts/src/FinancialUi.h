@@ -9,18 +9,21 @@ RECT financialExpandedRect{};
 void layoutFinancial();
 HWND financialValues=nullptr, financialSides=nullptr, financialSummary=nullptr;
 constexpr int pinnedFinancialRows=17;
-int financialSummaryHeight(){RECT header{},row{};if(!financialSummary)return 210;GetWindowRect(ListView_GetHeader(financialSummary),&header);int height=16;if(ListView_GetItemRect(financialSummary,0,&row,LVIR_BOUNDS))height=row.bottom-row.top;return header.bottom-header.top+pinnedFinancialRows*height+4;}
+std::vector<bool> financialTopEnabled(pinnedFinancialRows,true);
+int summaryRow(int row){if(!financialCompact)return row;for(int i=0;i<pinnedFinancialRows;++i)if(financialTopEnabled[i] && row--==0)return i;return -1;}
+int summaryCount(){return financialCompact?static_cast<int>(std::count(financialTopEnabled.begin(),financialTopEnabled.end(),true)):pinnedFinancialRows;}
+int financialSummaryHeight(){RECT header{},row{};if(!financialSummary)return 210;GetWindowRect(ListView_GetHeader(financialSummary),&header);int height=16;if(ListView_GetItemRect(financialSummary,0,&row,LVIR_BOUNDS))height=row.bottom-row.top;return header.bottom-header.top+summaryCount()*height+4;}
 std::wstring financialCell(size_t row,int column);
 void fitFinancialCompact() {
     if(!financialCompact || !financialValues) return;
     auto dc=GetDC(financialValues);auto old=SelectObject(dc,reinterpret_cast<HFONT>(SendMessage(financialValues,WM_GETFONT,0,0)));int widths[]{80,65};
-    int rows=ListView_GetItemCount(financialValues)+ListView_GetItemCount(financialSummary);
+    int rows=ListView_GetItemCount(financialValues)+pinnedFinancialRows;
     for(int row=0;row<rows;++row) for(int col=0;col<2;++col) {auto text=financialCell(row,col);SIZE size{};GetTextExtentPoint32W(dc,text.c_str(),static_cast<int>(text.size()),&size);widths[col]=std::max(widths[col],static_cast<int>(size.cx)+22);}
     SelectObject(dc,old);ReleaseDC(financialValues,dc);
     for(int col=0;col<2;++col) if(ListView_GetColumnWidth(financialValues,col)!=widths[col]) ListView_SetColumnWidth(financialValues,col,widths[col]);
     RECT header{},rowRect{};GetWindowRect(ListView_GetHeader(financialValues),&header);
     int rowHeight=20;if(rows && ListView_GetItemRect(financialValues,0,&rowRect,LVIR_BOUNDS)) rowHeight=rowRect.bottom-rowRect.top;
-    RECT desired{0,0,std::max(380,widths[0]+widths[1]+28),54+header.bottom-header.top+std::max(1,rows)*rowHeight+4};
+    RECT desired{0,0,std::max(430,widths[0]+widths[1]+28),54+header.bottom-header.top+std::max(1,rows)*rowHeight+4};
     AdjustWindowRectEx(&desired,static_cast<DWORD>(GetWindowLongPtr(financialWindow,GWL_STYLE)),FALSE,static_cast<DWORD>(GetWindowLongPtr(financialWindow,GWL_EXSTYLE)));
     MONITORINFO monitor{sizeof(monitor)};GetMonitorInfo(MonitorFromWindow(financialWindow,MONITOR_DEFAULTTONEAREST),&monitor);
     int w=std::min(desired.right-desired.left,monitor.rcWork.right-monitor.rcWork.left),h=std::min(desired.bottom-desired.top,monitor.rcWork.bottom-monitor.rcWork.top);
@@ -41,7 +44,7 @@ bool financialRowsDirty=true;
 size_t financialDisplayBar=SIZE_MAX;
 size_t financialFormattedCells=0; // Regression instrumentation: only requested cells are formatted.
 
-std::wstring finNumber(double v) { wchar_t text[512];swprintf_s(text,L"%.2f",v);return text; }
+std::wstring finNumber(double v) { return financialNumber(v); }
 void rebuildFinancial();
 void setFinancialCompact(bool compact) {
     if(compact==financialCompact) return;
@@ -49,13 +52,14 @@ void setFinancialCompact(bool compact) {
     financialCompact=compact;
     SendDlgItemMessage(financialWindow,FinCompact,BM_SETCHECK,compact?BST_CHECKED:BST_UNCHECKED,0);
     for(HWND h=GetWindow(financialWindow,GW_CHILD);h;h=GetWindow(h,GW_HWNDNEXT)) {
-        int id=GetDlgCtrlID(h);if(id!=FinValues && id!=FinSummary && id!=FinCompact && id!=FinAutoScroll) ShowWindow(h,compact?SW_HIDE:SW_SHOW);
+        int id=GetDlgCtrlID(h);if(id!=FinValues && id!=FinSummary && id!=FinCompact && id!=FinAutoScroll && id!=1950 && id!=1951 && id!=1953) ShowWindow(h,compact?SW_HIDE:SW_SHOW);
     }
     if(compact) fitFinancialCompact();
     else {
         ListView_SetColumnWidth(financialValues,0,360);ListView_SetColumnWidth(financialValues,1,210);
         SetWindowPos(financialWindow,nullptr,financialExpandedRect.left,financialExpandedRect.top,financialExpandedRect.right-financialExpandedRect.left,financialExpandedRect.bottom-financialExpandedRect.top,SWP_NOACTIVATE|SWP_NOZORDER);
     }
+    ListView_SetItemCountEx(financialSummary,summaryCount(),0);
     layoutFinancial();InvalidateRect(financialWindow,nullptr,TRUE);
 }
 const std::wstring& financialValue(size_t row) {
@@ -65,12 +69,12 @@ const std::wstring& financialValue(size_t row) {
     const auto& f=financialResult.bars[financialDisplayBar];++financialFormattedCells;
     switch(r.metric){
     case FinancialMetric::Number:if(r.member==&FinancialBar::side){std::wostringstream s;s<<std::fixed<<std::setprecision(4)<<f.side;r.cachedValue=s.str();}else r.cachedValue=finNumber(f.*r.member);break;
-    case FinancialMetric::TotalBars:r.cachedValue=std::to_wstring(financialDisplayBar+1);break;
-    case FinancialMetric::AllFrequency:r.cachedValue=std::to_wstring(f.signalBars)+L"_"+std::to_wstring(f.signalFrequency);break;
+    case FinancialMetric::TotalBars:r.cachedValue=financialNumber(static_cast<double>(financialDisplayBar+1),0);break;
+    case FinancialMetric::AllFrequency:r.cachedValue=financialNumber(static_cast<double>(f.signalBars),0)+L"_"+financialNumber(static_cast<double>(f.signalFrequency),0);break;
     default:{auto t=financialResult.at(r.side,financialDisplayBar);
-        if(r.metric==FinancialMetric::SideFrequency)r.cachedValue=std::to_wstring(t.bars)+L"_"+std::to_wstring(t.frequency);
+        if(r.metric==FinancialMetric::SideFrequency)r.cachedValue=financialNumber(static_cast<double>(t.bars),0)+L"_"+financialNumber(static_cast<double>(t.frequency),0);
         else if(r.metric==FinancialMetric::SideClosed)r.cachedValue=finNumber(t.closed);
-        else r.cachedValue=finNumber(t.winningPL)+L" ("+std::to_wstring(t.wins)+L") / "+finNumber(t.losingPL)+L" ("+std::to_wstring(t.losses)+L")";
+        else r.cachedValue=finNumber(t.winningPL)+L" ("+financialNumber(static_cast<double>(t.wins),0)+L") / "+finNumber(t.losingPL)+L" ("+financialNumber(static_cast<double>(t.losses),0)+L")";
         break;}
     }
     r.cachedBar=financialDisplayBar;return r.cachedValue;
@@ -100,7 +104,7 @@ void updateFinancial() {
         }
         add(prefix+L"_TradePrice",FinancialMetric::Number,&FinancialBar::tradePrice,0x8599b5);
         financialRowsDirty=false;changed=true;
-        ListView_SetItemCountEx(financialSummary,std::min(pinnedFinancialRows,static_cast<int>(financialRows.size())),LVSICF_NOINVALIDATEALL|LVSICF_NOSCROLL);
+        ListView_SetItemCountEx(financialSummary,std::min(summaryCount(),static_cast<int>(financialRows.size())),LVSICF_NOINVALIDATEALL|LVSICF_NOSCROLL);
         ListView_SetItemCountEx(financialValues,std::max(0,static_cast<int>(financialRows.size())-pinnedFinancialRows),LVSICF_NOINVALIDATEALL|LVSICF_NOSCROLL);
         layoutFinancial();
     }
@@ -142,7 +146,8 @@ void layoutFinancial() {
     RECT r;GetClientRect(financialWindow,&r);int width=std::max(100L,r.right-24),fixedHeight=financialSummaryHeight();
     int top=financialCompact?42:230;
     fixedHeight=std::min(fixedHeight,std::max(120,static_cast<int>(r.bottom)-top-(financialCompact?120:200)));
-    for(int i=0;i<2;++i)MoveWindow(GetDlgItem(financialWindow,1950+i),r.right-84+i*36,financialCompact?4:194,32,26,TRUE);
+    if(GetDlgItem(financialWindow,1953))layoutPanelFontControls(financialWindow,r.right-120,financialCompact?4:194);
+    ShowWindow(financialSummary,SW_SHOW);
     MoveWindow(financialSummary,12,top,width,fixedHeight,TRUE);
     int nameWidth=std::max(100,width*62/100);ListView_SetColumnWidth(financialSummary,0,nameWidth);ListView_SetColumnWidth(financialSummary,1,width-nameWidth-4);
     int sidesTop=top+fixedHeight+6;
@@ -153,12 +158,13 @@ void layoutFinancial() {
     }
     MoveWindow(GetDlgItem(financialWindow,FinCompact),400,150,110,28,TRUE);
     MoveWindow(GetDlgItem(financialWindow,FinAutoScroll),510,150,125,28,TRUE);
-    int infoTop=std::max(sidesTop+86,static_cast<int>(r.bottom)-190);
+    int infoTop=std::max(sidesTop+86,static_cast<int>(r.bottom)-210);
     MoveWindow(financialValues,12,sidesTop,width,infoTop-sidesTop-8,TRUE);
-    MoveWindow(GetDlgItem(financialWindow,0x7ffe),12,infoTop,width,36,TRUE);
-    MoveWindow(GetDlgItem(financialWindow,FinSelectAll),12,infoTop+38,120,28,TRUE);
-    MoveWindow(GetDlgItem(financialWindow,FinDeselectAll),142,infoTop+38,120,28,TRUE);
-    MoveWindow(financialSides,12,infoTop+74,width,std::max(60L,r.bottom-infoTop-86),TRUE);
+    MoveWindow(GetDlgItem(financialWindow,0x7ffe),12,infoTop,width,48,TRUE);
+    MoveWindow(GetDlgItem(financialWindow,FinSelectAll),12,infoTop+54,120,28,TRUE);
+    MoveWindow(GetDlgItem(financialWindow,FinDeselectAll),142,infoTop+54,120,28,TRUE);
+    MoveWindow(financialSides,12,infoTop+90,width,std::max(60L,r.bottom-infoTop-102),TRUE);
+    InvalidateRect(financialWindow,nullptr,TRUE);
 }
 bool filteringFinancialStudy=false;
 std::wstring financialStudyText(){auto combo=GetDlgItem(financialWindow,FinStudy);int length=GetWindowTextLengthW(combo);std::wstring text(length+1,L'\0');GetWindowTextW(combo,text.data(),length+1);text.resize(length);return text;}
@@ -176,7 +182,7 @@ void fillFinancialControls() {
     filterFinancialStudies(wide(financialConfig.study.empty()?(data.studies.empty()?std::string{}:data.studies.front().name):financialConfig.study),false);
     const int ids[]{FinAum,FinMultiplier,FinCommission,FinQuantity,FinAllocation};
     const double values[]{financialConfig.aum,financialConfig.multiplier,financialConfig.commission,financialConfig.quantity,financialConfig.allocation*100};
-    for(int i=0;i<5;++i) SetDlgItemTextW(financialWindow,ids[i],finNumber(values[i]).c_str());
+    for(int i=0;i<5;++i) SetDlgItemTextW(financialWindow,ids[i],financialNumber(values[i]).c_str());
     SendDlgItemMessage(financialWindow,FinWinLoss,BM_SETCHECK,financialConfig.showWinLoss?BST_CHECKED:BST_UNCHECKED,0);
     SendDlgItemMessage(financialWindow,FinReinvest,BM_SETCHECK,financialConfig.reinvest?BST_CHECKED:BST_UNCHECKED,0);
 }
@@ -185,7 +191,7 @@ LRESULT CALLBACK financialProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         if(msg>=WM_CTLCOLORMSGBOX && msg<=WM_CTLCOLORSTATIC) return themedControl(wp);
         if(msg==WM_COMMAND && LOWORD(wp)==FinStudy && HIWORD(wp)==CBN_EDITCHANGE && !filteringFinancialStudy){filterFinancialStudies(financialStudyText(),true);return 0;}
         if(msg==WM_CLOSE) { preferences.financialLegend=false;ShowWindow(hwnd,SW_HIDE);saveAppPreferences();return 0; }
-        if(msg==WM_GETMINMAXINFO) { reinterpret_cast<MINMAXINFO*>(lp)->ptMinTrackSize=financialCompact?POINT{300,42+financialSummaryHeight()+110}:POINT{640,230+financialSummaryHeight()+310};return 0; }
+        if(msg==WM_GETMINMAXINFO) { reinterpret_cast<MINMAXINFO*>(lp)->ptMinTrackSize=financialCompact?POINT{430,42+financialSummaryHeight()+110}:POINT{640,230+financialSummaryHeight()+310};return 0; }
         if(msg==WM_SIZE && financialValues) {layoutFinancial();return 0;}
         if(msg==WM_COMMAND && (LOWORD(wp)==FinSelectAll || LOWORD(wp)==FinDeselectAll)) {
             financialRowsDirty=true;bool show=LOWORD(wp)==FinSelectAll;syncingFinancial=true;SendMessage(financialSides,WM_SETREDRAW,FALSE,0);
@@ -201,7 +207,7 @@ LRESULT CALLBACK financialProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
             if(found==data.studies.end())throw std::runtime_error("Select an available signal study from the matching list.");
             FinancialConfig next=financialConfig;next.study=found->name;
             // SIDE appearance is keyed by numeric identity, including absent sides.
-            auto number=[&](int id) { wchar_t text[128]{};GetDlgItemTextW(hwnd,id,text,128); wchar_t* end=nullptr;double v=wcstod(text,&end);while(end && iswspace(*end)) ++end;if(end==text || !end || *end) throw std::runtime_error("Enter valid numeric financial settings.");return v; };
+            auto number=[&](int id) { wchar_t text[128]{};GetDlgItemTextW(hwnd,id,text,128); std::wstring cleaned=text;cleaned.erase(std::remove(cleaned.begin(),cleaned.end(),static_cast<wchar_t>(44)),cleaned.end());wcsncpy_s(text,cleaned.c_str(),_TRUNCATE);wchar_t* end=nullptr;double v=wcstod(text,&end);while(end && iswspace(*end)) ++end;if(end==text || !end || *end) throw std::runtime_error("Enter valid numeric financial settings.");return v; };
             next.aum=number(FinAum);next.multiplier=number(FinMultiplier);next.commission=number(FinCommission);next.quantity=number(FinQuantity);next.allocation=number(FinAllocation)/100;
             next.reinvest=SendDlgItemMessage(hwnd,FinReinvest,BM_GETCHECK,0,0)==BST_CHECKED;
             auto result=calculateFinancial(data,next);signalNavigationBar=SIZE_MAX;financialConfig=std::move(next);financialResult=std::move(result);
@@ -213,22 +219,30 @@ LRESULT CALLBACK financialProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         if(msg==WM_NOTIFY) {
             auto n=reinterpret_cast<NMHDR*>(lp);
             if((n->hwndFrom==financialValues || n->hwndFrom==financialSummary) && n->code==LVN_GETDISPINFOW){
-                auto info=reinterpret_cast<NMLVDISPINFOW*>(lp);size_t row=static_cast<size_t>(info->item.iItem)+(n->hwndFrom==financialValues?pinnedFinancialRows:0);
+                auto info=reinterpret_cast<NMLVDISPINFOW*>(lp);size_t row=n->hwndFrom==financialValues?info->item.iItem+pinnedFinancialRows:summaryRow(info->item.iItem);
                 if((info->item.mask&LVIF_TEXT) && row<financialRows.size()){
-                    const auto& value=info->item.iSubItem==0?financialRows[row].name:financialValue(row);
+                    const auto& value=info->item.iSubItem==0?(n->hwndFrom==financialSummary && !financialCompact?L"     "+financialRows[row].name:financialRows[row].name):(n->hwndFrom==financialSummary && !financialTopEnabled[row]?std::wstring{}:financialValue(row));
                     if(info->item.pszText && info->item.cchTextMax>0)wcsncpy_s(info->item.pszText,info->item.cchTextMax,value.c_str(),_TRUNCATE);
                 }return 0;
+            }
+            if(n->hwndFrom==financialSummary && !financialCompact && (n->code==NM_CLICK || n->code==LVN_KEYDOWN)){
+                int row=-1;
+                if(n->code==NM_CLICK){auto click=reinterpret_cast<NMITEMACTIVATE*>(lp);if(click->ptAction.x<32)row=click->iItem;}
+                else if(reinterpret_cast<NMLVKEYDOWN*>(lp)->wVKey==VK_SPACE)row=ListView_GetNextItem(financialSummary,-1,LVNI_FOCUSED);
+                if(row>=0 && row<pinnedFinancialRows){financialTopEnabled[row]=!financialTopEnabled[row];InvalidateRect(financialSummary,nullptr,FALSE);}return 0;
             }
             if(n->code==NM_CUSTOMDRAW && (n->hwndFrom==financialValues || n->hwndFrom==financialSummary || n->hwndFrom==financialSides)) {
                 auto d=reinterpret_cast<NMLVCUSTOMDRAW*>(lp);
                 if(d->nmcd.dwDrawStage==CDDS_PREPAINT) return CDRF_NOTIFYITEMDRAW;
                 if(d->nmcd.dwDrawStage==CDDS_ITEMPREPAINT) {
-                    size_t i=d->nmcd.dwItemSpec+(n->hwndFrom==financialValues?pinnedFinancialRows:0);int color=0x8599b5;
+                    size_t i=n->hwndFrom==financialSummary?summaryRow(static_cast<int>(d->nmcd.dwItemSpec)):d->nmcd.dwItemSpec+(n->hwndFrom==financialValues?pinnedFinancialRows:0);int color=0x8599b5;
                     if((n->hwndFrom==financialValues || n->hwndFrom==financialSummary) && i<financialRowColors.size()) color=financialRowColors[i];
                     if(n->hwndFrom==financialSides && i<financialSideRows.size()) color=financialConfig.sides.at(financialSideRows[i]).color;
-                    d->clrText=RGB((color>>16)&255,(color>>8)&255,color&255);d->clrTextBk=appBackgroundColor();return CDRF_NEWFONT;
+                    if(n->hwndFrom==financialSummary && !financialTopEnabled[i])color=0x707b8a;
+                    d->clrText=RGB((color>>16)&255,(color>>8)&255,color&255);d->clrTextBk=appBackgroundColor();return CDRF_NEWFONT | (n->hwndFrom==financialSummary && !financialCompact?CDRF_NOTIFYPOSTPAINT:0);
                 }
             }
+            if(n->hwndFrom==financialSummary && n->code==NM_CUSTOMDRAW && !financialCompact){auto d=reinterpret_cast<NMLVCUSTOMDRAW*>(lp);if(d->nmcd.dwDrawStage==CDDS_ITEMPOSTPAINT){RECT r{};ListView_GetItemRect(financialSummary,static_cast<int>(d->nmcd.dwItemSpec),&r,LVIR_BOUNDS);r.left=4;r.right=18;r.top+=(r.bottom-r.top-14)/2;r.bottom=r.top+14;DrawFrameControl(d->nmcd.hdc,&r,DFC_BUTTON,DFCS_BUTTONCHECK|(financialTopEnabled[d->nmcd.dwItemSpec]?DFCS_CHECKED:0));return CDRF_DODEFAULT;}}
             if(n->hwndFrom==financialSides && !syncingFinancial) {
                 auto changed=[&]() { financialRowsDirty=true;options.signalStyles=financialConfig.sides;updateFinancial();InvalidateRect(financialValues,nullptr,FALSE);InvalidateRect(financialSides,nullptr,FALSE);redraw();saveStudies(); };
                 if(n->code==LVN_ITEMCHANGED) {
@@ -266,7 +280,7 @@ void showFinancial() {
         SetPropW(child(L"BUTTON",L"Compact mode",FinCompact,410,150,220,28,BS_AUTOCHECKBOX|WS_TABSTOP),L"FIGCharts.NoFocusBorder",reinterpret_cast<HANDLE>(1));
         SetPropW(child(L"BUTTON",L"Auto-scroll sides",FinAutoScroll,510,150,125,28,BS_AUTOCHECKBOX|WS_TABSTOP),L"FIGCharts.NoFocusBorder",reinterpret_cast<HANDLE>(1));
         SendDlgItemMessage(financialWindow,FinAutoScroll,BM_SETCHECK,financialAutoScroll?BST_CHECKED:BST_UNCHECKED,0);
-        child(L"STATIC",L"Choose a Signal Study and press Apply / Calculate.",FinStamp,12,194,500,32);
+        child(L"STATIC",L"Choose a Signal Study and press Apply / Calculate.",FinStamp,12,194,290,32);
         financialSummary=child(WC_LISTVIEWW,L"",FinSummary,12,230,618,210,LVS_OWNERDATA|LVS_REPORT|LVS_SINGLESEL|WS_BORDER|WS_TABSTOP);
         ListView_SetExtendedListViewStyle(financialSummary,LVS_EX_FULLROWSELECT|LVS_EX_DOUBLEBUFFER);
         financialValues=child(WC_LISTVIEWW,L"",FinValues,12,230,618,280,LVS_OWNERDATA|LVS_REPORT|LVS_SINGLESEL|WS_BORDER|WS_TABSTOP);
@@ -284,6 +298,8 @@ void showFinancial() {
     ShowWindow(financialWindow,testing?SW_HIDE:SW_SHOW);updateFinancial();
     if(!testing) SetForegroundWindow(financialWindow);
 }
+
+
 
 
 

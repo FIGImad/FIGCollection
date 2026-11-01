@@ -83,7 +83,9 @@ inline std::unique_ptr<FinanceChart> render(const CsvData& data, const ChartOpti
     int plotBackground = 0x18202b;
     int grid = preferences.dark ? 0x34383e : 0x191b1f;
     chart->setPlotAreaStyle(plotBackground, grid, grid, plotBackground, plotBackground);
-    chart->setData(DoubleArray(times.data(), static_cast<int>(count)), array(data.high), array(data.low), array(data.open), array(data.close), array(data.volume), 0);
+    // During overscroll we own the time-axis labels. Initialize without timestamps
+    // so FinanceChart does not install automatic date labels on the first panel.
+    chart->setData(options.panExtra!=0?DoubleArray():DoubleArray(times.data(), static_cast<int>(count)), array(data.high), array(data.low), array(data.open), array(data.close), array(data.volume), 0);
     bool hasPanel = options.activeStudy >= 0 && options.activeStudy < static_cast<int>(options.studies.size()) && options.studies[options.activeStudy].enabled && !options.studies[options.activeStudy].overlay;
     int panelHeight = std::max(100, std::min(180, height / 4));
     auto main = panel(chart->addMainChart(std::max(140, height - 100 - (hasPanel ? panelHeight + 10 : 0))));
@@ -149,12 +151,20 @@ inline std::unique_ptr<FinanceChart> render(const CsvData& data, const ChartOpti
         if(std::isfinite(low)&&std::isfinite(high)){double pad=std::max((high-low)*0.05,std::max(0.01,std::abs(high)*1e-6));main->yAxis()->setLinearScale(low-pad,high+pad);main->yAxis()->setRounding(false,false);}
     }
     // Set every panel's range before any layout (signal-label positioning lays out main).
-    if(options.panExtra!=0)for(auto p:renderedPanels){
-        p->xAxis()->copyAxis(nullptr);p->xAxis()->setLabels(StringArray());
-        p->xAxis()->setLinearScale(options.panExtra-0.5,count-0.5+options.panExtra,Chart::NoValue);
-        p->xAxis()->setRounding(false,false);
-        size_t step=std::max(size_t(1),count/8);
-        for(size_t i=0;i<count;i+=step){auto t=displaySystemTime(data.time[first+i]);char label[48];sprintf_s(label,"%04u-%02u-%02u\n%02u:%02u",t.wYear,t.wMonth,t.wDay,t.wHour,t.wMinute);p->xAxis()->addLabel(static_cast<double>(i),label);}
+    if(options.panExtra!=0){
+        int plotWidth=std::max(1,width-135);
+        size_t step=std::max(size_t(1),static_cast<size_t>(std::ceil(count*110.0/plotWidth)));
+        double edgeMargin=count*55.0/plotWidth;
+        size_t begin=static_cast<size_t>(std::max(0.0,std::ceil(options.panExtra-0.5+edgeMargin)));
+        double end=std::min(double(count-1),count-0.5+options.panExtra-edgeMargin);
+        for(auto p:renderedPanels){
+            auto axis=p->xAxis();axis->copyAxis(nullptr);
+            axis->setLinearScale(options.panExtra-0.5,count-0.5+options.panExtra,Chart::NoValue);
+            axis->setRounding(false,false);
+            for(size_t i=begin;i<count&&double(i)<=end;i+=step){auto t=displaySystemTime(data.time[first+i]);char label[48];sprintf_s(label,"%04u-%02u-%02u\n%02u:%02u",t.wYear,t.wMonth,t.wDay,t.wHour,t.wMinute);axis->addLabel(static_cast<double>(i),label);}
+        }
+        // Retain real timestamps for FinanceChart metadata after all axes exist.
+        chart->setData(DoubleArray(times.data(),static_cast<int>(count)),array(data.high),array(data.low),array(data.open),array(data.close),array(data.volume),0);
     }
     if(options.signalStudy>=0 && !options.signalLabels.empty()) {
         main->layout();auto area=main->getPlotArea();int lastX=-1000,lane=0;

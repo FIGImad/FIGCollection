@@ -17,6 +17,9 @@ namespace IBKRProvider.Utilities
 
         private readonly ILogger? _logger;
         private readonly ConcurrentDictionary<string, ResponseHandle> _responseHandlerMap = new();
+        private readonly ConcurrentDictionary<int,ConcurrentQueue<ContractDetails>> _contractChains=new();
+        public void BeginContractChain(int reqId)=>_contractChains[reqId]=new();
+        public void RemoveContractChain(int reqId)=>_contractChains.TryRemove(reqId,out _);
         private readonly List<OrderStatusDto> _orderStatusList = new();
         protected Dictionary<int, List<Bar>> historicalDataMap = new();
         private readonly ICallbackQueue _callbackQueue;
@@ -766,6 +769,7 @@ namespace IBKRProvider.Utilities
 
         public virtual void contractDetails(int reqId, ContractDetails contractDetails)
         {
+            if(_contractChains.TryGetValue(reqId,out var chain)){chain.Enqueue(contractDetails);return;}
             //Console.WriteLine("ContractDetails begin. ReqId: " + reqId);
             //printContractMsg(contractDetails.Contract);
             //printContractDetailsMsg(contractDetails);
@@ -881,6 +885,8 @@ namespace IBKRProvider.Utilities
 
         public virtual void contractDetailsEnd(int reqId)
         {
+            if(_contractChains.TryRemove(reqId,out var chain))
+                CompleteResponse($"REQ-{reqId}",new JObject{["Result"]=JArray.FromObject(chain.ToArray())});
             //Console.WriteLine("ContractDetailsEnd. " + reqId + "\n");
         }
 
@@ -1962,6 +1968,7 @@ namespace IBKRProvider.Utilities
             }
 
             _responseHandlerMap.Clear();
+            _contractChains.Clear();
         }
     }
 }

@@ -28,6 +28,27 @@ void themeTitleBar(HWND hwnd) {
         set(hwnd, 35, &caption, sizeof(caption)); set(hwnd, 36, &text, sizeof(text));
     }
 }
+// Paint the whole strip so native tab borders and unused space stay dark too.
+LRESULT CALLBACK themedTabProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp,UINT_PTR,DWORD_PTR){
+ if(preferences.dark && msg==WM_ERASEBKGND)return 1;
+ if(preferences.dark && (msg==WM_PAINT||msg==WM_PRINTCLIENT)){
+  PAINTSTRUCT ps{};auto dc=msg==WM_PAINT?BeginPaint(hwnd,&ps):reinterpret_cast<HDC>(wp);int saved=SaveDC(dc);
+  RECT client{};GetClientRect(hwnd,&client);FillRect(dc,&client,appBackground());
+  SelectObject(dc,reinterpret_cast<HFONT>(SendMessage(hwnd,WM_GETFONT,0,0)));SetBkMode(dc,TRANSPARENT);SetTextColor(dc,appTextColor());
+  int selected=TabCtrl_GetCurSel(hwnd);
+  for(int i=0;i<TabCtrl_GetItemCount(hwnd);++i){RECT r{};TabCtrl_GetItemRect(hwnd,i,&r);
+   auto brush=CreateSolidBrush(i==selected?RGB(55,69,87):RGB(38,50,66));FillRect(dc,&r,brush);DeleteObject(brush);
+   wchar_t label[128]{};TCITEMW item{};item.mask=TCIF_TEXT;item.pszText=label;item.cchTextMax=128;TabCtrl_GetItem(hwnd,i,&item);
+   RECT text=r;InflateRect(&text,-5,-2);DrawTextW(dc,label,-1,&text,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+   if(i==selected){RECT accent{r.left,r.bottom-2,r.right,r.bottom};brush=CreateSolidBrush(RGB(88,158,216));FillRect(dc,&accent,brush);DeleteObject(brush);
+    if(GetFocus()==hwnd && !(SendMessage(hwnd,WM_QUERYUISTATE,0,0)&UISF_HIDEFOCUS)){InflateRect(&text,-2,-2);DrawFocusRect(dc,&text);}}
+  }
+  RestoreDC(dc,saved);if(msg==WM_PAINT)EndPaint(hwnd,&ps);return 0;
+ }
+ auto result=DefSubclassProc(hwnd,msg,wp,lp);
+ if(msg==WM_LBUTTONDOWN||msg==WM_LBUTTONUP||msg==WM_KEYDOWN||msg==WM_KEYUP||msg==TCM_SETCURSEL||msg==WM_SETFOCUS||msg==WM_KILLFOCUS||msg==WM_UPDATEUISTATE)InvalidateRect(hwnd,nullptr,FALSE);
+ return result;
+}
 LRESULT CALLBACK themedButtonProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp, UINT_PTR, DWORD_PTR) {
     if(auto resource=GetPropW(hwnd,L"FIGCharts.IconResource");resource && (msg==WM_PAINT || msg==WM_PRINTCLIENT)) {
         PAINTSTRUCT ps{};auto dc=msg==WM_PAINT?BeginPaint(hwnd,&ps):reinterpret_cast<HDC>(wp);RECT r{};GetClientRect(hwnd,&r);FillRect(dc,&r,appBackground());
@@ -43,12 +64,12 @@ LRESULT CALLBACK themedButtonProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp, UIN
         MoveToEx(dc,x-4,y-4,nullptr);LineTo(dc,x+5,y+5);MoveToEx(dc,x+4,y-4,nullptr);LineTo(dc,x-5,y+5);
         if(GetFocus()==hwnd){InflateRect(&r,-2,-2);DrawFocusRect(dc,&r);}RestoreDC(dc,saved);DeleteObject(pen);if(msg==WM_PAINT)EndPaint(hwnd,&ps);return 0;
     }
-    if ((preferences.dark || GetPropW(hwnd, L"FIGCharts.NoFocusBorder")) && (msg == WM_PAINT || msg == WM_PRINTCLIENT)) {
+    if ((preferences.dark || GetPropW(hwnd, L"FIGCharts.NoFocusBorder") || GetPropW(hwnd,L"FIGCharts.TextButton")) && (msg == WM_PAINT || msg == WM_PRINTCLIENT)) {
         PAINTSTRUCT ps{}; auto dc = msg == WM_PAINT ? BeginPaint(hwnd, &ps) : reinterpret_cast<HDC>(wp);
         int saved = SaveDC(dc); RECT r; GetClientRect(hwnd, &r);
         auto state = SendMessage(hwnd, BM_GETSTATE, 0, 0); auto type = GetWindowLongPtr(hwnd, GWL_STYLE) & BS_TYPEMASK;
         bool check = type == BS_AUTOCHECKBOX || type == BS_CHECKBOX;
-        auto brush = CreateSolidBrush(check ? appBackgroundColor() : (state & BST_PUSHED) ? RGB(55,69,87) : RGB(38,50,66));
+        auto brush = CreateSolidBrush(check ? appBackgroundColor() : ((state & BST_PUSHED) || GetPropW(hwnd,L"FIGCharts.ToggleOn")) ? RGB(55,85,115) : preferences.dark?RGB(38,50,66):RGB(238,242,247));
         FillRect(dc, &r, brush); DeleteObject(brush);
         auto color = IsWindowEnabled(hwnd) ? appTextColor() : RGB(112,123,138);
         auto pen = CreatePen(PS_SOLID, 1, GetPropW(hwnd,L"FIGCharts.GrayCheck")?RGB(110,114,120):RGB(76,90,108)); SelectObject(dc, pen); SelectObject(dc, GetStockObject(NULL_BRUSH));
@@ -79,7 +100,7 @@ void controlTooltip(HWND control,const wchar_t* text) {
     SetPropW(control,L"FIGCharts.Tooltip",tip);
 }
 LRESULT CALLBACK iconButtonParentProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp,UINT_PTR,DWORD_PTR){
-    if(msg==WM_DRAWITEM){auto item=reinterpret_cast<DRAWITEMSTRUCT*>(lp);if(item->CtlType==ODT_BUTTON && GetPropW(item->hwndItem,L"FIGCharts.IconResource")){
+    if(msg==WM_DRAWITEM){auto item=reinterpret_cast<DRAWITEMSTRUCT*>(lp);if(item->CtlType==ODT_BUTTON && (GetPropW(item->hwndItem,L"FIGCharts.IconResource") || GetPropW(item->hwndItem,L"FIGCharts.TextButton"))){
         SendMessage(item->hwndItem,WM_PRINTCLIENT,reinterpret_cast<WPARAM>(item->hDC),PRF_CLIENT);return TRUE;}}
     return DefSubclassProc(hwnd,msg,wp,lp);
 }
@@ -91,23 +112,45 @@ void iconButton(HWND control,int resource,const wchar_t* tooltip) {
     SetWindowSubclass(control,themedButtonProc,10,0);controlTooltip(control,tooltip);
 }
 void fitSignalReportColumns();
-int panelFontSizes[3]{9,9,9};
+std::wstring financialNumber(double value,int decimals=2,bool accounting=false){
+    std::wostringstream out;out<<std::fixed<<std::setprecision(decimals)<<std::abs(value);auto text=out.str();auto end=text.find(L'.');if(end==std::wstring::npos)end=text.size();
+    for(int i=static_cast<int>(end)-3;i>0;i-=3)text.insert(i,1,L',');
+    if(value<0 && std::abs(value)>=0.5*std::pow(10.0,-decimals))text=accounting?L"("+text+L")":L"-"+text;return text;
+}
+double panelFontSizes[3]{9,9,9};
+bool panelFontBold[3]{};
 HFONT panelFonts[3]{};
 void applyPanelFont(HWND parent,int kind){
-    if(!parent)return;auto dc=GetDC(parent);int height=-MulDiv(panelFontSizes[kind],GetDeviceCaps(dc,LOGPIXELSY),72);ReleaseDC(parent,dc);
-    auto next=CreateFontW(height,0,0,0,FW_NORMAL,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH,L"Segoe UI");if(!next)return;
-    EnumChildWindows(parent,[](HWND child,LPARAM value)->BOOL{wchar_t name[64]{};GetClassNameW(child,name,64);if(_wcsicmp(name,WC_LISTVIEWW)==0){SendMessage(child,WM_SETFONT,value,TRUE);SendMessage(ListView_GetHeader(child),WM_SETFONT,value,TRUE);}return TRUE;},reinterpret_cast<LPARAM>(next));
+    if(!parent)return;auto dc=GetDC(parent);int height=-static_cast<int>(std::lround(panelFontSizes[kind]*GetDeviceCaps(dc,LOGPIXELSY)/72));ReleaseDC(parent,dc);
+    auto next=CreateFontW(height,0,0,0,panelFontBold[kind]?FW_BOLD:FW_NORMAL,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH,L"Segoe UI");if(!next)return;
+    SetPropW(GetDlgItem(parent,1953),L"FIGCharts.ToggleOn",reinterpret_cast<HANDLE>(static_cast<INT_PTR>(panelFontBold[kind])));InvalidateRect(GetDlgItem(parent,1953),nullptr,FALSE);
+    EnumChildWindows(parent,[](HWND child,LPARAM value)->BOOL{wchar_t name[64]{};GetClassNameW(child,name,64);if(_wcsicmp(name,WC_LISTVIEWW)==0){SendMessage(child,WM_SETFONT,value,TRUE);SendMessage(ListView_GetHeader(child),WM_SETFONT,value,TRUE);}else if(GetPropW(child,L"FIGCharts.PanelFont"))SendMessage(child,WM_SETFONT,value,TRUE);return TRUE;},reinterpret_cast<LPARAM>(next));
     auto old=panelFonts[kind];panelFonts[kind]=next;if(old)DeleteObject(old);
     RECT r{};GetClientRect(parent,&r);SendMessage(parent,WM_SIZE,0,MAKELPARAM(r.right,r.bottom));
 }
 LRESULT CALLBACK panelFontProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp,UINT_PTR,DWORD_PTR kind){
-    if(msg==WM_COMMAND && (LOWORD(wp)==1950 || LOWORD(wp)==1951)){int next=std::clamp(panelFontSizes[kind]+(LOWORD(wp)==1950?-1:1),7,24);if(next!=panelFontSizes[kind]){panelFontSizes[kind]=next;applyPanelFont(hwnd,static_cast<int>(kind));if(kind==2)fitSignalReportColumns();}return 0;}
+    if(msg==WM_COMMAND && LOWORD(wp)==1953){panelFontBold[kind]=!panelFontBold[kind];applyPanelFont(hwnd,static_cast<int>(kind));if(kind==2)fitSignalReportColumns();return 0;}
+    if(msg==WM_COMMAND && (LOWORD(wp)==1950 || LOWORD(wp)==1951)){double next=std::clamp(panelFontSizes[kind]+(LOWORD(wp)==1950?-0.5:0.5),7.0,24.0);if(next!=panelFontSizes[kind]){panelFontSizes[kind]=next;applyPanelFont(hwnd,static_cast<int>(kind));if(kind==2)fitSignalReportColumns();}return 0;}
     return DefSubclassProc(hwnd,msg,wp,lp);
 }
 void addPanelFontControls(HWND parent,int kind,int x,int y){
     SetWindowSubclass(parent,panelFontProc,1950,kind);
     for(int i=0;i<2;++i){auto button=CreateWindowW(L"BUTTON",i?L"A+":L"A-",WS_CHILD|WS_VISIBLE|WS_TABSTOP,x+i*36,y,32,26,parent,reinterpret_cast<HMENU>(static_cast<INT_PTR>(1950+i)),GetModuleHandle(nullptr),nullptr);SendMessage(button,WM_SETFONT,reinterpret_cast<WPARAM>(font),TRUE);SetWindowSubclass(button,themedButtonProc,10,0);controlTooltip(button,i?L"Increase table font size":L"Decrease table font size");}
+    auto bold=CreateWindowW(L"BUTTON",L"B",WS_CHILD|WS_VISIBLE|WS_TABSTOP|BS_OWNERDRAW,x+72,y,36,26,parent,reinterpret_cast<HMENU>(1953),GetModuleHandle(nullptr),nullptr);SendMessage(bold,WM_SETFONT,reinterpret_cast<WPARAM>(font),TRUE);SetWindowSubclass(bold,themedButtonProc,10,0);controlTooltip(bold,L"Toggle bold table text");
+    SetWindowSubclass(parent,iconButtonParentProc,1952,0);
+    for(int id:{1950,1951,1953}){auto button=GetDlgItem(parent,id);SetWindowLongPtr(button,GWL_STYLE,(GetWindowLongPtr(button,GWL_STYLE)&~BS_TYPEMASK)|BS_OWNERDRAW);SetPropW(button,L"FIGCharts.TextButton",reinterpret_cast<HANDLE>(1));}
     applyPanelFont(parent,kind);
+}
+void layoutPanelFontControls(HWND parent,int x,int y){
+    // Move the group together without copying pixels from overlapping old positions.
+    auto batch=BeginDeferWindowPos(3);
+    int ids[]{1950,1951,1953};
+    for(int i=0;i<3;++i){auto button=GetDlgItem(parent,ids[i]);
+        batch=DeferWindowPos(batch,button,nullptr,x+i*36,y,i==2?36:32,26,SWP_NOZORDER|SWP_NOACTIVATE|SWP_NOCOPYBITS);
+    }
+    if(batch)EndDeferWindowPos(batch);
+    InvalidateRect(parent,nullptr,TRUE);
+    for(int id:ids)RedrawWindow(GetDlgItem(parent,id),nullptr,nullptr,RDW_INVALIDATE|RDW_ERASE);
 }
 // Menu labels retain their native strings and command IDs for keyboard navigation.
 void drawMenuIcon(HDC,RECT,UINT,bool,bool,bool);

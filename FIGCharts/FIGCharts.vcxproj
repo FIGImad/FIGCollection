@@ -54,6 +54,9 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\CsvData.h" />
+    <ClInclude Include="src\DatabaseData.h" />
+    <ClInclude Include="src\StudyValueCodec.h" />
+    <ClInclude Include="src\StudyValueCodecTests.h" />
     <ClInclude Include="src\DemoOverlay.h" />
     <ClInclude Include="src\FigDataReader.h" />
     <ClInclude Include="src\FigDataTests.h" />
@@ -63,6 +66,7 @@
     <ClInclude Include="src\AppPreferences.h" />
     <ClInclude Include="src\AppUi.h" />
     <ClInclude Include="src\SignalReport.h" />
+    <ClInclude Include="src\GotoInput.h" />
     <ClInclude Include="src\Theme.h" />
     <ClInclude Include="src\LoadingUi.h" />
     <ClInclude Include="src\ThemedScrollbars.h" />
@@ -78,6 +82,7 @@
   <ItemGroup>
     <None Include="assets\FIG Logo.ico" />
     <None Include="assets\toolbar\bin.png" />
+    <None Include="assets\toolbar\database.png" />
     <None Include="assets\toolbar\csv.png" />
     <None Include="assets\toolbar\goto-calendar.png" />
     <None Include="assets\toolbar\goto-end.png" />
@@ -94,3 +99,4 @@
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
 </Project>
+

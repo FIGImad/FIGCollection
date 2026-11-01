@@ -38,6 +38,7 @@
         * @brief The contract's last trading day or contract month (for Options and Futures). Strings with format YYYYMM will be interpreted as the Contract Month whereas YYYYMMDD will be interpreted as Last Trading Day.
         */
         public string LastTradeDateOrContractMonth { get; set; } = "";
+        public string RealExpirationDate { get; set; } = "";
 
         /**
          * @brief The option's strike price

@@ -51,21 +51,32 @@ public sealed class IbkrMarketDataAdapter(IProviderService provider,IProviderCon
         {
             if(query.SecurityType=="FUT")
             {
+                if(string.IsNullOrWhiteSpace(query.Expiry))
+                {
+                    if(provider is not IContractChainProvider chains)throw new NotSupportedException("This provider does not support futures contract-list discovery.");
+                    return chains.ContractChain(new(){Symbol=query.Symbol.Trim(),SecType="FUT",Exchange=query.Exchange.Trim(),Currency=query.Currency.Trim()},requestTimeoutSeconds*1000)
+                        .Where(c=>c is not null&&c.SecType=="FUT"&&string.Equals(c.Symbol,query.Symbol.Trim(),StringComparison.OrdinalIgnoreCase))
+                        .Select(Map).DistinctBy(c=>c.ProviderInstrumentId).OrderBy(c=>c.Expiry,StringComparer.Ordinal).ToArray();
+                }
                 ValidateExpiry(query.Expiry);
                 var contract=provider.ContractInfo(new(){Symbol=query.Symbol.Trim(),SecType=query.SecurityType,Exchange=query.Exchange.Trim(),Currency=query.Currency.Trim(),LastTradeDateOrContractMonth=query.Expiry},requestTimeoutSeconds*1000);
                 return contract is null?[]:[Map(contract)];
             }
             var result=provider.SymbolLookup(query.Symbol.Trim(),requestTimeoutSeconds*1000)??throw new IOException("IBKR symbol lookup failed.");
-            return result.Where(c=>c.SecType=="STK" && (string.IsNullOrWhiteSpace(query.Currency)||c.Currency.Equals(query.Currency,StringComparison.OrdinalIgnoreCase))
-                && (string.IsNullOrWhiteSpace(query.Exchange)||c.Exchange.Equals(query.Exchange,StringComparison.OrdinalIgnoreCase)||c.PrimaryExch.Equals(query.Exchange,StringComparison.OrdinalIgnoreCase))).Select(Map).ToArray();
+            return result.Where(c=>c is not null&&c.SecType=="STK" && (string.IsNullOrWhiteSpace(query.Currency)||string.Equals(c.Currency,query.Currency,StringComparison.OrdinalIgnoreCase))
+                && (string.IsNullOrWhiteSpace(query.Exchange)||string.Equals(c.Exchange,query.Exchange,StringComparison.OrdinalIgnoreCase)||string.Equals(c.PrimaryExch,query.Exchange,StringComparison.OrdinalIgnoreCase)||query.Exchange.Equals("SMART",StringComparison.OrdinalIgnoreCase)))
+                .Select(Map).ToArray();
         },ct);
     }
 
     public Task<MarketInstrument> ResolveAsync(MarketInstrument instrument,CancellationToken ct)=>ExecuteAsync(()=>
     {
         if(instrument.SecurityType=="FUT")ValidateExpiry(instrument.Expiry);
+        bool stockListing=instrument.SecurityType=="STK"&&(instrument.Exchange.Equals("NYSE",StringComparison.OrdinalIgnoreCase)||instrument.Exchange.Equals("NASDAQ",StringComparison.OrdinalIgnoreCase));
         var result=provider.ContractInfo(new(){Symbol=instrument.Symbol,SecType=instrument.SecurityType,
-            Exchange=string.IsNullOrWhiteSpace(instrument.Exchange)?instrument.PrimaryExchange:instrument.Exchange,Currency=instrument.Currency,LastTradeDateOrContractMonth=instrument.Expiry},requestTimeoutSeconds*1000)
+            ConId=int.TryParse(instrument.ProviderInstrumentId,NumberStyles.None,CultureInfo.InvariantCulture,out int conId)&&conId>0?conId:0,
+            PrimaryExchange=stockListing?instrument.Exchange:instrument.PrimaryExchange,
+            Exchange=stockListing?"SMART":string.IsNullOrWhiteSpace(instrument.Exchange)?instrument.PrimaryExchange:instrument.Exchange,Currency=instrument.Currency,LastTradeDateOrContractMonth=instrument.SecurityType=="STK"?"":instrument.Expiry},requestTimeoutSeconds*1000)
             ??throw new InvalidDataException("No unambiguous contract was resolved.");
         var mapped=Map(result);
         if(!string.IsNullOrEmpty(instrument.ProviderInstrumentId) && instrument.ProviderInstrumentId!=mapped.ProviderInstrumentId)throw new InvalidDataException("Resolved instrument does not match the selection.");
@@ -77,7 +88,7 @@ public sealed class IbkrMarketDataAdapter(IProviderService provider,IProviderCon
         if(query.BarSeconds<1 || query.DurationSeconds<1 || query.EndRawTime<=0)throw new InvalidDataException("History requires a positive UTC end, bar interval and duration.");
         if(query.Instrument.SecurityType is not ("STK" or "FUT"))throw new InvalidDataException("History supports stocks and individual futures contracts.");
         var bars=provider.HistoricalDataRequest(new(){Ticker=Ticker(query.Instrument),StartRawTime=query.EndRawTime,NumBars=0,
-            IntervalId=BarSize(query.BarSeconds),Duration=$"{query.DurationSeconds} S"},requestTimeoutSeconds*1000)??throw new IOException("IBKR historical request failed.");
+            IntervalId=BarSize(query.BarSeconds),Duration=query.DurationSeconds>=86400?$"{(query.DurationSeconds+86399L)/86400} D":$"{query.DurationSeconds} S"},requestTimeoutSeconds*1000)??throw new IOException("IBKR historical request failed.");
         return bars.OrderBy(b=>b.RawTime).Select(b=>new MarketBar(b.RawTime,(decimal)b.Open,(decimal)b.High,(decimal)b.Low,(decimal)b.Close,b.Volume)).ToArray();
     },ct);
     public Task<decimal?> GetSnapshotAsync(MarketInstrument instrument,CancellationToken ct)=>ExecuteAsync(()=>provider.TickerSnapshot(Ticker(instrument),requestTimeoutSeconds*1000),ct);
@@ -86,8 +97,8 @@ public sealed class IbkrMarketDataAdapter(IProviderService provider,IProviderCon
     private static TickerInfo Ticker(MarketInstrument i)=>new(){Symbol=i.Symbol,SecType=i.SecurityType,Exchange=i.Exchange,Currency=i.Currency,ContractMonth=int.TryParse(i.Expiry,out int month)?month:0};
     private static void ValidateExpiry(string expiry)
     {if(expiry.Length is not (6 or 8)||!expiry.All(char.IsAsciiDigit))throw new InvalidDataException("Futures require YYYYMM or YYYYMMDD expiry.");}
-    private static MarketInstrument Map(ContractInfo c)=>new(){ProviderInstrumentId=c.ConId>0?c.ConId.ToString(CultureInfo.InvariantCulture):"",Symbol=c.Symbol,LocalSymbol=c.LocalSymbol,Name=c.Name,
-        SecurityType=c.SecType,Exchange=c.Exchange,PrimaryExchange=c.PrimaryExch,Currency=c.Currency,Expiry=c.LastTradeDateOrContractMonth,MinimumTick=c.MinTick,
+    private static MarketInstrument Map(ContractInfo c)=>new(){ProviderInstrumentId=c.ConId>0?c.ConId.ToString(CultureInfo.InvariantCulture):"",Symbol=c.Symbol??"",LocalSymbol=string.IsNullOrWhiteSpace(c.LocalSymbol)&&c.SecType=="STK"?c.Symbol??"":c.LocalSymbol??"",Name=c.Name??"",
+        SecurityType=c.SecType??"",Exchange=string.IsNullOrWhiteSpace(c.Exchange)&&c.SecType=="STK"?"SMART":c.Exchange??"",PrimaryExchange=c.PrimaryExch??"",Currency=c.Currency??"",Expiry=c.LastTradeDateOrContractMonth??"",ExpirationDate=c.RealExpirationDate??"",MinimumTick=c.MinTick,
         ContractMultiplier=string.IsNullOrWhiteSpace(c.Multiplier)?1:decimal.Parse(c.Multiplier,CultureInfo.InvariantCulture)};
 
     public async ValueTask DisposeAsync()

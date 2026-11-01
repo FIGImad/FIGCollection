@@ -6,6 +6,9 @@ namespace FIG.Studies
     {
         public PriceDataRS Price { get; set; }
         public Dictionary<string, object?> Studies { get; set; }
+        // Optional persistence layers. Studies always remains the effective merged output for plugins.
+        public Dictionary<string, object?>? BaseStudies { get; set; }
+        public Dictionary<string, object?>? OverrideStudies { get; set; }
         public BarStudy(PriceDataRS price)
         {
             Price = new PriceDataRS(price);
@@ -14,6 +17,8 @@ namespace FIG.Studies
 
         public BarStudy(BarStudy barStudy)
         {
+            BaseStudies = barStudy.BaseStudies is null ? null : new(barStudy.BaseStudies);
+            OverrideStudies = barStudy.OverrideStudies is null ? null : new(barStudy.OverrideStudies);
             Price = new PriceDataRS(barStudy.Price);
             Studies = new();
             // iterate through Studies of barStudy and add to Studies

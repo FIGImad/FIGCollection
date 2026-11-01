@@ -57,19 +57,18 @@ namespace FIGCommon.Models
 
         public PriceDataRS CreateFromSqlDataReader(SqlDataReader reader)
         {
-            int nSeq = 0;
             var rec = new PriceDataRS()
             {
-                Id = SqlReaderUtil.GetInt32(reader, nSeq++),
-                DataSetId = SqlReaderUtil.GetInt32(reader, nSeq++),
-                RawTime = SqlReaderUtil.GetInt32(reader, nSeq++),
-                PriceDate = SqlReaderUtil.GetDateTime(reader, nSeq++),
-                Open = SqlReaderUtil.GetDecimal(reader, nSeq++),
-                High = SqlReaderUtil.GetDecimal(reader, nSeq++),
-                Low = SqlReaderUtil.GetDecimal(reader, nSeq++),
-                Close = SqlReaderUtil.GetDecimal(reader, nSeq++),
-                Volume = SqlReaderUtil.GetInt32(reader, nSeq++)
+                Id = SqlReaderUtil.GetInt32(reader, reader.GetOrdinal("Id")),
+                DataSetId = SqlReaderUtil.GetInt32(reader, reader.GetOrdinal("DataSetId")),
+                RawTime = Convert.ToInt64(reader["RawTime"]),
+                Open = SqlReaderUtil.GetDecimal(reader, reader.GetOrdinal("Open")),
+                High = SqlReaderUtil.GetDecimal(reader, reader.GetOrdinal("High")),
+                Low = SqlReaderUtil.GetDecimal(reader, reader.GetOrdinal("Low")),
+                Close = SqlReaderUtil.GetDecimal(reader, reader.GetOrdinal("Close")),
+                Volume = SqlReaderUtil.GetInt32(reader, reader.GetOrdinal("Volume"))
             };
+            rec.PriceDate=DateTimeOffset.FromUnixTimeSeconds(rec.RawTime).UtcDateTime;
             return rec;
         }
 

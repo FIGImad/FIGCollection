@@ -119,7 +119,7 @@ void fitLegend(bool reset) {
     for (int i = 0; i < 10; ++i) { int width = (i <= DisplayColumn || i == DeleteColumn || legendAdvanced) ? widths[i] : 0; total += width;
         if (ListView_GetColumnWidth(legendStudies, i) != width) ListView_SetColumnWidth(legendStudies, i, width);
     }
-    int content = 390;
+    int content = 342;
     for (HWND h : {legendText, legendPrices, legendVolume}) {
         wchar_t label[1024]{}; GetWindowTextW(h, label, 1024); std::wistringstream lines(label); std::wstring line;
         while (std::getline(lines, line)) content = std::max(content, measure(line) + 24);
@@ -153,15 +153,25 @@ void layoutLegend() {
     closeCellEditor(); RECT r; GetClientRect(legendWindow, &r);
     int offset = pickerExpanded ? pickerPaneWidth : 0;
     if (studyPicker) MoveWindow(studyPicker, 0, 0, pickerPaneWidth, r.bottom, TRUE);
-    MoveWindow(legendText, offset + 12, 10, r.right - offset - 24, 24, TRUE);
-    MoveWindow(legendPrices, offset + 12, 43, r.right - offset - 24, 38, TRUE);
-    MoveWindow(legendVolume, offset + 12, 83, r.right - offset - 24, 20, TRUE);
-    MoveWindow(GetDlgItem(legendWindow, LegendAdd), offset + 12, 110, 30, 28, TRUE);
-    MoveWindow(GetDlgItem(legendWindow, LegendAdvanced), offset + 122, 110, 175, 28, TRUE);
-    MoveWindow(GetDlgItem(legendWindow,LegendMoveUp),offset+48,110,30,28,TRUE);
-    MoveWindow(GetDlgItem(legendWindow,LegendMoveDown),offset+84,110,30,28,TRUE);
-    for(int i=0;i<2;++i)MoveWindow(GetDlgItem(legendWindow,1950+i),offset+310+i*36,110,32,26,TRUE);
-    MoveWindow(legendStudies, offset + 12, 148, r.right - offset - 24, std::max(20L, r.bottom - 160), TRUE);
+    int width=std::max(20L,r.right-offset-24);
+    auto heightFor=[&](HWND control,int minimum){
+        auto dc=GetDC(control);auto previous=SelectObject(dc,reinterpret_cast<HFONT>(SendMessage(control,WM_GETFONT,0,0)));
+        wchar_t text[1024]{};GetWindowTextW(control,text,1024);RECT bounds{0,0,width,0};
+        DrawTextW(dc,text,-1,&bounds,DT_CALCRECT|DT_WORDBREAK|DT_NOPREFIX);
+        TEXTMETRICW metrics{};GetTextMetricsW(dc,&metrics);SelectObject(dc,previous);ReleaseDC(control,dc);
+        return std::max(minimum,std::max(static_cast<int>(bounds.bottom)+4,static_cast<int>(metrics.tmHeight)+4));
+    };
+    int dateHeight=heightFor(legendText,24),priceHeight=heightFor(legendPrices,38),volumeHeight=heightFor(legendVolume,20);
+    int priceTop=10+dateHeight+9,volumeTop=priceTop+priceHeight+2,toolbarTop=volumeTop+volumeHeight+7,tableTop=toolbarTop+38;
+    MoveWindow(legendText,offset+12,10,width,dateHeight,TRUE);
+    MoveWindow(legendPrices,offset+12,priceTop,width,priceHeight,TRUE);
+    MoveWindow(legendVolume,offset+12,volumeTop,width,volumeHeight,TRUE);
+    MoveWindow(GetDlgItem(legendWindow,LegendAdd),offset+12,toolbarTop,30,28,TRUE);
+    MoveWindow(GetDlgItem(legendWindow,LegendAdvanced),offset+122,toolbarTop,92,28,TRUE);
+    MoveWindow(GetDlgItem(legendWindow,LegendMoveUp),offset+48,toolbarTop,30,28,TRUE);
+    MoveWindow(GetDlgItem(legendWindow,LegendMoveDown),offset+84,toolbarTop,30,28,TRUE);
+    if(GetDlgItem(legendWindow,1953))layoutPanelFontControls(legendWindow,offset+222,toolbarTop);
+    MoveWindow(legendStudies,offset+12,tableTop,width,std::max(20L,r.bottom-tableTop-12),TRUE);
 }
 void activateLegendCell(int row,int column);
 LRESULT CALLBACK legendListProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp, UINT_PTR, DWORD_PTR) {
@@ -185,6 +195,7 @@ void showLegend() {
         legendText = child(L"EDIT", L"Open a data file to view values.", 0, ES_MULTILINE | ES_READONLY);
         legendPrices = child(L"STATIC", L"", 0, 0);
         legendVolume = child(L"STATIC", L"", 0, 0);
+        for(auto control:{legendText,legendPrices,legendVolume})SetPropW(control,L"FIGCharts.PanelFont",reinterpret_cast<HANDLE>(1));
         legendStudies = child(WC_LISTVIEWW, L"", LegendStudies, LVS_REPORT | LVS_SINGLESEL | LVS_SHOWSELALWAYS | WS_TABSTOP | WS_BORDER);
         ListView_SetExtendedListViewStyle(legendStudies, LVS_EX_FULLROWSELECT | LVS_EX_DOUBLEBUFFER);
         SetWindowSubclass(legendStudies, legendListProc, 1, 0);
@@ -195,8 +206,8 @@ void showLegend() {
         iconButton(child(L"BUTTON", L"Add study...", LegendAdd, WS_TABSTOP),2012,L"Add study");
         iconButton(child(L"BUTTON",L"Move up",LegendMoveUp,WS_TABSTOP),2013,L"Move selected study up");
         iconButton(child(L"BUTTON",L"Move down",LegendMoveDown,WS_TABSTOP),2014,L"Move selected study down");
-        SetPropW(child(L"BUTTON", L"Advanced settings", LegendAdvanced, WS_TABSTOP | BS_AUTOCHECKBOX), L"FIGCharts.NoFocusBorder", reinterpret_cast<HANDLE>(1));
-        addPanelFontControls(legendWindow,0,310,110);
+        SetPropW(child(L"BUTTON", L"Advanced", LegendAdvanced, WS_TABSTOP | BS_AUTOCHECKBOX), L"FIGCharts.NoFocusBorder", reinterpret_cast<HANDLE>(1));
+        addPanelFontControls(legendWindow,0,222,110);
         cellEditor = child(L"COMBOBOX", L"", CellEditor, CBS_DROPDOWNLIST | WS_TABSTOP | WS_VSCROLL);
         ShowWindow(cellEditor, SW_HIDE); layoutLegend(); rebuildStudyRows();
     }

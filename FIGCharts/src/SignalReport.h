@@ -4,7 +4,13 @@ struct SignalReportRow {
 };
 
 std::vector<SignalReportRow> signalReportRows;
-int signalReportSort=8; bool signalReportDescending=true;
+std::vector<std::pair<int,bool>> signalReportSorts{{8,true}};
+const wchar_t* signalReportColumnNames[]{L"Entry bar",L"SIDE",L"Entry time",L"Exit time / status",L"Entry price",L"Exit / mark",L"Quantity",L"Gross P/L",L"Net P/L",L"Commission",L"Return %",L"Bars held"};
+void sortReportColumn(int column,bool extend){
+    auto it=std::find_if(signalReportSorts.begin(),signalReportSorts.end(),[&](auto key){return key.first==column;});
+    bool descending=it==signalReportSorts.end()?column>=6:!it->second;
+    if(!extend)signalReportSorts={{column,descending}};else if(it==signalReportSorts.end())signalReportSorts.emplace_back(column,descending);else it->second=descending;
+}
 std::wstring signalReportStamp;
 std::vector<int> signalReportWidths{100,100,180,180,100,100,100,100,100,100,100,100};
 std::vector<int> currentSignalReportWidths(){
@@ -31,7 +37,11 @@ bool reportSideMatches(double side,std::wstring prefix) {
     if(prefix.front()==L'+' || prefix.front()==L'-')prefix.erase(0,1);
     return fromUtf8(sideName(std::abs(side))).starts_with(prefix);
 }
-std::wstring reportNumber(double value) {std::wostringstream s;s<<std::fixed<<std::setprecision(2)<<value;return s.str();}
+std::wstring reportNumber(double value) {return financialNumber(value);}
+std::wstring reportTime(double seconds){
+    auto utc=utcSystemTime(seconds);SYSTEMTIME local{};DYNAMIC_TIME_ZONE_INFORMATION zone{};GetDynamicTimeZoneInformation(&zone);if(!SystemTimeToTzSpecificLocalTimeEx(&zone,&utc,&local))local=utc;
+    wchar_t text[32];swprintf_s(text,L"%04u-%02u-%02u %02u:%02u",local.wYear,local.wMonth,local.wDay,local.wHour,local.wMinute);return text;
+}
 void refreshSignalReport() {
     size_t selected=SIZE_MAX;int old=ListView_GetNextItem(signalReportList,-1,LVNI_SELECTED);
     if(old>=0 && old<static_cast<int>(signalReportRows.size()))selected=signalReportRows[old].entry;
@@ -47,17 +57,18 @@ void refreshSignalReport() {
         double basis=std::abs(qty)*data.close[entry]*financialConfig.multiplier;
         signalReportRows.push_back({entry,exit,side,std::abs(qty),gross,fees,net,basis>0?100*net/basis:0,open});
     }
-    auto value=[](const SignalReportRow& r,int col)->double {switch(col){case 0:return static_cast<double>(r.entry);case 1:return r.side;case 2:return static_cast<double>(r.entry);case 3:return r.open?1:0;case 4:return data.close[r.entry];case 5:return data.close[r.exit];case 6:return r.quantity;case 7:return r.gross;case 8:return r.net;case 9:return r.fees;case 10:return r.percent;default:return static_cast<double>(r.exit-r.entry);}};
-    std::stable_sort(signalReportRows.begin(),signalReportRows.end(),[&](const auto& a,const auto& b){double av=value(a,signalReportSort),bv=value(b,signalReportSort);return av==bv?a.entry<b.entry:signalReportDescending?av>bv:av<bv;});
+    auto value=[](const SignalReportRow& r,int col)->double {switch(col){case 0:return static_cast<double>(r.entry);case 1:return r.side;case 2:return static_cast<double>(r.entry);case 3:return static_cast<double>(r.exit);case 4:return data.close[r.entry];case 5:return data.close[r.exit];case 6:return r.quantity;case 7:return r.gross;case 8:return r.net;case 9:return r.fees;case 10:return r.percent;default:return static_cast<double>(r.exit-r.entry);}};
+    std::stable_sort(signalReportRows.begin(),signalReportRows.end(),[&](const auto& a,const auto& b){for(auto [column,descending]:signalReportSorts){double av=value(a,column),bv=value(b,column);if(av!=bv)return descending?av>bv:av<bv;}return a.entry<b.entry;});
     SendMessage(signalReportList,WM_SETREDRAW,FALSE,0);ListView_DeleteAllItems(signalReportList);
     for(size_t i=0;i<signalReportRows.size();++i){const auto& r=signalReportRows[i];
-        std::wstring cells[]{std::to_wstring(r.entry+1),fromUtf8(sideName(r.side)),timestamp(data.time[r.entry]),r.open?L"Open (marked)":timestamp(data.time[r.exit]),reportNumber(data.close[r.entry]),reportNumber(data.close[r.exit]),reportNumber(r.quantity),reportNumber(r.gross),reportNumber(r.net),reportNumber(r.fees),reportNumber(r.percent),std::to_wstring(r.exit-r.entry)};
+        std::wstring cells[]{financialNumber(static_cast<double>(r.entry+1),0),fromUtf8(sideName(r.side)),reportTime(data.time[r.entry]),r.open?L"Open (marked)":reportTime(data.time[r.exit]),reportNumber(data.close[r.entry]),reportNumber(data.close[r.exit]),reportNumber(r.quantity),financialNumber(r.gross,2,true),financialNumber(r.net,2,true),reportNumber(r.fees),reportNumber(r.percent),financialNumber(static_cast<double>(r.exit-r.entry),0)};
         LVITEMW item{};item.mask=LVIF_TEXT;item.iItem=static_cast<int>(i);item.pszText=cells[0].data();ListView_InsertItem(signalReportList,&item);
         for(int c=1;c<12;++c)ListView_SetItemText(signalReportList,static_cast<int>(i),c,cells[c].data());
         if(r.entry==selected)ListView_SetItemState(signalReportList,static_cast<int>(i),LVIS_SELECTED|LVIS_FOCUSED,LVIS_SELECTED|LVIS_FOCUSED);
     }
     SendMessage(signalReportList,WM_SETREDRAW,TRUE,0);InvalidateRect(signalReportList,nullptr,TRUE);
-    SetWindowTextW(signalReportWindow,(L"Signal performance report - "+std::to_wstring(signalReportRows.size())+L" signals (click column to sort)").c_str());
+    std::wstring order;for(auto [column,descending]:signalReportSorts){if(!order.empty())order+=L", ";order+=signalReportColumnNames[column];order+=descending?L" descending":L" ascending";}
+    SetWindowTextW(signalReportWindow,(L"Signal report - "+std::to_wstring(signalReportRows.size())+L" signals | Sort: "+order+L" | Shift-click adds sort columns").c_str());
 }
 void reportGoTo(){int i=ListView_GetNextItem(signalReportList,-1,LVNI_SELECTED);if(i>=0 && i<static_cast<int>(signalReportRows.size()))goToSignal(signalReportRows[i].entry);}
 std::wstring signalReportCsv() {
@@ -102,7 +113,7 @@ LRESULT CALLBACK signalReportProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
     case WM_NOTIFY:{auto n=reinterpret_cast<NMHDR*>(lp);
         if(n->code==NM_DBLCLK){reportGoTo();return 0;}
         if(n->code==LVN_KEYDOWN){if(reinterpret_cast<NMLVKEYDOWN*>(lp)->wVKey==VK_RETURN)reportGoTo();return 0;}
-        if(n->code==LVN_COLUMNCLICK){int col=reinterpret_cast<NMLISTVIEW*>(lp)->iSubItem;if(col==signalReportSort)signalReportDescending=!signalReportDescending;else {signalReportSort=col;signalReportDescending=col>=6;}refreshSignalReport();return 0;}
+        if(n->code==LVN_COLUMNCLICK){sortReportColumn(reinterpret_cast<NMLISTVIEW*>(lp)->iSubItem,(GetKeyState(VK_SHIFT)&0x8000)!=0);refreshSignalReport();return 0;}
         if(n->code==NM_CUSTOMDRAW && n->hwndFrom==signalReportList){auto d=reinterpret_cast<NMLVCUSTOMDRAW*>(lp);if(d->nmcd.dwDrawStage==CDDS_PREPAINT)return CDRF_NOTIFYITEMDRAW|CDRF_NOTIFYPOSTPAINT;
             if(d->nmcd.dwDrawStage==CDDS_POSTPAINT){
                 RECT client{};GetClientRect(signalReportList,&client);int saved=SaveDC(d->nmcd.hdc);
@@ -117,7 +128,8 @@ LRESULT CALLBACK signalReportProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
                 }
                 RestoreDC(d->nmcd.hdc,saved);DeleteObject(pen);return CDRF_DODEFAULT;
             }
-            if(d->nmcd.dwDrawStage==CDDS_ITEMPREPAINT && d->nmcd.dwItemSpec<signalReportRows.size()){auto it=financialConfig.sides.find(signalReportRows[d->nmcd.dwItemSpec].side);if(it!=financialConfig.sides.end()){int c=it->second.color;d->clrText=RGB((c>>16)&255,(c>>8)&255,c&255);}return CDRF_NEWFONT;}}
+            if(d->nmcd.dwDrawStage==CDDS_ITEMPREPAINT)return CDRF_NOTIFYSUBITEMDRAW;
+            if(d->nmcd.dwDrawStage==(CDDS_ITEMPREPAINT|CDDS_SUBITEM) && d->nmcd.dwItemSpec<signalReportRows.size()){const auto& row=signalReportRows[d->nmcd.dwItemSpec];auto it=financialConfig.sides.find(row.side);d->clrText=appTextColor();if(it!=financialConfig.sides.end()){int c=it->second.color;d->clrText=RGB((c>>16)&255,(c>>8)&255,c&255);}if(d->iSubItem==7 || d->iSubItem==8){double pl=d->iSubItem==7?row.gross:row.net;d->clrText=pl<0?RGB(240,70,70):pl>0?RGB(35,190,90):appTextColor();}return CDRF_NEWFONT;}}
         break;}
     }return DefWindowProcW(hwnd,msg,wp,lp);
 }
@@ -141,10 +153,12 @@ void showSignalReport(){
         controlTooltip(button,L"Scroll the chart to the selected signal's entry");
         auto status=CreateWindowW(L"STATIC",L"",WS_CHILD|WS_VISIBLE|SS_CENTERIMAGE|SS_ENDELLIPSIS|SS_NOPREFIX,150,540,1000,30,signalReportWindow,reinterpret_cast<HMENU>(1906),wc.hInstance,nullptr);SendMessage(status,WM_SETFONT,reinterpret_cast<WPARAM>(font),TRUE);
         addPanelFontControls(signalReportWindow,2,420,8);applySignalReportWidths();
+        auto sortHint=CreateWindowW(L"STATIC",L"Sort: click a column; Shift-click to add another",WS_CHILD|WS_VISIBLE,540,13,420,22,signalReportWindow,nullptr,wc.hInstance,nullptr);SendMessage(sortHint,WM_SETFONT,reinterpret_cast<WPARAM>(font),TRUE);
         SetTimer(signalReportWindow,1,500,nullptr);
     }
     applyTheme();refreshSignalReport();ShowWindow(signalReportWindow,SW_SHOW);RECT r{};GetClientRect(signalReportWindow,&r);SendMessage(signalReportWindow,WM_SIZE,0,MAKELPARAM(r.right,r.bottom));SetForegroundWindow(signalReportWindow);syncToolbar();
 }
+
 
 
 

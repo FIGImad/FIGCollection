@@ -23,13 +23,15 @@ public sealed class DatabaseSetupService(string connectionString)
     public static readonly IReadOnlyDictionary<string,string[]> RequiredColumns=new Dictionary<string,string[]>
     {
         ["Ticker"]=["Id","Symbol","LocalSymbol","Name","SecurityType","Currency","ExpiryDate","MinTick","ContractSize","Exchange","PeriodMultiplier"],
-        ["TickerProvider"]=["TickerId","ProviderType","ProviderInstrumentId","ProviderSymbol"],
+        ["TickerProvider"]=["TickerId","ProviderType","ProviderInstrumentId","ProviderSymbol","HistoryStartRawTime"],
         ["Interval"]=["Id","Name","Seq","IntervalLen"],
-        ["DataSet"]=["Id","TickerId","IntervalId"],
-        ["PriceData"]=["Id","DataSetId","RawTime","PriceDate","Open","High","Low","Close","Volume"],
+        ["DataSet"]=["Id","TickerId","IntervalId","Monitor"],
+        ["ExchangePriceSchedule"]=["Exchange","Enabled","TimeZoneId","WeeklyBreakCloseDay","WeeklyBreakCloseTime","WeeklyBreakOpenDay","WeeklyBreakOpenTime","DailyBreakCloseTime","DailyBreakOpenTime"],
+        ["PriceData"]=["Id","DataSetId","RawTime","Open","High","Low","Close","Volume"],
+        ["Event"]=["Id","EventType","EventId","Message","TimeStamp"],
         ["StudyCol"]=["Id","TickerId","IntervalId","ColType","OrderSeq","ColParams","Enabled"],
         ["ColType"]=["Type","DLLName","Description"],
-        ["BarStudy"]=["Id","StudyColId","RawTime","Open","High","Low","Close","Volume","Studies"]
+        ["StudyHistory"]=["Id","StudyColId","RawTime","Open","High","Low","Close","Volume","Studies","StudiesOverride","StudiesBaseDefinitionHash","CheckpointState","CheckpointSavedAt","MarketLiveDefinitionHash","MarketLivePrefixHash","MarketLivePrefixCount"]
     };
 
     public async Task<DatabaseCheck> CheckAsync(CancellationToken ct)
@@ -56,6 +58,8 @@ public sealed class DatabaseSetupService(string connectionString)
         await using(var reader=await cmd.ExecuteReaderAsync(ct))
             while(await reader.ReadAsync(ct)) columns[reader.GetString(0)+"."+reader.GetString(1)]=(reader.GetString(2),reader.GetInt16(3),reader.GetByte(4));
         var problems=new List<string>();
+        if(columns.ContainsKey("PriceData.PriceDate"))problems.Add("PriceData.PriceDate is obsolete. Apply --migrate-price-schema to use RawTime-only prices.");
+        if(columns.TryGetValue("DataSet.Monitor",out var monitor)&&monitor.Type!="bit")problems.Add("DataSet.Monitor must be bit.");
         foreach(var (table,names) in RequiredColumns)
             foreach(var name in names)
                 if(!columns.ContainsKey(table+"."+name)) problems.Add($"Missing dbo.{table}.{name}");
@@ -65,16 +69,19 @@ public sealed class DatabaseSetupService(string connectionString)
             permission.Parameters.AddWithValue("@Table","dbo."+table);
             if(Convert.ToInt32(await permission.ExecuteScalarAsync(ct))!=1)problems.Add($"SELECT access is missing for dbo.{table}.");
         }
-        if(columns.TryGetValue("BarStudy.Studies",out var studies) && (studies.Type!="varbinary" || studies.Length!=-1))
-            problems.Add("BarStudy.Studies must be varbinary(max); JSON text requires migration.");
-        foreach(var table in new[]{"PriceData","BarStudy"})
+        if(columns.ContainsKey("BarStudy.Studies"))problems.Add("Legacy BarStudy still exists. Run database setup to consolidate study storage.");
+        if(columns.TryGetValue("StudyHistory.Studies",out var studies) && (studies.Type!="varbinary" || studies.Length!=-1))
+            problems.Add("StudyHistory.Studies must be varbinary(max); run database setup to migrate JSON storage.");
+        if(columns.TryGetValue("StudyHistory.StudiesOverride",out var overlay) && (overlay.Type!="varbinary" || overlay.Length!=-1))
+            problems.Add("StudyHistory.StudiesOverride must be varbinary(max).");
+        foreach(var table in new[]{"PriceData","StudyHistory"})
         {
             if(columns.TryGetValue(table+".RawTime",out var time) && time.Type is not ("int" or "bigint")) problems.Add($"{table}.RawTime must be int or bigint.");
             if(columns.TryGetValue(table+".Volume",out var volume) && volume.Type!="int") problems.Add($"{table}.Volume must currently be int for the managed price contract.");
             foreach(var price in new[]{"Open","High","Low","Close"})
                 if(columns.TryGetValue(table+"."+price,out var type) && (type.Type is not ("decimal" or "numeric") || type.Scale<4)) problems.Add($"{table}.{price} must be decimal/numeric with scale >= 4.");
         }
-        foreach(var (table,first,second) in new[]{("DataSet","TickerId","IntervalId"),("PriceData","DataSetId","RawTime"),("BarStudy","StudyColId","RawTime")})
+        foreach(var (table,first,second) in new[]{("DataSet","TickerId","IntervalId"),("PriceData","DataSetId","RawTime"),("StudyHistory","StudyColId","RawTime")})
         {
             await using var cmd=new SqlCommand("""
                 SELECT COUNT(*) FROM sys.indexes i WHERE i.object_id=OBJECT_ID(@Table) AND i.is_unique=1 AND i.is_disabled=0 AND i.has_filter=0

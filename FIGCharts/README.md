@@ -1,6 +1,6 @@
 # FIGCharts
 
-Native Windows C++ financial chart viewer using the sibling FIGSignalCpp ChartDirector installation. No database connection is needed.
+Native Windows C++ financial chart viewer using the sibling FIGSignalCpp ChartDirector installation. Supports CSV, FIGDATA binary reports, and SQL Server study history.
 
 ## Build and run
 
@@ -98,3 +98,21 @@ Use **View > Signal performance report...** after calculating a financial SIDE s
 Drag beyond either edge to leave up to two thirds of the viewport empty. Price and study layers are clipped to their plot areas. Financial SIDE colors are keyed by their numeric value and retained for sides absent from the current data.
 
 The signal report uses CSV and copy icons. The first CSV export asks for a filename; later exports overwrite that destination. Change it in Settings > Signal report CSV. The destination and independent A-/A+ table font sizes for both legends and the signal report are stored when saving the workspace. Financial summary pins the SIDE (four decimals), total bars, signal frequency, and closed P/L along with account metrics.
+
+### Database prices and studies
+In **Edit > Settings**, existing options are on **General**. On **Database**, enter an ODBC SQL Server connection string, use **Test connection**, then **Apply settings**. Example: `Driver={ODBC Driver 18 for SQL Server};Server=localhost;Database=FIG;Trusted_Connection=Yes;Encrypt=Yes;`. Install the matching x64 SQL Server ODBC driver. The connection string is stored in local application preferences; use Windows authentication when possible.
+
+Use **File > Get prices from database** or the database toolbar icon to choose an enabled StudyCol (ID, ticker, interval, collection type). Reads use committed StudyHistory rows. FIGS v1 payloads are validated and every override entry replaces its base entry, including nulls. Numeric and Boolean values become chart study series; null and string values display as gaps. UTC timestamps remain unchanged.
+
+Database charts load **all history**, including when reopening workspaces created with an older recent-bars limit. Full-history financial calculations remain available.
+
+**Refresh data** rereads the full collection and replaces the chart data, including revised existing rows and regenerated history, while retaining the viewport by UTC timestamp and study settings. A chart at the end follows the latest bars. There is no automatic polling. Workspaces reference the collection ID and use the application's configured database connection, without embedding credentials in the workspace.
+
+Database reads bind fixed price fields once and stream complete binary payloads. For large collections, SQL Server should have an index starting with `(StudyColId, RawTime)`; the shipped FIG schema defines this index.
+
+The database reader reuses binary buffers, decoded study schemas and chart column mappings across rows instead of building and merging dictionaries for each bar. FIGS validation still runs, including duplicate names, UTF-8, tags, lengths and decimal flags. Every override is applied after base values, including nulls. `FIGCharts.exe --benchmark-study-decode output.txt` compares the dictionary and reusable paths on 50,000 synthetic bars with 64 studies, verifies matching values, and reports decoding/series-building timings; it does not measure SQL Server or network time.
+
+### Database load performance
+Database loading reads both `Studies` and `StudiesOverride`. Every override entry replaces its base value, including null overrides; SQL NULL means there is no override payload. All history remains loaded.
+
+Enable **Settings > Database > Show performance report after database load / refresh** to open the report automatically (off by default). A **Database load performance** report shows bar/study counts, combined base and override payload MiB, connection time, query prepare/execute, row/blob fetching, FIGS decoding, chart series construction, and chart setup/calculation/rendering time. Reopen it from **View > Database load performance**; Ctrl+C copies the report. Loading a workspace records reader timings, but chart setup timing is available when using the database load/refresh command. Timings are measured on the client and include driver/network waits; they are not a SQL Server execution profile.

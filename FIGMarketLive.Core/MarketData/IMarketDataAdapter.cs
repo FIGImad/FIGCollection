@@ -22,6 +22,9 @@ public sealed record MarketInstrument
     public string PrimaryExchange { get; init; } = "";
     public string Currency { get; init; } = "";
     public string Expiry { get; init; } = "";
+    public string ExpirationDate { get; init; } = "";
+    /// <summary>SQL capture boundary after an explicit contract roll; broker adapters need not populate it.</summary>
+    public long? HistoryStartRawTime { get; init; }
     public decimal MinimumTick { get; init; }
     public decimal ContractMultiplier { get; init; } = 1;
 }

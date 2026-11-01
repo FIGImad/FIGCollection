@@ -10,6 +10,9 @@
   <ItemGroup>
     <ClCompile Include="src\main.cpp"><Filter>Source Files</Filter></ClCompile>
     <ClCompile Include="src\CsvData.cpp"><Filter>Source Files</Filter></ClCompile>
+    <ClInclude Include="src\DatabaseData.h"><Filter>Header Files</Filter></ClInclude>
+    <ClInclude Include="src\StudyValueCodec.h"><Filter>Header Files</Filter></ClInclude>
+    <ClInclude Include="src\StudyValueCodecTests.h"><Filter>Header Files</Filter></ClInclude>
     <ClInclude Include="src\CsvData.h"><Filter>Header Files</Filter></ClInclude>
     <ClInclude Include="src\DemoOverlay.h"><Filter>Header Files</Filter></ClInclude>
     <ClInclude Include="src\FigDataReader.h"><Filter>Header Files</Filter></ClInclude>

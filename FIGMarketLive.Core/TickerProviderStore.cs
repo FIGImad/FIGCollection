@@ -23,6 +23,8 @@ public sealed class TickerProviderStore(string connectionString)
                 ProviderSymbol nvarchar(100) NOT NULL,
                 CONSTRAINT PK_TickerProvider PRIMARY KEY(TickerId,ProviderType),
                 CONSTRAINT FK_TickerProvider_Ticker FOREIGN KEY(TickerId) REFERENCES dbo.Ticker(Id));
+        IF COL_LENGTH('dbo.TickerProvider','HistoryStartRawTime') IS NULL
+            ALTER TABLE dbo.TickerProvider ADD HistoryStartRawTime bigint NULL;
         """;
 
     public static TickerProviderMapping FromInstrument(int tickerId,string provider,MarketInstrument instrument)
@@ -101,14 +103,19 @@ public sealed class TickerProviderStore(string connectionString)
     public async Task<MarketInstrument> ReadInstrumentAsync(int tickerId,string provider,CancellationToken ct)
     {
         await using var c=new SqlConnection(connectionString);await c.OpenAsync(ct);
-        await using var cmd=new SqlCommand("""
-            SELECT p.ProviderInstrumentId,p.ProviderSymbol,t.LocalSymbol,t.Name,t.SecurityType,t.Exchange,t.Currency,t.ExpiryDate,t.MinTick,t.ContractSize
-            FROM dbo.TickerProvider p JOIN dbo.Ticker t ON t.Id=p.TickerId WHERE p.TickerId=@Ticker AND p.ProviderType=@Provider
-            """,c);
+        return await ReadInstrumentAsync(c,null,tickerId,provider,ct);
+    }
+    internal static async Task<MarketInstrument> ReadInstrumentAsync(SqlConnection c,SqlTransaction? tx,int tickerId,string provider,CancellationToken ct)
+    {
+        string hint=tx is null?"":" WITH(UPDLOCK,HOLDLOCK)";
+        await using var cmd=new SqlCommand($"""
+            SELECT p.ProviderInstrumentId,p.ProviderSymbol,t.LocalSymbol,t.Name,t.SecurityType,t.Exchange,t.Currency,t.ExpiryDate,t.MinTick,t.ContractSize,p.HistoryStartRawTime
+            FROM dbo.TickerProvider p{hint} JOIN dbo.Ticker t{hint} ON t.Id=p.TickerId WHERE p.TickerId=@Ticker AND p.ProviderType=@Provider
+            """,c,tx);
         cmd.Parameters.AddWithValue("@Ticker",tickerId);cmd.Parameters.AddWithValue("@Provider",provider);
         await using var r=await cmd.ExecuteReaderAsync(ct);
         if(!await r.ReadAsync(ct))throw new InvalidDataException($"No provider mapping exists for ticker {tickerId} / {provider}. Save the ticker through its adapter.");
         return new(){ProviderInstrumentId=r.GetString(0),Symbol=r.GetString(1),LocalSymbol=r.GetString(2),Name=r.GetString(3),SecurityType=r.GetString(4),Exchange=r.GetString(5),Currency=r.GetString(6),
-            Expiry=r.GetString(4)=="FUT"&&r.GetInt32(7)>0?r.GetInt32(7).ToString(CultureInfo.InvariantCulture):"",MinimumTick=r.GetDecimal(8),ContractMultiplier=r.GetInt32(9)};
+            Expiry=r.GetString(4)=="FUT"&&r.GetInt32(7)>0?r.GetInt32(7).ToString(CultureInfo.InvariantCulture):"",MinimumTick=r.GetDecimal(8),ContractMultiplier=r.GetInt32(9),HistoryStartRawTime=r.IsDBNull(10)?null:r.GetInt64(10)};
     }
 }

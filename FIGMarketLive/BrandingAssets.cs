@@ -45,6 +45,21 @@ internal sealed class BrandingAssets : IDisposable
     }
     public void Apply(Button button,string file)
     {button.Image=Image(file);button.TextImageRelation=TextImageRelation.ImageBeforeText;button.ImageAlign=ContentAlignment.MiddleLeft;button.Padding=new Padding(4,2,4,2);}
+    public static void StyleToolbar(ToolStrip toolbar)
+    {
+        foreach(ToolStripItem item in toolbar.Items)
+        {item.Margin=new Padding(4,2,4,2);if(item is ToolStripButton)item.Padding=new Padding(4);}
+    }
+    public Bitmap PriceSyncImage(bool running)
+    {
+        string key=running?"sync-green":"sync-red";
+        if(images.TryGetValue(key,out var cached))return cached;
+        var source=Image("stock-sync.png");var result=new Bitmap(source.Width,source.Height);
+        var color=running?Color.ForestGreen:Color.Firebrick;
+        for(int y=0;y<source.Height;y++)for(int x=0;x<source.Width;x++)
+            result.SetPixel(x,y,Color.FromArgb(source.GetPixel(x,y).A,color));
+        images.Add(key,result);return result;
+    }
     public static MonitorIconState SelectState(bool monitoring,bool connected,bool needsAttention)=>needsAttention?MonitorIconState.Warning:
         monitoring&&connected?MonitorIconState.Live:MonitorIconState.Off;
     public void Dispose(){foreach(var i in trayIcons.Values)i.Dispose();foreach(var i in images.Values)i.Dispose();ApplicationIcon.Dispose();}

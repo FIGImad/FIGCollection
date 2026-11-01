@@ -17,6 +17,8 @@
 #include <future>
 #include <chrono>
 #include "DemoOverlay.h"
+#include "DatabaseData.h"
+#include "StudyValueCodecTests.h"
 
 using namespace figcharts;
 namespace {
@@ -200,6 +202,7 @@ void paintCrosshair(HDC dc) {
     TextOutW(dc, std::clamp(x - size.cx / 2, bottom.left, std::max(bottom.left, bottom.right - size.cx)), bottom.bottom + 3, label.c_str(), static_cast<int>(label.size()));
     SelectObject(dc, oldFont);
 }
+#include "GotoInput.h"
 LRESULT CALLBACK auxiliaryProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
     if (msg == WM_CLOSE) { if (hwnd == legendWindow) closeCellEditor(); ShowWindow(hwnd, SW_HIDE); if (hwnd == legendWindow) { preferences.legend = false; saveAppPreferences(); } return 0; }
     if (msg >= WM_CTLCOLORMSGBOX && msg <= WM_CTLCOLORSTATIC) {
@@ -221,16 +224,16 @@ LRESULT CALLBACK auxiliaryProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
             SYSTEMTIME date{},time{};
             if(DateTime_GetSystemtime(datePicker,&date)==GDT_VALID && DateTime_GetSystemtime(timePicker,&time)==GDT_VALID) {
                 date.wHour=time.wHour;date.wMinute=time.wMinute;date.wSecond=time.wSecond;date.wMilliseconds=0;
-                gotoSelection=date;gotoSelectionSet=true;
+                setGotoInputs(date);
             }
         }
     }
     if (msg == WM_COMMAND && hwnd == gotoWindow) {
+        if(LOWORD(wp)>=GotoYear && LOWORD(wp)<GotoYear+5 && HIWORD(wp)==EN_CHANGE){gotoInputChanged(LOWORD(wp)-GotoYear);return 0;}
         if (LOWORD(wp) == IDCANCEL) { ShowWindow(hwnd, SW_HIDE); return 0; }
         if (LOWORD(wp) == IDOK && !data.time.empty()) {
-            SYSTEMTIME st{},time{};
-            if(DateTime_GetSystemtime(datePicker,&st)!=GDT_VALID || DateTime_GetSystemtime(timePicker,&time)!=GDT_VALID)return 0;
-            st.wHour=time.wHour;st.wMinute=time.wMinute;st.wSecond=time.wSecond;st.wMilliseconds=0;
+            SYSTEMTIME st{};
+            if(!readGotoInputs(st)){MessageBoxW(hwnd,L"Enter a valid year, month, day, hour and minute.",L"Go to",MB_OK|MB_ICONINFORMATION);return 0;}
             gotoSelection=st;gotoSelectionSet=true;
             FILETIME ft{};if(!SystemTimeToFileTime(&st,&ft))return 0;
             ULARGE_INTEGER ticks; ticks.LowPart = ft.dwLowDateTime; ticks.HighPart = ft.dwHighDateTime;
@@ -253,22 +256,26 @@ void showGoto() {
     if (!gotoWindow) {
         gotoWindow = CreateWindowExW(WS_EX_DLGMODALFRAME, L"FIGChartsAux", L"Go to date/time", WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU,
             CW_USEDEFAULT, CW_USEDEFAULT, 460, 195, window, nullptr, GetModuleHandle(nullptr), nullptr);
-        auto label = CreateWindowW(L"STATIC", L"Date/time in selected zone; gaps use next bar", WS_CHILD | WS_VISIBLE, 15, 15, 420, 25, gotoWindow, nullptr, nullptr, nullptr);
-        datePicker = CreateWindowW(DATETIMEPICK_CLASSW, L"", WS_CHILD | WS_VISIBLE | WS_TABSTOP | DTS_SHORTDATEFORMAT, 15, 48, 240, 28, gotoWindow, nullptr, nullptr, nullptr);
-        SendMessageW(datePicker, DTM_SETFORMATW, 0, reinterpret_cast<LPARAM>(L"yyyy-MM-dd"));
-        timePicker = CreateWindowW(DATETIMEPICK_CLASSW,L"",WS_CHILD|WS_VISIBLE|WS_TABSTOP|DTS_TIMEFORMAT,265,48,160,28,gotoWindow,nullptr,nullptr,nullptr);
-        SendMessageW(timePicker,DTM_SETFORMATW,0,reinterpret_cast<LPARAM>(L"HH:mm:ss"));
+        auto label = CreateWindowW(L"STATIC", L"Date/time in selected zone; gaps use next bar", WS_CHILD | WS_VISIBLE, 15, 8, 420, 20, gotoWindow, nullptr, nullptr, nullptr);
+        datePicker = CreateWindowW(DATETIMEPICK_CLASSW, L"", WS_CHILD | WS_VISIBLE | WS_TABSTOP | DTS_SHORTDATEFORMAT, 335, 48, 90, 28, gotoWindow, nullptr, nullptr, nullptr);
+        SendMessageW(datePicker, DTM_SETFORMATW, 0, reinterpret_cast<LPARAM>(L"'Calendar'"));
+        // Native controls retain calendar/date notifications; keyboard entry uses explicit fields.
+        timePicker = CreateWindowW(DATETIMEPICK_CLASSW,L"",WS_CHILD|DTS_TIMEFORMAT,0,0,0,0,gotoWindow,nullptr,nullptr,nullptr);
+        SendMessageW(timePicker,DTM_SETFORMATW,0,reinterpret_cast<LPARAM>(L"HH:mm"));
+        const wchar_t* names[]{L"Year",L"Month",L"Day",L"Hour",L"Minute"};int positions[]{15,90,145,215,270};
+        for(int i=0;i<5;++i){auto fieldLabel=CreateWindowW(L"STATIC",names[i],WS_CHILD|WS_VISIBLE,positions[i],32,60,16,gotoWindow,nullptr,nullptr,nullptr);SendMessage(fieldLabel,WM_SETFONT,reinterpret_cast<WPARAM>(font),TRUE);
+            auto edit=CreateWindowExW(WS_EX_CLIENTEDGE,L"EDIT",L"",WS_CHILD|WS_VISIBLE|WS_TABSTOP|ES_NUMBER|ES_CENTER,positions[i],50,i==0?65:45,26,gotoWindow,reinterpret_cast<HMENU>(static_cast<INT_PTR>(GotoYear+i)),nullptr,nullptr);SendMessage(edit,WM_SETFONT,reinterpret_cast<WPARAM>(font),TRUE);SendMessage(edit,EM_SETLIMITTEXT,i==0?4:2,0);SetWindowSubclass(edit,gotoInputProc,1,i);}
         auto go = CreateWindowW(L"BUTTON", L"Go", WS_CHILD | WS_VISIBLE | WS_TABSTOP | BS_DEFPUSHBUTTON, 235, 95, 90, 28, gotoWindow, reinterpret_cast<HMENU>(IDOK), nullptr, nullptr);
         auto cancel = CreateWindowW(L"BUTTON", L"Cancel", WS_CHILD | WS_VISIBLE | WS_TABSTOP, 335, 95, 90, 28, gotoWindow, reinterpret_cast<HMENU>(IDCANCEL), nullptr, nullptr);
         for (auto h : {label, datePicker, timePicker, go, cancel}) SendMessage(h, WM_SETFONT, reinterpret_cast<WPARAM>(font), TRUE);
     }
     if(!gotoSelectionSet){gotoSelection=displaySystemTime(data.time[selectedBar()]);gotoSelectionSet=true;}
     syncingGoto=true;
-    DateTime_SetSystemtime(datePicker,GDT_VALID,&gotoSelection);DateTime_SetSystemtime(timePicker,GDT_VALID,&gotoSelection);
+    setGotoInputs(gotoSelection);
     syncingGoto=false;
     SetWindowTextW(gotoWindow, (L"Go to: " + zoneLabel()).c_str());
     applyTheme();
-    if (!testing) { ShowWindow(gotoWindow, SW_SHOW); SetForegroundWindow(gotoWindow); SetFocus(datePicker); }
+    if (!testing) { ShowWindow(gotoWindow, SW_SHOW); SetForegroundWindow(gotoWindow); SetFocus(GetDlgItem(gotoWindow,GotoYear)); }
 }
 void error(const std::exception& e) { MessageBoxA(window, e.what(), "FIGCharts", MB_ICONERROR); }
 void clearImage() {
@@ -342,7 +349,7 @@ HWND control(const wchar_t* type, const wchar_t* label, int id, int x, int y, in
 
 struct ToolbarAction { int id; const wchar_t* glyph; const wchar_t* tip; };
 const ToolbarAction toolbarActions[]{
-    {OpenCsv,L"CSV",L"Open CSV"},{OpenBinary,L"BIN",L"Open binary"},{Refresh,L"",L"Refresh data file"},{0,L"",L""},
+    {OpenCsv,L"CSV",L"Open CSV"},{OpenBinary,L"BIN",L"Open binary"},{OpenDatabase,L"",L"Get prices from database"},{Refresh,L"",L"Refresh data"},{0,L"",L""},
     {LoadWorkspaceMenu,L"",L"Open workspace"},{SaveWorkspaceMenu,L"",L"Save workspace"},{0,L"",L""},
     {ZoomIn,L"+",L"Zoom in"},{ZoomOut,L"",L"Zoom out"},{0,L"",L""},
     {Latest,L"",L"Go to end"},{Goto,L"",L"Go to date/time"},{PreviousSignal,L"",L"Go to previous signal"},{NextSignal,L"",L"Go to next signal"},{SignalFilterSlot,L"",L"SIDE filter"},{0,L"",L""},
@@ -402,9 +409,9 @@ struct ToolbarPng {
 std::map<int,std::unique_ptr<ToolbarPng>> toolbarPngs;
 Gdiplus::Bitmap* toolbarPng(int id) {
     const int actions[]{OpenCsv,OpenBinary,ZoomIn,ZoomOut,Latest,Goto,Legend,AddFinancial,Settings,Refresh,SignalReport};
-    auto found=std::find(std::begin(actions),std::end(actions),id);if(found==std::end(actions))return nullptr;
+    auto found=std::find(std::begin(actions),std::end(actions),id);if(found==std::end(actions)&&id!=OpenDatabase)return nullptr;
     auto cached=toolbarPngs.find(id);if(cached!=toolbarPngs.end())return cached->second->image.get();
-    auto module=GetModuleHandle(nullptr);auto resource=FindResourceW(module,MAKEINTRESOURCEW(2001+static_cast<int>(found-std::begin(actions))),RT_RCDATA);
+    auto module=GetModuleHandle(nullptr);auto resource=FindResourceW(module,MAKEINTRESOURCEW(id==OpenDatabase?2017:2001+static_cast<int>(found-std::begin(actions))),RT_RCDATA);
     if(!resource)return nullptr;auto loaded=LoadResource(module,resource);auto bytes=static_cast<const BYTE*>(LockResource(loaded));
     auto icon=std::make_unique<ToolbarPng>();icon->stream=SHCreateMemStream(bytes,SizeofResource(module,resource));if(!icon->stream)return nullptr;
     icon->image.reset(Gdiplus::Bitmap::FromStream(icon->stream));if(icon->image->GetLastStatus()!=Gdiplus::Ok)return nullptr;
@@ -770,7 +777,7 @@ void testInterface(const std::filesystem::path& output) {
     SendMessage(signalFilterEdit,WM_CHAR,L'-',0);SendMessage(signalFilterEdit,WM_CHAR,L'7',0);
     require(signalFilterText()==L"-7","SIDE filter must accept keyboard input");
     SendMessage(signalFilterClear,BM_CLICK,0,0);require(signalFilterText().empty(),"SIDE filter clear button must receive clicks");
-    require(SendMessage(toolbar, TB_BUTTONCOUNT, 0, 0) == 22, "Toolbar actions and separators missing");
+    require(SendMessage(toolbar, TB_BUTTONCOUNT, 0, 0) == 23, "Toolbar actions and separators missing");
     require(!GetDlgItem(window, Studies) && !GetDlgItem(window, AddOverlay), "Old sidebar controls must be removed");
     RECT original{}, resized{}; GetWindowRect(window, &original);
     SetCapture(window); dragging = false;
@@ -799,7 +806,7 @@ void testInterface(const std::filesystem::path& output) {
     require(options.studies.size() == 2 && !options.studies[0].overlay && options.studies[1].overlay, "Study additions must persist without duplicates");
     showStudyPicker();
     {RECT fontButton{},addButton{};GetWindowRect(GetDlgItem(legendWindow,1950),&fontButton);GetWindowRect(GetDlgItem(legendWindow,LegendAdd),&addButton);
-        require(fontButton.left-addButton.left==298 && fontButton.top==addButton.top,"Font controls must follow the legend toolbar when picker expands");}
+        require(fontButton.left-addButton.left==210 && fontButton.top==addButton.top,"Font controls must follow the compact legend toolbar when picker expands");}
     require(SendMessage(pickerList, LB_GETCOUNT, 0, 0) == static_cast<LRESULT>(data.studies.size() - 2), "Picker must exclude added studies");
     if(data.studies.size()>50)for(int command:{PickerOverlay,PickerText,PickerList}){
         SendMessage(pickerList,LB_SETCURSEL,23,0);SendMessage(pickerList,LB_SETTOPINDEX,20,0);
@@ -931,10 +938,17 @@ void testInterface(const std::filesystem::path& output) {
     showGoto();
     auto target = data.time[data.time.size() / 3];
     ULARGE_INTEGER ticks; ticks.QuadPart = static_cast<ULONGLONG>((target + 11644473600.0) * 10000000.0);
-    FILETIME ft{ticks.LowPart, ticks.HighPart}; SYSTEMTIME st{}; FileTimeToSystemTime(&ft, &st); DateTime_SetSystemtime(datePicker, GDT_VALID, &st); DateTime_SetSystemtime(timePicker,GDT_VALID,&st);
+    FILETIME ft{ticks.LowPart, ticks.HighPart}; SYSTEMTIME st{}; FileTimeToSystemTime(&ft, &st);setGotoInputs(st);
+    ShowWindow(gotoWindow,SW_SHOW);SetFocus(GetDlgItem(gotoWindow,GotoYear));
+    SetDlgItemTextW(gotoWindow,GotoYear,L"");auto year=std::to_wstring(st.wYear);for(wchar_t digit:year)SendDlgItemMessage(gotoWindow,GotoYear,WM_CHAR,digit,0);
+    require(GetFocus()==GetDlgItem(gotoWindow,GotoYear+1),"Entering four year digits must advance to month");
+    SetFocus(GetDlgItem(gotoWindow,GotoYear));SendDlgItemMessage(gotoWindow,GotoYear,WM_KEYDOWN,VK_TAB,0);
+    require(GetFocus()==GetDlgItem(gotoWindow,GotoYear+1),"Tab from year must advance to month");
+    for(int field=1;field<5;++field){WORD values[]{st.wYear,st.wMonth,st.wDay,st.wHour,st.wMinute};wchar_t digits[8];swprintf_s(digits,L"%02u",values[field]);auto input=GetDlgItem(gotoWindow,GotoYear+field);SetFocus(input);SetWindowTextW(input,L"");for(int n=0;n<2;++n)SendMessage(input,WM_CHAR,digits[n],0);require(GetFocus()==GetDlgItem(gotoWindow,field==4?IDOK:GotoYear+field+1),"Completed date/time field must advance to the next field");}
+    setGotoInputs(st);
     SendMessage(gotoWindow, WM_COMMAND, IDOK, 0);
     showGoto();SYSTEMTIME remembered{};DateTime_GetSystemtime(timePicker,&remembered);
-    require(remembered.wHour==st.wHour && remembered.wMinute==st.wMinute && gotoSelection.wDay==st.wDay,"Go To did not remember selection");
+    require(remembered.wHour==st.wHour && remembered.wMinute==st.wMinute && gotoSelection.wDay==st.wDay && gotoSelection.wSecond==0,"Go To must remember selection at minute precision");
     require(!(GetWindowLongPtr(datePicker,GWL_STYLE)&DTS_UPDOWN),"Go To calendar dropdown missing");
     auto first = options.first;
     require(data.time[first] <= target && data.time[std::min(data.time.size(), first + options.count) - 1] >= target, "Go To did not reveal target");
@@ -980,8 +994,21 @@ void testInterface(const std::filesystem::path& output) {
     SYSTEMTIME missing = winter; missing.wMonth = 3; missing.wDay = 9; missing.wHour = 2; missing.wMinute = 30;
     bool rejectedGap = false; try { displayToUtc(missing); } catch (...) { rejectedGap = true; }
     require(rejectedGap, "Nonexistent DST time accepted");
-    showSettings(); SendMessage(settingsWindow, WM_COMMAND, ApplyPreferences, 0);
+    showSettings();
+    require(TabCtrl_GetItemCount(GetDlgItem(settingsWindow,SettingsTabs))==2,"Settings need General and Database tabs");
+    TabCtrl_SetCurSel(GetDlgItem(settingsWindow,SettingsTabs),1);settingsTab();require((GetWindowLongPtr(GetDlgItem(settingsWindow,DatabaseConnection),GWL_STYLE)&WS_VISIBLE)!=0 && (GetWindowLongPtr(GetDlgItem(settingsWindow,DefaultType),GWL_STYLE)&WS_VISIBLE)==0,"Database tab visibility failed");
+    TabCtrl_SetCurSel(GetDlgItem(settingsWindow,SettingsTabs),0);settingsTab();
+    SendMessage(settingsWindow, WM_COMMAND, ApplyPreferences, 0);
     require(options.type == ChartType::Line && preferences.dark && !IsWindowVisible(legendWindow), "Apply settings failed");
+    {auto tabs=GetDlgItem(settingsWindow,SettingsTabs);RECT bounds{};GetClientRect(tabs,&bounds);
+     auto screen=GetDC(tabs),dc=CreateCompatibleDC(screen);auto pixels=CreateCompatibleBitmap(screen,bounds.right,bounds.bottom);auto old=SelectObject(dc,pixels);
+     for(int selected=0;selected<2;++selected){TabCtrl_SetCurSel(tabs,selected);settingsTab();SendMessage(tabs,WM_PRINTCLIENT,reinterpret_cast<WPARAM>(dc),PRF_CLIENT);
+      require(GetPixel(dc,bounds.right-3,3)==appBackgroundColor(),"Dark tab strip must not use system light background");
+      RECT tab{};TabCtrl_GetItemRect(tabs,selected,&tab);require(GetPixel(dc,tab.left+4,tab.top+4)==RGB(55,69,87),"Selected settings tab must be dark");
+      Gdiplus::Bitmap capture(pixels,nullptr);auto path=output;path+=selected?L".database-tab.png":L".general-tab.png";capture.Save(path.c_str(),&png);
+     }
+     TabCtrl_SetCurSel(tabs,0);settingsTab();SelectObject(dc,old);DeleteObject(pixels);DeleteDC(dc);ReleaseDC(tabs,screen);
+    }
     auto darkPreview = output; darkPreview += L".dark.png"; savePng(darkPreview, *chart);
     NMLVCUSTOMDRAW custom{}; custom.nmcd.dwDrawStage = CDDS_ITEMPREPAINT | CDDS_SUBITEM; custom.nmcd.dwItemSpec = 0;
     drawLegend(&custom); require(custom.clrText == RGB(0xab, 0x12, 0x34), "Legend must use study color");
@@ -1056,13 +1083,13 @@ void testInterface(const std::filesystem::path& output) {
     auto clipboardImage=chartClipboardDib();auto dib=static_cast<BITMAPINFOHEADER*>(GlobalLock(clipboardImage));
     require(dib && dib->biBitCount==24 && dib->biCompression==BI_RGB && dib->biWidth==static_cast<LONG>(bitmap->GetWidth()) && dib->biHeight==static_cast<LONG>(bitmap->GetHeight()),"Clipboard DIB format/dimensions incorrect");
     require(GlobalSize(clipboardImage)>=sizeof(BITMAPINFOHEADER)+dib->biSizeImage,"Clipboard DIB pixels missing");GlobalUnlock(clipboardImage);GlobalFree(clipboardImage);
-    for(int action:std::initializer_list<int>{OpenCsv,OpenBinary,ZoomIn,ZoomOut,Latest,Goto,Legend,AddFinancial,Settings,Refresh}) {auto icon=toolbarPng(action);require(icon && icon->GetWidth()==32 && icon->GetHeight()==32,"Embedded toolbar PNG missing");}
+    for(int action:std::initializer_list<int>{OpenCsv,OpenBinary,OpenDatabase,ZoomIn,ZoomOut,Latest,Goto,Legend,AddFinancial,Settings,Refresh}) {auto icon=toolbarPng(action);require(icon && icon->GetWidth()==32 && icon->GetHeight()==32,"Embedded toolbar PNG missing");}
     {auto screen=GetDC(window);auto dc=CreateCompatibleDC(screen);auto pixels=CreateCompatibleBitmap(screen,684,64);auto old=SelectObject(dc,pixels);bool dark=preferences.dark;
     for(int row=0;row<2;++row){preferences.dark=row==0;RECT strip{0,row*32,684,row*32+32};FillRect(dc,&strip,appBackground());int iconX=0;for(const auto& action:toolbarActions){if(action.id){NMCUSTOMDRAW draw{};draw.hdc=dc;draw.dwDrawStage=CDDS_ITEMPREPAINT;draw.dwItemSpec=action.id;draw.rc={iconX,row*32,iconX+36,row*32+32};toolbarDraw(&draw);}iconX+=36;}}
     preferences.dark=dark;Gdiplus::Bitmap snap(pixels,nullptr);auto path=output;path+=L".toolbar.png";snap.Save(path.c_str(),&png);SelectObject(dc,old);DeleteObject(pixels);DeleteDC(dc);ReleaseDC(window,screen);}
-    require(toolbarActions[2].id==Refresh && toolbarActions[3].id==0 && toolbarActions[4].id==LoadWorkspaceMenu && toolbarActions[5].id==SaveWorkspaceMenu && toolbarActions[6].id==0,"Workspace toolbar group/order incorrect");
+    require(toolbarActions[2].id==OpenDatabase && toolbarActions[3].id==Refresh && toolbarActions[4].id==0 && toolbarActions[5].id==LoadWorkspaceMenu && toolbarActions[6].id==SaveWorkspaceMenu && toolbarActions[7].id==0,"Workspace toolbar group/order incorrect");
     require(!toolbarPng(Volume) && !toolbarPng(NextSignal) && !toolbarPng(PreviousSignal),"Existing toolbar icons must remain");
-    require(toolbarActions[11].id==Goto && toolbarActions[12].id==PreviousSignal && toolbarActions[13].id==NextSignal,"Signal toolbar order incorrect");
+    require(toolbarActions[12].id==Goto && toolbarActions[13].id==PreviousSignal && toolbarActions[14].id==NextSignal,"Signal toolbar order incorrect");
     MENUITEMINFOW themed{sizeof(themed)};themed.fMask=MIIM_FTYPE;GetMenuItemInfoW(GetMenu(window),0,TRUE,&themed);require((themed.fType&MFT_OWNERDRAW)!=0,"Dark menu styling missing");
     preferences.dark=false;applyTheme();GetMenuItemInfoW(GetMenu(window),0,TRUE,&themed);require(!(themed.fType&MFT_OWNERDRAW),"Light menu style not restored");preferences.dark=true;applyTheme();
     auto bgImage=output;bgImage+=L".background.png";chart->makeChart(bgImage.string().c_str());
@@ -1096,6 +1123,12 @@ void testInterface(const std::filesystem::path& output) {
             showSignalReport();
             require(reportSideMatches(4.9988,L"4.9") && reportSideMatches(-4.9988,L"4.9") && !reportSideMatches(-4.88,L"4.9"),"SIDE filter must match magnitude prefixes of either sign");
             auto reportTotal=signalReportRows.size();
+            require(financialNumber(1234567.89)==L"1,234,567.89" && financialNumber(-1234.5,2,true)==L"(1,234.50)","Financial formatting must group thousands and use accounting losses");
+            require(reportTime(data.time.front()).size()==16 && reportTime(data.time.front())[10]==L' ',"Report timestamps must use local minute precision without zone suffix");
+            sortReportColumn(1,false);sortReportColumn(2,true);refreshSignalReport();
+            for(size_t i=1;i<signalReportRows.size();++i){auto& a=signalReportRows[i-1];auto& b=signalReportRows[i];require(a.side<b.side || (a.side==b.side && a.entry<b.entry),"Report must sort by SIDE then entry time");}
+            signalReportSorts={{8,true}};refreshSignalReport();
+            for(size_t i=0;i<signalReportRows.size();++i)if(signalReportRows[i].net!=0){NMLVCUSTOMDRAW draw{};draw.nmcd.hdr.hwndFrom=signalReportList;draw.nmcd.hdr.code=NM_CUSTOMDRAW;draw.nmcd.dwDrawStage=CDDS_ITEMPREPAINT|CDDS_SUBITEM;draw.nmcd.dwItemSpec=i;draw.iSubItem=8;SendMessage(signalReportWindow,WM_NOTIFY,0,reinterpret_cast<LPARAM>(&draw));require(draw.clrText==(signalReportRows[i].net<0?RGB(240,70,70):RGB(35,190,90)),"Report P/L cells must use sign-dependent colors");}
             for(int id:{1901,1903,1904,1905,1950,1951}){auto button=GetDlgItem(signalReportWindow,id);auto tip=static_cast<HWND>(GetPropW(button,L"FIGCharts.Tooltip"));require(IsWindow(tip) && SendMessage(tip,TTM_GETTOOLCOUNT,0,0)==1,"Every report button must have a registered tooltip");}
             for(int id:{1904,1905}){auto button=GetDlgItem(signalReportWindow,id);require((GetWindowLongPtr(button,GWL_STYLE)&BS_TYPEMASK)==BS_OWNERDRAW,"Report icons must use owner drawing for pressed and focus states");SendMessage(button,BM_SETSTATE,TRUE,0);SendMessage(button,BM_SETSTATE,FALSE,0);}
             ListView_SetColumnWidth(signalReportList,0,321);ListView_SetColumnWidth(signalReportList,6,0);
@@ -1142,6 +1175,11 @@ void testInterface(const std::filesystem::path& output) {
             for(int direction:{-1,1}){options.first=direction<0?0:data.time.size()-options.count;options.panExtra=direction*static_cast<double>(options.count)*2/3;redraw();
                 require(chartPanels.size()==2,"Overscroll test requires a study panel");auto main=chartPanels.front(),study=chartPanels.back();auto bounds=panelRect(main);
                 for(double index:{0.0,50.0,100.0})require(std::abs(main->getXCoor(index)-study->getXCoor(index))<=1,"Study and price panels must scroll together with signal labels enabled");
+                {auto timeAxis=study->xAxis();auto timeTicks=timeAxis->getTicks();int previousX=-10000,labelCount=0;
+                 for(int i=0;i<timeTicks.len;++i){auto label=timeAxis->getLabel(timeTicks[i]);if(!label||!*label)continue;std::string text=label;
+                  require(text.size()==16&&text[4]=='-'&&text[10]=='\n'&&text[13]==':',"Overscroll must have only one custom date/time label set");
+                  int labelX=study->getXCoor(timeTicks[i]);require(labelX-previousX>=100,"Overscroll time labels must not overlap");previousX=labelX;++labelCount;
+                 }require(labelCount>0,"Overscroll must retain visible date/time labels");}
                 if(direction<0)require(chartLeft+main->getAbsOffsetX()+main->getXCoor(0)>bounds.left+(bounds.right-bounds.left)/2,"Signal label layout must preserve left blank space");
                 auto path=output;path+=direction<0?L".study-pan-start.png":L".study-pan-end.png";savePng(path,*chart);
             }options=savedOptions;redraw();}
@@ -1265,7 +1303,22 @@ void testInterface(const std::filesystem::path& output) {
     {std::ifstream csv(signalCsvPath,std::ios::binary);std::string content((std::istreambuf_iterator<char>(csv)),{});require(content==utf8(signalReportCsv()),"CSV exports must overwrite the saved destination with displayed rows");}
     financialConfig.sides[-4.9982]={0x123456,true};financialConfig.sides[7.1222]={0xabcdef,false};
     for(auto dialog:{legendWindow,financialWindow,signalReportWindow})if(dialog)SendMessage(dialog,WM_COMMAND,1951,0);
-    require(panelFontSizes[0]==10 && panelFontSizes[1]==10 && panelFontSizes[2]==10,"Panel font controls must enlarge text independently");
+    require(panelFontSizes[0]==9.5 && panelFontSizes[1]==9.5 && panelFontSizes[2]==9.5,"Panel font controls must enlarge text independently");
+    for(auto dialog:{legendWindow,financialWindow,signalReportWindow})SendMessage(dialog,WM_COMMAND,1953,0);
+    require(panelFontBold[0] && panelFontBold[1] && panelFontBold[2],"All table font controls must support bold");
+    for(auto dialog:{legendWindow,financialWindow,signalReportWindow})for(int id:{1950,1951,1953})require((GetWindowLongPtr(GetDlgItem(dialog,id),GWL_STYLE)&BS_TYPEMASK)==BS_OWNERDRAW,"Font buttons must use consistent owner drawing");
+    setFinancialCompact(false);
+    NMITEMACTIVATE toggle{};toggle.hdr={financialSummary,FinSummary,NM_CLICK};toggle.iItem=2;toggle.ptAction.x=8;
+    SendMessage(financialWindow,WM_NOTIFY,FinSummary,reinterpret_cast<LPARAM>(&toggle));
+    require(!financialTopEnabled[2],"Individual summary checkbox must disable its metric");
+    setFinancialCompact(true);
+    require(ListView_GetItemCount(financialSummary)==16 && summaryRow(2)==3,"Compact summary must omit disabled metrics");
+    setFinancialCompact(false);
+    require(ListView_GetItemCount(financialSummary)==17,"Expanded summary must retain all metric controls");
+    RECT help{},buttons{};GetWindowRect(GetDlgItem(financialWindow,0x7ffe),&help);GetWindowRect(GetDlgItem(financialWindow,FinSelectAll),&buttons);
+    require(help.bottom<buttons.top,"Financial help text must not overlap side selection buttons");
+
+    setFinancialCompact(true);
     ListView_SetColumnWidth(signalReportList,0,321);ListView_SetColumnWidth(signalReportList,6,0);auto savedReportWidths=currentSignalReportWidths();
     workspacePath=workspaceTest;saveWorkspace();auto savedTitle=preferences.title;auto savedStudyCount=options.studies.size();auto savedFinancial=financialConfig;RECT savedRect{};GetWindowRect(legendWindow,&savedRect);
     preferences.title="changed";options.volume=true;options.first=0;options.studies.clear();
@@ -1274,10 +1327,12 @@ void testInterface(const std::filesystem::path& output) {
     options.autoScale=true;options.priceOnly=false;
     gotoSelectionSet=false;gotoSelection={};
     loadWorkspace(workspaceTest);
+    require(panelFontBold[0] && panelFontBold[1] && panelFontBold[2],"Workspace must preserve bold table fonts");
+    require(!financialTopEnabled[2],"Workspace must preserve individual financial metric visibility");
     require(currentSignalReportWidths()==savedReportWidths,"Workspace must restore report widths including hidden columns");
     DestroyWindow(signalReportWindow);signalReportWindow=signalReportList=nullptr;showSignalReport();ShowWindow(signalReportWindow,SW_HIDE);
     require(currentSignalReportWidths()==savedReportWidths,"Lazily created report must retain workspace column widths");
-    require(signalCsvPath==std::filesystem::path(output.wstring()+L".csv") && panelFontSizes[0]==10 && panelFontSizes[1]==10 && panelFontSizes[2]==10,"Workspace must preserve CSV destination and panel fonts");
+    require(signalCsvPath==std::filesystem::path(output.wstring()+L".csv") && panelFontSizes[0]==9.5 && panelFontSizes[1]==9.5 && panelFontSizes[2]==9.5,"Workspace must preserve CSV destination and panel fonts");
     require(financialConfig.sides.at(-4.9982).color==0x123456 && financialConfig.sides.at(7.1222).color==0xabcdef && !financialConfig.sides.at(7.1222).show,"Workspace must retain absent SIDE identities and colors");
     require(gotoSelectionSet && gotoSelection.wYear==savedGotoSelection.wYear && gotoSelection.wMonth==savedGotoSelection.wMonth && gotoSelection.wDay==savedGotoSelection.wDay && gotoSelection.wHour==savedGotoSelection.wHour && gotoSelection.wMinute==savedGotoSelection.wMinute && gotoSelection.wSecond==savedGotoSelection.wSecond,"Workspace Go To selection not restored");
     require(!options.autoScale && options.priceOnly && options.scaleMin==savedLow && options.scaleMax==savedHigh,"Workspace must restore manual price scale");
@@ -1333,7 +1388,8 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
     enumerateZones(); if (!testing) readPreferences(preferenceFolder() / L"preferences.txt");
     int result = 0;
     try {
-        if (argc > 1 && std::wstring(argv[1]) == L"--self-test") { testCsv(); testFigData(); testFinancial(); testBackground(); }
+        if (argc > 1 && std::wstring(argv[1]) == L"--self-test") { testCsv(); testFigData(); testStudyCodec(); testFinancial(); testBackground(); }
+        else if(argc==3 && std::wstring(argv[1])==L"--benchmark-study-decode"){benchmarkStudyDecode(argv[2]);}
         else if (argc == 4 && std::wstring(argv[1]) == L"--render") {
             auto d = CsvData::load(argv[2]); ChartOptions opts;
             opts.first = d.time.size() > opts.count ? d.time.size() - opts.count : 0;
@@ -1368,6 +1424,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
     }
     LocalFree(argv); releaseFrame(); clearImage(); toolbarPngs.clear(); Gdiplus::GdiplusShutdown(token); return result;
 }
+
 
 
 

@@ -14,6 +14,8 @@ struct Preferences {
     bool dark = false, legend = true, financialLegend = false;
     int timeMode = 0; // UTC, computer local, named Windows time zone
     std::wstring zoneKey;
+    std::wstring databaseConnection;
+    bool showDatabasePerformance=false;
     std::string title;
 };
 inline Preferences preferences;
@@ -85,7 +87,7 @@ inline std::wstring formatTimestamp(double seconds) {
 inline void writePreferences(const std::filesystem::path& path) {
     std::filesystem::create_directories(path.parent_path()); auto temp = path; temp += L".tmp";
     { std::ofstream out(temp); out << "FIGChartsPreferences 1\n" << preferences.chartType << ' ' << preferences.dark << ' ' << preferences.legend << ' ' << preferences.timeMode << '\n'
-        << std::quoted(utf8(preferences.zoneKey)) << '\n' << std::quoted(preferences.title) << '\n' << preferences.financialLegend << '\n';
+        << std::quoted(utf8(preferences.zoneKey)) << '\n' << std::quoted(preferences.title) << '\n' << preferences.financialLegend << '\n' << std::quoted(utf8(preferences.databaseConnection)) << '\n' << preferences.showDatabasePerformance << '\n';
       out.flush(); if (!out) throw std::runtime_error("Could not save preferences."); }
     if (!MoveFileExW(temp.c_str(), path.c_str(), MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH)) throw std::runtime_error("Could not replace preferences.");
 }
@@ -95,6 +97,8 @@ inline void readPreferences(const std::filesystem::path& path) {
     if (!(in >> p.chartType >> p.dark >> p.legend >> p.timeMode >> std::quoted(key) >> std::quoted(p.title))) return;
     if (p.chartType < 0 || p.chartType > 2 || p.timeMode < 0 || p.timeMode > 2) return;
     in >> std::ws; if(!in.eof() && !(in >> p.financialLegend)) return;
+    std::string connection;if(in >> std::quoted(connection))p.databaseConnection=fromUtf8(connection);
+    in >> p.showDatabasePerformance; // Optional field: older files keep the default off.
     p.zoneKey = fromUtf8(key); preferences = p;
     if (p.timeMode == 2) {
         bool found = false; for (auto& z : timeZones) if (p.zoneKey == z.TimeZoneKeyName) found = true;

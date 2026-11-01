@@ -16,3 +16,5 @@
 2014 RCDATA "../assets/toolbar/down-arrow.png"
 2015 RCDATA "../assets/toolbar/csv-file.png"
 2016 RCDATA "../assets/toolbar/copy.png"
+
+2017 RCDATA "../assets/toolbar/database.png"

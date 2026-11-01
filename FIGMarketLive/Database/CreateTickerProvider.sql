@@ -11,4 +11,6 @@ IF OBJECT_ID('dbo.TickerProvider','U') IS NULL
         ProviderSymbol nvarchar(100) NOT NULL,
         CONSTRAINT PK_TickerProvider PRIMARY KEY(TickerId,ProviderType),
         CONSTRAINT FK_TickerProvider_Ticker FOREIGN KEY(TickerId) REFERENCES dbo.Ticker(Id));
+IF COL_LENGTH('dbo.TickerProvider','HistoryStartRawTime') IS NULL
+    ALTER TABLE dbo.TickerProvider ADD HistoryStartRawTime bigint NULL;
 COMMIT;
