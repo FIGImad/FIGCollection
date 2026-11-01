@@ -1,9 +1,0 @@
-RunId,NetProfit,FinalNAV,MaxDrawdownPct,ClosedTrades,TrainNetProfit,ValidationNetProfit,TestNetProfit,ParametersJSON
-run-0001,100,101,-2,5,50,30,20,"{""StartBias"":1,""AdxLen"":50}"
-run-0002,100,101,-2,5,50,30,20,"{""StartBias"":1,""AdxLen"":50}"
-run-0003,100,101,-2,5,50,30,20,"{""StartBias"":1,""AdxLen"":50}"
-run-0004,100,101,-2,5,50,30,20,"{""StartBias"":1,""AdxLen"":50}"
-run-0005,100,101,-2,5,50,30,20,"{""StartBias"":1,""AdxLen"":50}"
-run-0006,100,101,-2,5,50,30,20,"{""StartBias"":1,""AdxLen"":50}"
-run-0007,100,101,-2,5,50,30,20,"{""StartBias"":1,""AdxLen"":50}"
-run-0008,100,101,-2,5,50,30,20,"{""StartBias"":1,""AdxLen"":50}"

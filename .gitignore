@@ -105,6 +105,7 @@ coverage*.info
 _NCrunch_*
 .*crunch*.local.xml
 nCrunchTemp_*
+.test-temp/
 
 # MightyMoose
 AutoTest.Net/

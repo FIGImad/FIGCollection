@@ -1,1 +1,0 @@
-PASS: three tabs render; Save preserves existing monitors/datasets and embedded adapter parameters. No SQL or provider connections were made.
